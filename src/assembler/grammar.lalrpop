@@ -1,0 +1,129 @@
+use std::convert::TryInto;
+
+use crate::common::asm::*;
+use crate::assembler::ir::Stmt;
+use crate::assembler::helpers::parse_int;
+use crate::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins};
+
+grammar;
+
+R: Reg = {
+    "r0" => Reg::R0,
+    "r1" => Reg::R1, 
+    "r2" => Reg::R2,
+    "r3" => Reg::R3,
+    "r4" => Reg::R4,
+    "r5" => Reg::R5,
+    "r6" => Reg::SP,
+    "r7" => Reg::PC,
+
+    "sp" => Reg::SP,
+    "pc" => Reg::PC,
+};
+
+Imm: u16 = {
+    <r#"\d+"#> => parse_int(<>, 10),
+    <r#"0x[0-9a-fA-F]+"#> => parse_int(<>, 16),
+};
+
+Label: String = {
+    <r#"[a-zA-Z_][a-zA-Z0-9_]*"#> => <>.to_string(),
+};
+ 
+RegArg: RegArg = {
+    <R> => RegArg::new(AddrMode::Gen, <>, Extra::None),
+    "@" <R> => RegArg::new(AddrMode::Def, <>, Extra::None),
+    "(" <R> ")" => RegArg::new(AddrMode::Def, <>, Extra::None),
+    "(" <R> ")" "+" => RegArg::new(AddrMode::AutoInc, <>, Extra::None),
+    "@" "(" <R> ")" "+" => RegArg::new(AddrMode::AutoIncDef, <>, Extra::None),
+    "-" "(" <R> ")" => RegArg::new(AddrMode::AutoDec, <>, Extra::None),
+    "@" "-" "(" <R> ")" => RegArg::new(AddrMode::AutoDecDef, <>, Extra::None),
+    <i:Imm> "(" <r:R> ")" => RegArg::new(AddrMode::Index, r, Extra::Imm(i)),
+    "@" <i:Imm> "(" <r:R> ")" => RegArg::new(AddrMode::IndexDef, r, Extra::Imm(i)),
+
+    "#" <Imm> => RegArg::new(AddrMode::AutoInc, Reg::PC, Extra::Imm(<>)),
+    "@" "#" <Imm> => RegArg::new(AddrMode::AutoIncDef, Reg::PC, Extra::Imm(<>)),
+
+    <Label> => RegArg::new(AddrMode::Index, Reg::PC, Extra::LabelRef(<>)),
+    "@" <Label> => RegArg::new(AddrMode::IndexDef, Reg::PC, Extra::LabelRef(<>)),
+};
+
+
+I: Ins = {
+    "halt" => make_misc_ins!(Halt),
+
+    "nop" => make_cc_ins!(Nop),
+
+    "mov" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Mov, src, dst),
+    "cmp" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Cmp, src, dst),
+    "bit" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Bit, src, dst),
+    "bic" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Bic, src, dst),
+    "bis" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Bis, src, dst),
+    "add" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Add, src, dst),
+
+    "movb" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(MovB, src, dst),
+    "cmpb" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(CmpB, src, dst),
+    "bitb" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(BitB, src, dst),
+    "bicb" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(BicB, src, dst),
+    "bisb" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(BisB, src, dst),
+    "sub" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Sub, src, dst),
+
+    "br" <Label> => make_branch_ins!(Br, <>),
+    "bne" <Label> => make_branch_ins!(Bne, <>),
+    "beq" <Label> => make_branch_ins!(Beq, <>),
+    "bge" <Label> => make_branch_ins!(Bge, <>),
+    "blt" <Label> => make_branch_ins!(Blt, <>),
+    "bgt" <Label> => make_branch_ins!(Bgt, <>),
+    "ble" <Label> => make_branch_ins!(Ble, <>),
+
+    "bpl" <Label> => make_branch_ins!(Bpl, <>),
+    "bmi" <Label> => make_branch_ins!(Bmi, <>),
+    "bhi" <Label> => make_branch_ins!(Bhi, <>),
+    "bhis" <Label> => make_branch_ins!(Bcc, <>),
+    "blo" <Label> => make_branch_ins!(Bcs, <>),
+    "blos" <Label> => make_branch_ins!(Blos, <>),
+    "bvc" <Label> => make_branch_ins!(Bvc, <>),
+    "bvs" <Label> => make_branch_ins!(Bvs, <>),
+    "bcc" <Label> => make_branch_ins!(Bcc, <>),
+    "bcs" <Label> => make_branch_ins!(Bcs, <>),
+
+    "jmp" <RegArg> => make_jmp_ins!(<>),
+
+    "jsr" <reg:R> "," <dst:RegArg> => make_jsr_ins!(reg, dst),
+    "rts" <reg:R>  => make_rts_ins!(reg),
+};
+
+
+// Doesn't support escapes
+StrLiteral = r#""[^"]*""#;
+
+Bytes: Vec<u8> = {
+    ".byte" <b:(<Imm>)*> => b.iter().map(|x| TryInto::<u8>::try_into(*x).unwrap()).collect(),
+};
+
+pub Stmt: Stmt = {
+    <Label> ":" => Stmt::LabelDef(<>),
+    <Bytes> => Stmt::Bytes(<>),
+    ".ascii" <StrLiteral> => {
+        let mut v = <>.as_bytes().to_vec();
+
+        // Remove quotes
+        v.pop();
+        v.remove(0);
+
+        Stmt::Ascii(v)
+    },
+    ".asciz" <StrLiteral> => {
+        let mut v = <>.as_bytes().to_vec();
+
+        // Remove quotes, add nul
+        v.remove(0);
+        let len = v.len();
+        v[len-1] = 0;
+
+        Stmt::Ascii(v)
+    },
+    <I> => Stmt::Ins(<>),
+};
+
+
