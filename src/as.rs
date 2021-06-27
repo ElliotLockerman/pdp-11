@@ -58,7 +58,6 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0);
-
     }
 
     #[test]
@@ -67,7 +66,6 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o10001);
-
     }
 
     #[test]
@@ -76,6 +74,15 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o12041);
+    }
 
+    #[test]
+    fn branch() {
+        let prog = r#"
+            label:
+                br label"#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o000777);
     }
 }

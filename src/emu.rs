@@ -107,14 +107,14 @@ mod tests {
     #[test]
     fn looop() {
         let bin = to_u8(&[
-            0x15c0, 0x0000, // mov #0, r0
-            0x15c1, 0x000a, // mov #1, r1
+            0o12700, 0,     // mov #0, r0
+            0o12701, 10,    // mov #10, r1
 
-            0x65c0, 0x0001, // add #1, r0
-            0xe5c1, 0x0001, // sub #1, r1
-            0x02FC,         // bne -8
+            0o62700, 1,    // add #1, r0
+            0o162701, 1,    // sub #1, r1
+            0o1373,         // bne -10
 
-            0x0000          // halt
+            0               // halt
         ]);
 
         let mut emu = Emulator::new(2 * DATA_START);

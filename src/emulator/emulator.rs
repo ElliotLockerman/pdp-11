@@ -453,7 +453,7 @@ impl<'a> Emulator<'a> {
             } else {
                 pc + TryInto::<u16>::try_into(off).unwrap()
             };
-            self.reg_write_word(Reg::PC,  pc - 2); // -2 since pc was already incremented
+            self.reg_write_word(Reg::PC,  pc);
         }
     }
 

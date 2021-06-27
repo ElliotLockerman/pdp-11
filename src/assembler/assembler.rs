@@ -134,9 +134,12 @@ impl Assembler {
                         let offset = match ins.target {
                             Target::Offset(x) => x,
                             Target::Label(ref label) => {
-                                let dst = *labels.get(label).unwrap() as i32;
-                                let addr = addr as i32;
-                                TryInto::<i8>::try_into((dst - addr)/2).unwrap() as u8
+                                if let Some(dst) = labels.get(label) {
+                                    let addr = addr as i32;
+                                    TryInto::<i8>::try_into((*dst as i32 - addr - 2)/2).unwrap() as u8
+                                } else {
+                                    panic!("Label {} not found", label)
+                                }
                             },
                         };
                         ins.target = Target::Offset(offset);
