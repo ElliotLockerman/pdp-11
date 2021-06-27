@@ -9,11 +9,11 @@ use crate::common::asm::*;
 
 
 pub trait MMIOHandler {
-    fn read_byte(&mut self, addr: u16) -> u8;
-    fn read_word(&mut self, addr: u16) -> u16;
+    fn read_byte(&mut self, emu: &mut EmulatorData, addr: u16) -> u8;
+    fn read_word(&mut self, emu: &mut EmulatorData, addr: u16) -> u16;
 
-    fn write_byte(&mut self, addr: u16, val: u8);
-    fn write_word(&mut self, addr: u16, val: u16);
+    fn write_byte(&mut self,  emu: &mut EmulatorData, addr: u16, val: u8);
+    fn write_word(&mut self,  emu: &mut EmulatorData, addr: u16, val: u16);
 }
 
 type MMIOHandlerRef<'a>= &'a mut dyn MMIOHandler;
@@ -140,21 +140,51 @@ enum ExecRet {
     Halt,
 }
 
-pub struct Emulator<'a> {
+
+// This is separate so a mutable borrow can be passed to the MMIO handlers
+pub struct EmulatorData {
     mem: Vec<u8>,
     regs: [u16; NUM_REGS],
-    mmio_handlers: HashMap<u16, MMIOHandlerRef<'a>>,
     status: Status,
+}
+
+impl EmulatorData {
+    pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
+        self.mem[addr as usize]
+    }
+
+    pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
+        self.mem[addr as usize] = val;
+    }
+
+    pub fn mem_read_word(&mut self, addr: u16) -> u16 {
+        assert!(addr & 1 == 0);
+        (self.mem[addr as usize] as u16) | ((self.mem[(addr + 1) as usize] as u16) << 8)
+    }
+
+    pub fn mem_write_word(&mut self, addr: u16, val: u16) {
+        assert!(addr & 1 == 0);
+        self.mem[addr as usize] = val as u8;
+        self.mem[(addr + 1) as usize] = (val >> 8) as u8;
+    }
+}
+
+
+pub struct Emulator<'a> {
+    data: EmulatorData,
+    mmio_handlers: HashMap<u16, MMIOHandlerRef<'a>>,
 }
 
 impl<'a> Emulator<'a> {
     pub fn new(mem_size: u16) -> Emulator<'a> {
         assert!(mem_size <= MAX_MEM);
         Emulator {
-            mem: vec![0; mem_size as usize],
-            regs: [0; NUM_REGS],
+            data: EmulatorData {
+                mem: vec![0; mem_size as usize],
+                regs: [0; NUM_REGS],
+                status: Status::new(),
+            },
             mmio_handlers: HashMap::new(),
-            status: Status::new(),
         }
     }
     pub fn run(&mut self) {
@@ -190,11 +220,11 @@ impl<'a> Emulator<'a> {
     ///////////////////////////////////////////////////////////////////////////
 
     pub fn reg_write_word(&mut self, reg: Reg, val: u16) {
-        self.regs[reg.to_usize().unwrap()] = val;
+        self.data.regs[reg.to_usize().unwrap()] = val;
     }
 
     pub fn reg_read_word(&self, reg: Reg) -> u16 {
-        self.regs[reg.to_usize().unwrap()]
+        self.data.regs[reg.to_usize().unwrap()]
     }
 
     pub fn reg_read_byte(&self, reg: Reg) -> u8 {
@@ -210,23 +240,23 @@ impl<'a> Emulator<'a> {
     pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                return handler.read_byte(addr);
+                return handler.read_byte(&mut self.data, addr);
             }
             panic!("Invalid MMIO register {}", addr);
         } else {
-            self.mem[addr as usize]
+            self.data.mem_read_byte(addr)
         }
     }
 
     pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                handler.write_byte(addr, val);
+                handler.write_byte(&mut self.data, addr, val);
                 return;
             }
             panic!("Invalid MMIO register {}", addr);
         } else {
-            self.mem[addr as usize] = val;
+            self.data.mem_write_byte(addr, val)
         }
     }
 
@@ -234,11 +264,11 @@ impl<'a> Emulator<'a> {
         assert!(addr & 1 == 0);
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                return handler.read_word(addr);
+                return handler.read_word(&mut self.data, addr);
             }
             panic!("Invalid MMIO register {}", addr);
         } else {
-            (self.mem[addr as usize] as u16) | ((self.mem[(addr + 1) as usize] as u16) << 8)
+            self.data.mem_read_word(addr)
         }
     }
 
@@ -246,13 +276,12 @@ impl<'a> Emulator<'a> {
         assert!(addr & 1 == 0);
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                handler.write_word(addr, val);
+                handler.write_word(&mut self.data, addr, val);
                 return;
             }
             panic!("Invalid MMIO register {}", addr);
         } else {
-            self.mem[addr as usize] = val as u8;
-            self.mem[(addr + 1) as usize] = (val >> 8) as u8;
+            self.data.mem_write_word(addr, val)
         }
     }
 
@@ -334,9 +363,9 @@ impl<'a> Emulator<'a> {
         let val = self.read_resolved_word(src);
         let dst = self.resolve(dst, size);
         self.write_resolved_word(dst, val);
-        self.status.set_zero(val == 0);
-        self.status.set_negative(sign_bit(val as u32, size) != 0);
-        self.status.set_overflow(false);
+        self.data.status.set_zero(val == 0);
+        self.data.status.set_negative(sign_bit(val as u32, size) != 0);
+        self.data.status.set_overflow(false);
     }
 
     // TODO: combine these?
@@ -348,10 +377,10 @@ impl<'a> Emulator<'a> {
         let res = op(src_val, dst_val);
         let res_sign = sign_bit(res, size);
 
-        self.status.set_zero(res == 0);
-        self.status.set_negative(res_sign != 0);
+        self.data.status.set_zero(res == 0);
+        self.data.status.set_negative(res_sign != 0);
         // Carry not affected
-        self.status.set_overflow(false);
+        self.data.status.set_overflow(false);
 
         if !discard {
             self.write_resolved_narrow(dst, res, size);
@@ -368,10 +397,10 @@ impl<'a> Emulator<'a> {
         let res = src_val + dst_val;
         let res_sign = sign_bit(res, size);
 
-        self.status.set_zero(res == 0);
-        self.status.set_negative(res_sign != 0);
-        self.status.set_carry(res >> size.bits() != 0);
-        self.status.set_overflow(src_sign == dst_sign && dst_sign != res_sign);
+        self.data.status.set_zero(res == 0);
+        self.data.status.set_negative(res_sign != 0);
+        self.data.status.set_carry(res >> size.bits() != 0);
+        self.data.status.set_overflow(src_sign == dst_sign && dst_sign != res_sign);
         self.write_resolved_narrow(dst, res, size);
     }
 
@@ -386,10 +415,10 @@ impl<'a> Emulator<'a> {
         let res = dst_val - src_val;
         let res_sign = sign_bit(res, size);
 
-        self.status.set_zero(res == 0);
-        self.status.set_negative(res_sign != 0);
-        self.status.set_carry(dst_val < src_val);
-        self.status.set_overflow(src_sign != dst_sign && src_sign == res_sign);
+        self.data.status.set_zero(res == 0);
+        self.data.status.set_negative(res_sign != 0);
+        self.data.status.set_carry(dst_val < src_val);
+        self.data.status.set_overflow(src_sign != dst_sign && src_sign == res_sign);
 
         if !discard {
             self.write_resolved_narrow(dst, res, size);
@@ -424,7 +453,7 @@ impl<'a> Emulator<'a> {
     }
 
     fn exec_branch_ins(&mut self, ins: &BranchIns) {
-        let (z, n, c, v) = self.status.flags();
+        let (z, n, c, v) = self.data.status.flags();
         let taken = match ins.op {
             BranchOpcode::Br => true,
             BranchOpcode::Bne => !z,
