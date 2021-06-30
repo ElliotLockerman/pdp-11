@@ -127,3 +127,11 @@ pub Stmt: Stmt = {
 };
 
 
+match {
+    // Skip whitespace and comments
+    r"\s*" => { },
+    r";[^\n\r]*[\n\r]*" => { }, // `// comment`
+    r"/\*([^\*]*\*+[^\*/])*([^\*]*\*+|[^\*])*\*/" => { }, // `/* comment */`
+} else {
+    _,
+}
