@@ -348,9 +348,16 @@ impl<'a> Emulator<'a> {
             AddrMode::Gen => return ResolvedRegArg::Reg(arg.reg),
             AddrMode::Def => self.reg_read_word(arg.reg),
             AddrMode::AutoInc => self.exec_auto(arg.reg, true, size),
-            AddrMode::AutoIncDef =>  self.exec_auto(arg.reg, true, size),
+            AddrMode::AutoIncDef => {
+                let addr = self.exec_auto(arg.reg, true, Size::Word);
+                self.mem_read_word(addr)
+            },
             AddrMode::AutoDec => self.exec_auto(arg.reg, false, size),
-            AddrMode::AutoDecDef =>  self.exec_auto(arg.reg, false, size),
+            AddrMode::AutoDecDef => {
+                let addr = self.exec_auto(arg.reg, false, Size::Word);
+                self.mem_read_word(addr)
+
+            },
             AddrMode::Index => self.reg_read_word(arg.reg) + arg.extra.unwrap_imm(),
             AddrMode::IndexDef =>  self.mem_read_word(self.reg_read_word(arg.reg) + arg.extra.unwrap_imm()),
         };
