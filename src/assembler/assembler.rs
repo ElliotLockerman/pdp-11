@@ -15,13 +15,17 @@ pub fn assemble(prog: &str) -> Vec<u8> {
 
 struct Assembler {
     buf: Vec<u8>,
+    symbols: HashMap<String, u16>,
 }
 
 
 impl Assembler {
 
     fn new() -> Assembler {
-        Assembler{buf: Vec::new()}
+        Assembler{
+            buf: Vec::new(),
+            symbols: HashMap::new(),
+        }
     }
 
     fn emit_double_operand_ins(&mut self, ins: &DoubleOperandIns) {
@@ -58,6 +62,9 @@ impl Assembler {
             | (ins.reg.to_u16().unwrap() << RegArg::NUM_BITS)
             | ins.dst.format();
         self.emit(bin);
+        if ins.dst.has_imm() {
+            self.emit(ins.dst.extra.unwrap_imm());
+        }
     }
 
     fn emit_rts_ins(&mut self, ins: &RtsIns) {
@@ -116,12 +123,39 @@ impl Assembler {
         self.buf.push(upper);
     }
 
-    fn resolve_labels(prog: &mut Vec<Stmt>) {
-        let mut labels = HashMap::new();
+    fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: u16) {
+        if !arg.extra.is_label_ref() {
+            return;
+        }
+        // TODO: switch to relative/deferred relative (index/indexdef pc)
+        assert!(arg.mode == AddrMode::Index|| arg.mode == AddrMode::IndexDef);
+        assert_eq!(arg.reg, Reg::PC);
+
+        let extra = arg.extra.take();
+        let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
+        arg.extra = Extra::Imm((*loc as i32 - curr_addr as i32 - 2) as u16);
+    }
+
+    fn resolve_target(&self, target: &mut Target, curr_addr: u16) {
+        let offset = match target {
+            Target::Offset(x) => *x,
+            Target::Label(ref label) => {
+                if let Some(dst) = self.symbols.get(label) {
+                    let addr = curr_addr as i32;
+                    TryInto::<i8>::try_into((*dst as i32 - addr - 2)/2).unwrap() as u8
+                } else {
+                    panic!("Label {} not found", label)
+                }
+            },
+        };
+        *target = Target::Offset(offset);
+    }
+
+    fn resolve_symbols(&mut self, prog: &mut Vec<Stmt>) {
         let mut addr: u16 = 0;
         for stmt in prog.iter() {
             match stmt {
-                Stmt::LabelDef(s) => { labels.insert(s.clone(), addr); },
+                Stmt::LabelDef(s) => { self.symbols.insert(s.clone(), addr); },
                 _ => addr += stmt.size(),
             }
         }
@@ -130,20 +164,13 @@ impl Assembler {
         for stmt in prog.iter_mut() {
             match stmt {
                 Stmt::Ins(ins) => match ins {
-                    Ins::BranchIns(ref mut ins) => {
-                        let offset = match ins.target {
-                            Target::Offset(x) => x,
-                            Target::Label(ref label) => {
-                                if let Some(dst) = labels.get(label) {
-                                    let addr = addr as i32;
-                                    TryInto::<i8>::try_into((*dst as i32 - addr - 2)/2).unwrap() as u8
-                                } else {
-                                    panic!("Label {} not found", label)
-                                }
-                            },
-                        };
-                        ins.target = Target::Offset(offset);
+                    Ins::BranchIns(ins) => self.resolve_target(&mut ins.target, addr),
+                    Ins::DoubleOperandIns(ins) => {
+                        self.resolve_regarg(&mut ins.src, addr);
+                        self.resolve_regarg(&mut ins.dst, addr);
                     },
+                    Ins::JmpIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
+                    Ins::JsrIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
 
                     // TODO: other kinds of labels!
                     _ => (),
@@ -163,17 +190,11 @@ impl Assembler {
             .zip(1..)
             .filter(|(x,_)| *x != "")
             .map(|(x,i)| {
-                match parser.parse(x) {
-                    Ok(x) => x,
-                    Err(e) => {
-                        eprintln!("Error line {}: {}", i, e);
-                        panic!()
-                    },
-                }
+                parser.parse(x).unwrap_or_else(|e| panic!("Error line {}: {}", i, e))
             })
             .collect();
 
-        Self::resolve_labels(&mut prog);
+        self.resolve_symbols(&mut prog);
 
         for stmt in prog {
             self.emit_stmt(&stmt);

@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{BitOr, BitAnd};
 
-use num_traits::{FromPrimitive, ToPrimitive};    
+use num_traits::ToPrimitive;    
 
 use crate::common::asm::*;
+use crate::common::decoder::decode;
 
 
 pub trait MMIOHandler {
@@ -131,12 +132,23 @@ fn sign_bit(n: u32, size: Size) -> u32 {
 enum ResolvedRegArg {
     Reg(Reg),
     Mem(u16),
+    Imm(u16),
+}
+
+impl ResolvedRegArg {
+    fn unwrap_mem(&self) -> u16 {
+        match self {
+            ResolvedRegArg::Mem(m) => *m,
+            _ => panic!("ResolvedRegArg::unwrap_mem(): wasn't mem"),
+        }
+    }
 }
 
 
 #[derive(Debug, Clone, Copy)]
 enum ExecRet {
     Ok,
+    Jmp,
     Halt,
 }
 
@@ -190,12 +202,31 @@ impl<'a> Emulator<'a> {
     pub fn run(&mut self) {
         loop {
             let ins = self.decode();
-            self.reg_write_word(Reg::PC, self.reg_read_word(Reg::PC) + 2);
+            dbg!(self.pc(), &ins);
+            let ins_size = ins.size();
+            self.reg_write_word(Reg::PC, self.pc() + 2);
             match self.exec(&ins) {
-                ExecRet::Ok => continue,
+                ExecRet::Ok => self.reg_write_word(Reg::PC, self.pc() + ins_size - 2),
+                ExecRet::Jmp => (),
                 ExecRet::Halt => return,
             }
         }
+    }
+
+    fn decode(&self) -> Ins {
+        let pc = self.pc() as isize;
+        dbg!(pc, self.data.mem.len());
+        assert!(pc + 6 < self.data.mem.len() as isize);
+        assert!(pc & 0x1 == 0);
+        let slice = unsafe {
+            let mem = self.data.mem.as_ptr() as *const u8;
+            std::slice::from_raw_parts(mem.offset(pc) as *const u16, 3)
+        };
+        decode(slice)
+    }
+
+    pub fn pc(&self) -> u16 {
+        self.reg_read_word(Reg::PC)
     }
 
     pub fn run_at(&mut self, pc: u16) {
@@ -289,6 +320,7 @@ impl<'a> Emulator<'a> {
         match res {
             ResolvedRegArg::Reg(r) => self.reg_write_word(r, val),
             ResolvedRegArg::Mem(addr) => self.mem_write_word(addr, val),
+            ResolvedRegArg::Imm(_) => panic!("Can't write to immediate"),
         }
     }
 
@@ -296,18 +328,24 @@ impl<'a> Emulator<'a> {
         match res {
             ResolvedRegArg::Reg(r) => self.reg_write_byte(r, val),
             ResolvedRegArg::Mem(addr) => self.mem_write_byte(addr, val),
+            ResolvedRegArg::Imm(_) => panic!("Can't write to immediate"),
         }
     }
     fn read_resolved_byte(&mut self, res: ResolvedRegArg) -> u8 {
         match res {
             ResolvedRegArg::Reg(r) => self.reg_read_byte(r),
             ResolvedRegArg::Mem(addr) => self.mem_read_byte(addr),
+            ResolvedRegArg::Imm(imm) => {
+                assert_eq!(imm >> 8, 0);
+                imm as u8
+            },
         }
     }
     fn read_resolved_word(&mut self, res: ResolvedRegArg) -> u16 {
         match res {
             ResolvedRegArg::Reg(r) => self.reg_read_word(r),
             ResolvedRegArg::Mem(addr) => self.mem_read_word(addr),
+            ResolvedRegArg::Imm(imm) => imm,
         }
     }
 
@@ -347,19 +385,42 @@ impl<'a> Emulator<'a> {
         let loc = match arg.mode {
             AddrMode::Gen => return ResolvedRegArg::Reg(arg.reg),
             AddrMode::Def => self.reg_read_word(arg.reg),
-            AddrMode::AutoInc => self.exec_auto(arg.reg, true, size),
+            AddrMode::AutoInc => {
+                if arg.has_imm() {
+                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
+                }
+                self.exec_auto(arg.reg, true, size)
+            }
             AddrMode::AutoIncDef => {
+                if arg.has_imm() {
+                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
+                }
                 let addr = self.exec_auto(arg.reg, true, Size::Word);
                 self.mem_read_word(addr)
             },
-            AddrMode::AutoDec => self.exec_auto(arg.reg, false, size),
+            AddrMode::AutoDec => {
+                if arg.has_imm() {
+                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
+                }
+                self.exec_auto(arg.reg, false, size)
+            }
             AddrMode::AutoDecDef => {
+                if arg.has_imm() {
+                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
+                }
                 let addr = self.exec_auto(arg.reg, false, Size::Word);
                 self.mem_read_word(addr)
 
             },
-            AddrMode::Index => self.reg_read_word(arg.reg) + arg.extra.unwrap_imm(),
-            AddrMode::IndexDef =>  self.mem_read_word(self.reg_read_word(arg.reg) + arg.extra.unwrap_imm()),
+            // AddrMode::Index => self.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm()),
+            AddrMode::Index => {
+                let reg_val = self.reg_read_word(arg.reg);
+                let imm = arg.extra.unwrap_imm();
+                let sum = reg_val.wrapping_add(imm);
+                dbg!(reg_val, imm, sum);
+                sum
+            }
+            AddrMode::IndexDef => self.mem_read_word(self.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm())),
         };
 
         ResolvedRegArg::Mem(loc)
@@ -459,7 +520,7 @@ impl<'a> Emulator<'a> {
         }
     }
 
-    fn exec_branch_ins(&mut self, ins: &BranchIns) {
+    fn exec_branch_ins(&mut self, ins: &BranchIns) -> ExecRet {
         let (z, n, c, v) = self.data.status.flags();
         let taken = match ins.op {
             BranchOpcode::Br => true,
@@ -482,7 +543,7 @@ impl<'a> Emulator<'a> {
 
         if taken {
             let off = (ins.target.unwrap_offset() as i8) * 2;
-            let pc = self.reg_read_word(Reg::PC);
+            let pc = self.pc();
             let pc = if off < 0 {
                 let off = TryInto::<u16>::try_into(-off).unwrap();
                 pc - off
@@ -490,110 +551,74 @@ impl<'a> Emulator<'a> {
                 pc + TryInto::<u16>::try_into(off).unwrap()
             };
             self.reg_write_word(Reg::PC,  pc);
+            return ExecRet::Jmp;
         }
+
+        return ExecRet::Ok;
+    }
+
+
+    fn exec_jmp_ins(&mut self, ins: &JmpIns) {
+        assert_eq!(ins.op, JmpOpcode::Jmp);
+        let new_pc = self.resolve(&ins.dst, Size::Word).unwrap_mem();
+        assert_eq!(new_pc & 0x1, 0);
+        self.reg_write_word(Reg::PC,  new_pc);
+    }
+
+    fn push_word(&mut self, val: u16) {
+        let sp = self.reg_read_word(Reg::SP) - 2;
+        self.reg_write_word(Reg::SP, sp);
+        self.mem_write_word(sp, val);
+    }
+
+    fn pop_word(&mut self) -> u16 {
+        let sp = self.reg_read_word(Reg::SP);
+        let val = self.mem_read_word(sp);
+        self.reg_write_word(Reg::SP, sp + 2);
+        val
+    }
+
+    fn exec_jsr_ins(&mut self, ins: &JsrIns) {
+        assert_eq!(ins.op, JsrOpcode::Jsr);
+
+        let new_pc = self.resolve(&ins.dst, Size::Word).unwrap_mem();
+        assert_eq!(new_pc & 0x1, 0);
+
+        if ins.reg == Reg::PC {
+            // This is a hack, since its not clear when the extra pc increment for the index is
+            // supposed to happen
+            let ret_addr = self.pc() + ins.num_imm() * 2;
+            self.reg_write_word(ins.reg, ret_addr);
+        }
+        let old_val = self.reg_read_word(ins.reg);
+        self.push_word(old_val);
+        
+        self.reg_write_word(ins.reg, self.pc());
+
+        dbg!(new_pc);
+        self.reg_write_word(Reg::PC, new_pc);
+    }
+
+    fn exec_rts_ins(&mut self, ins: &RtsIns) {
+        assert_eq!(ins.op, RtsOpcode::Rts);
+        let new_pc = self.reg_read_word(ins.reg);
+        self.reg_write_word(Reg::PC, new_pc);
+        
+        let old_val = self.pop_word();
+        self.reg_write_word(ins.reg, old_val);
     }
 
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
-            Ins::DoubleOperandIns(ins) => self.exec_double_operand_ins(ins),
+            Ins::DoubleOperandIns(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
             Ins::BranchIns(ins) => self.exec_branch_ins(ins),
-            Ins::MiscIns(ins) => return self.exec_misc_ins(ins),
+            Ins::JmpIns(ins) => { self.exec_jmp_ins(ins); ExecRet::Jmp },
+            Ins::JsrIns(ins) => { self.exec_jsr_ins(ins); ExecRet::Jmp },
+            Ins::RtsIns(ins) => { self.exec_rts_ins(ins); ExecRet::Jmp },
+            Ins::MiscIns(ins) => self.exec_misc_ins(ins),
             _ => todo!(),
         }
-        ExecRet::Ok
     }
 
 
-    ///////////////////////////////////////////////////////////////////////////
-    // Decode
-    ///////////////////////////////////////////////////////////////////////////
-
-    fn decode_reg_arg(&mut self, input: u16) -> RegArg {
-        let reg = Reg::from_u16(input & Reg::MASK).unwrap();
-        let mode = AddrMode::from_u16((input >> Reg::NUM_BITS) & AddrMode::MASK).unwrap();
-
-        // The immediate is taken care of by pc-autoincrement
-        RegArg{mode, reg, extra: Extra::None}
-    }
-
-
-    const DECODERS: [fn(&mut Emulator<'a>, u16) -> Result<Ins, ()>; 9] = [
-        Self::decode_double_operand_ins,
-        Self::decode_branch_ins,
-        Self::decode_jmp_ins,
-        Self::decode_jsr_ins,
-        Self::decode_rts_ins,
-        Self::decode_single_operand_ins,
-        Self::decode_cc_ins,
-        Self::decode_misc_ins,
-        Self::decode_trap_ins,
-    ];
-
-    fn decode_double_operand_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = DoubleOperandIns::decode_opcode(input)?;
-
-        let src = self.decode_reg_arg(input >> RegArg::NUM_BITS);
-        let dst = self.decode_reg_arg(input);
-
-        Ok(Ins::DoubleOperandIns(DoubleOperandIns{op, src, dst}))
-    }
-
-    fn decode_branch_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = BranchIns::decode_opcode(input)?;
-        let offset = Target::Offset((input & BranchIns::OFFSET_MASK) as u8);
-        Ok(Ins::BranchIns(BranchIns{op, target: offset}))
-    }
-
-    fn decode_jmp_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = JmpIns::decode_opcode(input)?;
-        let dst = self.decode_reg_arg(input);
-        Ok(Ins::JmpIns(JmpIns{op, dst}))
-    }
-
-    fn decode_jsr_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = JsrIns::decode_opcode(input)?;
-        let dst = self.decode_reg_arg(input);
-        let reg = Reg::from_u16((input >> RegArg::NUM_BITS) & Reg::MASK).unwrap();
-        Ok(Ins::JsrIns(JsrIns{op, reg, dst}))
-    }
-
-    fn decode_rts_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = RtsIns::decode_opcode(input)?;
-        let reg = Reg::from_u16(input & Reg::MASK).unwrap();
-        Ok(Ins::RtsIns(RtsIns{op, reg}))
-    }
-
-    fn decode_single_operand_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = SingleOperandIns::decode_opcode(input)?;
-        let dst = self.decode_reg_arg(input);
-        Ok(Ins::SingleOperandIns(SingleOperandIns{op, dst}))
-    }
-
-    fn decode_cc_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = CCIns::decode_opcode(input)?;
-        Ok(Ins::CCIns(CCIns{op}))
-    }
-
-    fn decode_misc_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = MiscIns::decode_opcode(input)?;
-        Ok(Ins::MiscIns(MiscIns{op}))
-    }
-
-    fn decode_trap_ins(&mut self, input: u16) -> Result<Ins, ()> {
-        let op = TrapIns::decode_opcode(input)?;
-        let handler = Target::Offset((input & TrapIns::HANDLER_MASK) as u8);
-        Ok(Ins::TrapIns(TrapIns{op, handler}))
-    }
-
-    fn decode(&mut self) -> Ins {
-        let input = self.mem_read_word(self.reg_read_word(Reg::PC));
-        for decoder in &Self::DECODERS {
-            match decoder(self, input) {
-                Ok(ins) => return ins,
-                Err(()) => continue,
-            }
-        }
-
-        panic!("Invalid instruction {:x}", input);
-    }
 }

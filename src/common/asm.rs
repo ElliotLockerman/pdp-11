@@ -66,6 +66,14 @@ impl Extra {
         }
         panic!("Extra::unwrap_imm() called on non-imm");
     }
+
+    pub fn is_label_ref(&self) -> bool {
+        matches!{self, Extra::LabelRef(_)}
+    }
+
+    pub fn take(&mut self) -> Self {
+        std::mem::replace(self, Extra::None)
+    }
 }
 
 
@@ -260,6 +268,7 @@ impl JmpIns {
         self.dst.num_imm()
     }
 }
+
 impl InstrVariant<JmpOpcode> for JmpIns {
     const OPCODE_BITS: usize =  10;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
