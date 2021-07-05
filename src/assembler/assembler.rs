@@ -108,13 +108,14 @@ impl Assembler {
     }
 
     fn emit_stmt(&mut self, stmt: &Stmt) {
-        match stmt {
-            Stmt::LabelDef(_) => (),
-            Stmt::Bytes(b) => self.buf.extend(b),
-            Stmt::Words(words) => self.buf.extend(unsafe { as_byte_slice(words.as_slice()) }),
-            Stmt::Ascii(a) => self.buf.extend(a),
-            Stmt::Ins(ins) => self.emit_ins(ins),
+        if let Some(cmd) = &stmt.cmd {
+            match cmd {
+                Cmd::Bytes(b) => self.buf.extend(b),
+                Cmd::Words(words) => self.buf.extend(unsafe { as_byte_slice(words.as_slice()) }),
+                Cmd::Ascii(a) => self.buf.extend(a),
+                Cmd::Ins(ins) => self.emit_ins(&ins),
 
+            }
         }
     }
 
@@ -156,28 +157,29 @@ impl Assembler {
     fn resolve_symbols(&mut self, prog: &mut Vec<Stmt>) {
         let mut addr: u16 = 0;
         for stmt in prog.iter() {
-            match stmt {
-                Stmt::LabelDef(s) => { self.symbols.insert(s.clone(), addr); },
-                _ => addr += stmt.size(),
+            if let Some(label) = &stmt.label_def {
+                self.symbols.insert(label.clone(), addr); 
             }
         }
 
         addr = 0;
         for stmt in prog.iter_mut() {
-            match stmt {
-                Stmt::Ins(ins) => match ins {
-                    Ins::BranchIns(ins) => self.resolve_target(&mut ins.target, addr),
-                    Ins::DoubleOperandIns(ins) => {
-                        self.resolve_regarg(&mut ins.src, addr);
-                        self.resolve_regarg(&mut ins.dst, addr);
-                    },
-                    Ins::JmpIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
-                    Ins::JsrIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
+            if let Some(cmd) = &mut stmt.cmd {
+                match cmd {
+                    Cmd::Ins(ins) => match ins {
+                        Ins::BranchIns(ins) => self.resolve_target(&mut ins.target, addr),
+                        Ins::DoubleOperandIns(ins) => {
+                            self.resolve_regarg(&mut ins.src, addr);
+                            self.resolve_regarg(&mut ins.dst, addr);
+                        },
+                        Ins::JmpIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
+                        Ins::JsrIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
 
-                    // TODO: other kinds of labels!
+                        // TODO: other kinds of labels!
+                        _ => (),
+                    },
                     _ => (),
-                },
-                _ => (),
+                }
             }
             addr += stmt.size();
         }

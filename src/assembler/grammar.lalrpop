@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use crate::common::asm::*;
-use crate::assembler::ir::Stmt;
+use crate::assembler::ir::{Cmd, Stmt};
 use crate::assembler::helpers::parse_int;
 use crate::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins, make_single_operand_ins};
 
@@ -126,10 +126,9 @@ Words: Vec<u16> = {
     ".word" <(<Imm>)*> => <>,
 };
 
-pub Stmt: Stmt = {
-    <Label> ":" => Stmt::LabelDef(<>),
-    <Bytes> => Stmt::Bytes(<>),
-    <Words> => Stmt::Words(<>),
+pub Cmd: Cmd = {
+    <Bytes> => Cmd::Bytes(<>),
+    <Words> => Cmd::Words(<>),
     ".ascii" <StrLiteral> => {
         let mut v = <>.as_bytes().to_vec();
 
@@ -137,7 +136,7 @@ pub Stmt: Stmt = {
         v.pop();
         v.remove(0);
 
-        Stmt::Ascii(v)
+        Cmd::Ascii(v)
     },
     ".asciz" <StrLiteral> => {
         let mut v = <>.as_bytes().to_vec();
@@ -147,10 +146,16 @@ pub Stmt: Stmt = {
         let len = v.len();
         v[len-1] = 0;
 
-        Stmt::Ascii(v)
+        Cmd::Ascii(v)
     },
-    <I> => Stmt::Ins(<>),
+    <I> => Cmd::Ins(<>),
 };
+
+pub Stmt: Stmt = {
+    <label_def: Label> ":" => Stmt::new(Some(label_def), None),
+    <cmd:Cmd> => Stmt::new(None, Some(cmd)),
+    <label_def: Label> ":" <cmd:Cmd> => Stmt::new(Some(label_def), Some(cmd)),
+}
 
 match {
     // Skip whitespace and comments
