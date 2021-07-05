@@ -597,6 +597,158 @@ impl<'a> Emulator<'a> {
         self.reg_write_word(ins.reg, old_val);
     }
 
+    fn exec_single_operand_ins(&mut self, ins: &SingleOperandIns) {
+        let dst = self.resolve(&ins.dst, Size::Word);
+        match ins.op {
+            SingleOperandOpcode::Swab => {
+                let val = self.read_resolved_word(dst);
+                let upper = val >> 7;
+                let lower = val & ((1u16 << 7) - 1);
+                let res = (lower << 7) | upper;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(upper == 0);
+                self.data.status.set_negative((res >> 7) & 0x1 == 0);
+                self.data.status.set_carry(false);
+                self.data.status.set_overflow(false);
+            },
+            SingleOperandOpcode::Clr => {
+                self.write_resolved_word(dst, 0);
+                self.data.status.set_zero(true);
+                self.data.status.set_negative(false);
+                self.data.status.set_carry(false);
+                self.data.status.set_overflow(false);
+            },
+            SingleOperandOpcode::Inc => {
+                let val = self.read_resolved_word(dst);
+                let (res, _) = val.overflowing_add(1);
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                // Carry not affected
+                self.data.status.set_overflow(val == 0o77777);
+                
+            },
+            SingleOperandOpcode::Dec => {
+                let val = self.read_resolved_word(dst);
+                let (res, _) = val.overflowing_sub(1);
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                // Carry not affected
+                self.data.status.set_overflow(val == 0o100000);
+            },
+            SingleOperandOpcode::Neg => {
+                let val = self.read_resolved_word(dst);
+                let res = !val + 1;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(res != 0);
+                self.data.status.set_overflow(res == 0o100000);
+            },
+            SingleOperandOpcode::Tst => {
+                let val = self.read_resolved_word(dst);
+                let (res, _) = 0u16.overflowing_sub(val);
+
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(false);
+                self.data.status.set_overflow(false);
+            },
+            SingleOperandOpcode::Com => {
+                let val = self.read_resolved_word(dst);
+                let res = !val;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(true);
+                self.data.status.set_overflow(false);
+            },
+            SingleOperandOpcode::Adc => {
+                let carry = self.data.status.get_carry();
+                let val = self.read_resolved_word(dst);
+                let res = val + carry as u16;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(val == 0o177777 && carry);
+                self.data.status.set_overflow(val == 0o077777 && carry);
+            },
+            SingleOperandOpcode::Sbc => {
+                let carry = self.data.status.get_carry();
+                let val = self.read_resolved_word(dst);
+                let res = val - carry as u16;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(val == 0 && carry);
+                self.data.status.set_overflow(val == 0o100000);
+            },
+            SingleOperandOpcode::Ror => {
+                let val = self.read_resolved_word(dst);
+                let carry = self.data.status.get_carry() as u16;
+                let new_carry = val & 0x1;
+                let res = (val >> 1) | (carry << 15);
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(new_carry != 0);
+
+                let n = self.data.status.get_negative() as u16;
+                self.data.status.set_overflow((n ^ new_carry) != 0);
+            },
+            SingleOperandOpcode::Rol => {
+                let val = self.read_resolved_word(dst);
+                let carry = self.data.status.get_carry() as u16;
+                let new_carry = (val >> 15) & 0x1;
+                let res = (val << 1) | carry;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(new_carry != 0);
+
+                let n = self.data.status.get_negative() as u16;
+                self.data.status.set_overflow((n ^ new_carry) != 0);
+            },
+            SingleOperandOpcode::Asr => {
+                let val = self.read_resolved_word(dst);
+                let new_carry = val & 0x1;
+                let res = (val as i16) >> 1; // i16 for arithmetic shift
+
+                self.write_resolved_word(dst, res as u16);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(new_carry != 0);
+
+                let n = self.data.status.get_negative() as u16;
+                self.data.status.set_overflow((n ^ new_carry) != 0);
+            },
+            SingleOperandOpcode::Asl => {
+                let val = self.read_resolved_word(dst);
+                let res = val << 1;
+                let new_carry = (val >> 15) & 0x1;
+
+                self.write_resolved_word(dst, res);
+                self.data.status.set_zero(res == 0);
+                self.data.status.set_negative(res >> 15 != 0);
+                self.data.status.set_carry(new_carry != 0);
+
+                let n = self.data.status.get_negative() as u16;
+                self.data.status.set_overflow((n ^ new_carry) != 0);
+            },
+            _ => panic!("{:?} not yet implemented", ins.op),
+        }
+    }
+
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
             Ins::DoubleOperandIns(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
@@ -604,6 +756,7 @@ impl<'a> Emulator<'a> {
             Ins::JmpIns(ins) => { self.exec_jmp_ins(ins); ExecRet::Jmp },
             Ins::JsrIns(ins) => { self.exec_jsr_ins(ins); ExecRet::Jmp },
             Ins::RtsIns(ins) => { self.exec_rts_ins(ins); ExecRet::Jmp },
+            Ins::SingleOperandIns(ins) => { self.exec_single_operand_ins(ins); ExecRet::Ok },
             Ins::MiscIns(ins) => self.exec_misc_ins(ins),
             _ => todo!(),
         }

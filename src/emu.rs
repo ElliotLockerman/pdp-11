@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn add() {
         let bin = &[
-            0x15c0, 0, // mov #0, r0
+            0o5000,    // mov #0, r0
             0x65c0, 1, // add #1, r0
             0x0000     // halt
         ];

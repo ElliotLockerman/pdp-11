@@ -3,7 +3,7 @@ use std::convert::TryInto;
 use crate::common::asm::*;
 use crate::assembler::ir::Stmt;
 use crate::assembler::helpers::parse_int;
-use crate::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins};
+use crate::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins, make_single_operand_ins};
 
 grammar;
 
@@ -91,6 +91,19 @@ I: Ins = {
 
     "jsr" <reg:R> "," <dst:RegArg> => make_jsr_ins!(reg, dst),
     "rts" <reg:R>  => make_rts_ins!(reg),
+
+    "Clr" <RegArg> => make_single_operand_ins!(Clr,<>),
+    "Com" <RegArg> => make_single_operand_ins!(Com,<>),
+    "Inc" <RegArg> => make_single_operand_ins!(Inc,<>),
+    "Dec" <RegArg> => make_single_operand_ins!(Dec,<>),
+    "Neg" <RegArg> => make_single_operand_ins!(Neg,<>),
+    "Adc" <RegArg> => make_single_operand_ins!(Adc,<>),
+    "Sbc" <RegArg> => make_single_operand_ins!(Sbc,<>),
+    "Tst" <RegArg> => make_single_operand_ins!(Tst,<>),
+    "Ror" <RegArg> => make_single_operand_ins!(Ror,<>),
+    "Rol" <RegArg> => make_single_operand_ins!(Rol,<>),
+    "Asr" <RegArg> => make_single_operand_ins!(Asr,<>),
+    "Asl" <RegArg> => make_single_operand_ins!(Asl,<>),
 };
 
 

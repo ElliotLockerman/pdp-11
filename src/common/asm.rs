@@ -336,7 +336,7 @@ impl InstrVariant<RtsOpcode> for RtsIns {
 
 #[macro_export]
 macro_rules! make_single_operand_ins {
-    ($op:ident,  $dst:expr) => { SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst} };
+    ($op:ident,  $dst:expr) => { Ins::SingleOperandIns(SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst}) };
 }
 // Also rotates, single operand byte inpub structions
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
