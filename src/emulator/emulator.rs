@@ -259,9 +259,7 @@ impl<'a> Emulator<'a> {
     }
 
     pub fn reg_write_byte(&mut self, reg: Reg, val: u8) {
-        let mut old = self.reg_read_word(reg);
-        old &= !(1u16 << 8) - 1;
-        self.reg_write_word(reg, old | val as u16);
+        self.reg_write_word(reg, val as i8 as i16 as u16);
     }
 
     pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
