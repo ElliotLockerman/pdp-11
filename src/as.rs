@@ -8,6 +8,7 @@ mod assembler {
 
 mod common {
     pub mod asm;
+    pub mod mem;
 }
 
 

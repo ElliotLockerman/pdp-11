@@ -1,12 +1,13 @@
 
 use std::collections::HashMap;
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::ops::{BitOr, BitAnd};
 
 use num_traits::ToPrimitive;    
 
 use crate::common::asm::*;
 use crate::common::decoder::decode;
+use crate::common::mem::as_word_slice;
 
 
 pub trait MMIOHandler {
@@ -214,14 +215,9 @@ impl<'a> Emulator<'a> {
     }
 
     fn decode(&self) -> Ins {
-        let pc = self.pc() as isize;
-        dbg!(pc, self.data.mem.len());
-        assert!(pc + 6 < self.data.mem.len() as isize);
-        assert!(pc & 0x1 == 0);
-        let slice = unsafe {
-            let mem = self.data.mem.as_ptr() as *const u8;
-            std::slice::from_raw_parts(mem.offset(pc) as *const u16, 3)
-        };
+        let pc = self.pc() as usize;
+        let mem = &self.data.mem.as_slice()[pc..pc+6];
+        let slice = unsafe { as_word_slice(mem) };
         decode(slice)
     }
 
@@ -544,12 +540,7 @@ impl<'a> Emulator<'a> {
         if taken {
             let off = (ins.target.unwrap_offset() as i8) * 2;
             let pc = self.pc();
-            let pc = if off < 0 {
-                let off = TryInto::<u16>::try_into(-off).unwrap();
-                pc - off
-            } else {
-                pc + TryInto::<u16>::try_into(off).unwrap()
-            };
+            let pc = pc.wrapping_add(off as i16 as u16);
             self.reg_write_word(Reg::PC,  pc);
             return ExecRet::Jmp;
         }
@@ -594,8 +585,6 @@ impl<'a> Emulator<'a> {
         self.push_word(old_val);
         
         self.reg_write_word(ins.reg, self.pc());
-
-        dbg!(new_pc);
         self.reg_write_word(Reg::PC, new_pc);
     }
 

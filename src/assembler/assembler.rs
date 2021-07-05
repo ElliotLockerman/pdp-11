@@ -5,6 +5,7 @@ use std::convert::TryInto;
 use crate::assembler::ir::*;
 use crate::assembler::grammar::StmtParser;
 use crate::common::asm::*;
+use crate::common::mem::as_byte_slice;
 
 use num_traits::ToPrimitive;
 
@@ -110,6 +111,7 @@ impl Assembler {
         match stmt {
             Stmt::LabelDef(_) => (),
             Stmt::Bytes(b) => self.buf.extend(b),
+            Stmt::Words(words) => self.buf.extend(unsafe { as_byte_slice(words.as_slice()) }),
             Stmt::Ascii(a) => self.buf.extend(a),
             Stmt::Ins(ins) => self.emit_ins(ins),
 
