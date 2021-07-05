@@ -747,6 +747,17 @@ impl<'a> Emulator<'a> {
         }
     }
 
+    fn exec_cc_ins(&mut self, ins: &CCIns) {
+        let op = ins.op as u16;
+        let bits = op & 0xf;
+        let set = ((op >> 4) & 0x1) != 0;
+        if set {
+            self.data.status.0 |= bits;
+        } else {
+            self.data.status.0 &= !bits;
+        }
+    }
+
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
             Ins::DoubleOperandIns(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
@@ -755,6 +766,7 @@ impl<'a> Emulator<'a> {
             Ins::JsrIns(ins) => { self.exec_jsr_ins(ins); ExecRet::Jmp },
             Ins::RtsIns(ins) => { self.exec_rts_ins(ins); ExecRet::Jmp },
             Ins::SingleOperandIns(ins) => { self.exec_single_operand_ins(ins); ExecRet::Ok },
+            Ins::CCIns(ins) => { self.exec_cc_ins(ins); ExecRet::Ok },
             Ins::MiscIns(ins) => self.exec_misc_ins(ins),
             _ => todo!(),
         }

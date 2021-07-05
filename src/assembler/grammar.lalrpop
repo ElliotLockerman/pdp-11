@@ -52,8 +52,6 @@ RegArg: RegArg = {
 I: Ins = {
     "halt" => make_misc_ins!(Halt),
 
-    "nop" => make_cc_ins!(Nop),
-
     "mov" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Mov, src, dst),
     "cmp" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Cmp, src, dst),
     "bit" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Bit, src, dst),
@@ -104,6 +102,16 @@ I: Ins = {
     "rol" <RegArg> => make_single_operand_ins!(Rol, <>),
     "asr" <RegArg> => make_single_operand_ins!(Asr, <>),
     "asl" <RegArg> => make_single_operand_ins!(Asl, <>),
+
+    "nop" => make_cc_ins!(Nop),
+    "clc" => make_cc_ins!(Clc),
+    "clv" => make_cc_ins!(Clv),
+    "clz" => make_cc_ins!(Clz),
+    "cln" => make_cc_ins!(Cln),
+    "sec" => make_cc_ins!(Sec),
+    "sev" => make_cc_ins!(Sev),
+    "sez" => make_cc_ins!(Sez),
+    "sen" => make_cc_ins!(Sen),
 };
 
 
