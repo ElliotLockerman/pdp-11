@@ -101,9 +101,14 @@ Bytes: Vec<u8> = {
     ".byte" <b:(<Imm>)*> => b.iter().map(|x| TryInto::<u8>::try_into(*x).unwrap()).collect(),
 };
 
+Words: Vec<u16> = {
+    ".word" <(<Imm>)*> => <>,
+};
+
 pub Stmt: Stmt = {
     <Label> ":" => Stmt::LabelDef(<>),
     <Bytes> => Stmt::Bytes(<>),
+    <Words> => Stmt::Words(<>),
     ".ascii" <StrLiteral> => {
         let mut v = <>.as_bytes().to_vec();
 
