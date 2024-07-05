@@ -1,21 +1,11 @@
 
-mod assembler {
-    pub mod assembler;
-    pub mod ir;
-    pub mod grammar;
-    pub mod helpers;
-}
-
-mod common {
-    pub mod asm;
-    pub mod mem;
-}
-
+mod assembler;
+mod common;
 
 use std::fs::File;
 use std::io::Write;
 
-use crate::assembler::assembler::assemble;
+use crate::assembler::assemble;
 
 use clap::Parser;
 
@@ -44,7 +34,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::assembler::assembler::assemble;
+    use crate::assembler::assemble;
     fn to_u16(arr: &Vec<u8>) -> Vec<u16> {
         assert_eq!(arr.len() % 2, 0);
         let mut out = Vec::new();

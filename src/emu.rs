@@ -1,15 +1,8 @@
 
-mod common {
-    pub mod asm;
-    pub mod decoder;
-    pub mod mem;
-}
+mod emulator;
+mod common;
 
-mod emulator {
-    pub mod emulator;
-}
-
-use emulator::emulator::{Emulator, MAX_MEM};
+use emulator::{Emulator, MAX_MEM};
 
 use clap::Parser;
 
@@ -36,7 +29,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::emulator::emulator::{Emulator, DATA_START};
+    use super::emulator::{Emulator, DATA_START};
     use super::common::asm::Reg;
     use super::common::mem::as_byte_slice;
 
