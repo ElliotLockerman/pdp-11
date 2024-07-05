@@ -11,6 +11,8 @@ use crate::common::mem::as_word_slice;
 
 
 pub trait MMIOHandler {
+    fn reset(&mut self);
+
     fn read_byte(&mut self, emu: &mut EmulatorData, addr: u16) -> u8;
     fn read_word(&mut self, emu: &mut EmulatorData, addr: u16) -> u16;
 
