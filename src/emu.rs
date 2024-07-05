@@ -14,7 +14,7 @@ use emulator::emulator::{Emulator, MAX_MEM};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
-#[structopt(name = "emu", about = "Intel 8008 Emulator")]
+#[structopt(name = "emu", about = "PDP-11 Emulator")]
 struct Opt {
     #[structopt(help = "Binary to execute")]
     bin: String,

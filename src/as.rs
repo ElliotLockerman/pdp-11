@@ -22,7 +22,7 @@ extern crate structopt_derive;
 
 
 #[derive(StructOpt)]
-#[structopt(name = "as", about = "Intel 8008 Assembler")]
+#[structopt(name = "as", about = "PDP-11 Assembler")]
 struct Opt {
     #[structopt(help = "Input assemble file")]
     input: String,
