@@ -11,19 +11,20 @@ mod emulator {
 
 use emulator::emulator::{Emulator, MAX_MEM};
 
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(StructOpt)]
-#[structopt(name = "emu", about = "PDP-11 Emulator")]
-struct Opt {
-    #[structopt(help = "Binary to execute")]
+
+/// PDP-11 Emulator
+#[derive(Parser)]
+struct Args {
+    /// Binary to execute
     bin: String,
 }
 
 
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Args::parse();
     let mut emu = Emulator::new(MAX_MEM);
 
     let buf = std::fs::read(opt.bin).unwrap();

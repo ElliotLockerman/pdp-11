@@ -17,22 +17,23 @@ use std::io::Write;
 
 use crate::assembler::assembler::assemble;
 
-use structopt::StructOpt;
-extern crate structopt_derive;
+use clap::Parser;
 
 
-#[derive(StructOpt)]
-#[structopt(name = "as", about = "PDP-11 Assembler")]
-struct Opt {
-    #[structopt(help = "Input assemble file")]
+/// PDP-11 Assembler
+#[derive(Parser)]
+#[command(about)]
+struct Args {
+    /// Input assembly file
     input: String,
 
-    #[structopt(short = "o", help = "Filename to output to")]
+    /// File name to output to
+    #[arg(long, short)]
     output: Option<String>,
 }
 
 fn main() {
-    let opt = Opt::from_args();
+    let opt = Args::parse();
     let input = std::fs::read_to_string(opt.input).unwrap();
     let output = assemble(input.as_str());
 
