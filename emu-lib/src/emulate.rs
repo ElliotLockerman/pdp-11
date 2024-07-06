@@ -1,12 +1,9 @@
 
-// Temporary
-#![allow(dead_code)]
-
-use crate::common::asm::*;
-use crate::common::decoder::decode;
-use crate::emulator::MMIOHandler;
-use crate::emulator::{EmulatorState, Status};
-use crate::emulator::constants::*;
+use common::asm::*;
+use common::decoder::decode;
+use crate::MMIOHandler;
+use crate::EmulatorState;
+use crate::constants::*;
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -633,9 +630,9 @@ impl Emulator {
 mod tests {
 
     use super::Emulator;
-    use crate::emulator::emulate::DATA_START;
-    use crate::common::asm::Reg;
-    use crate::common::mem::as_byte_slice;
+    use crate::emulate::DATA_START;
+    use common::asm::Reg;
+    use common::mem::as_byte_slice;
 
     #[test]
     fn halt() {

@@ -1,0 +1,11 @@
+[package]
+name = "emu-lib"
+version = "0.1.0"
+authors = ["Elliot Lockerman <elliot@lockerman.info>"]
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+num-derive = "0.4.2"
+num-traits = "0.2.14"
+

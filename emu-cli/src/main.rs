@@ -1,11 +1,5 @@
 
-#![feature(pointer_is_aligned_to)]
-
-mod emulator;
-mod common;
-
-use emulator::Emulator;
-use emulator::constants::DATA_END;
+use emu_lib::{Emulator, constants::DATA_END};
 
 use clap::Parser;
 

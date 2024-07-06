@@ -1,6 +1,4 @@
 
-#![allow(dead_code)]
-
 pub unsafe fn as_word_slice(input: &[u8]) -> &[u16] {
     assert!(input.as_ptr().is_aligned_to(std::mem::size_of::<u16>()));
     assert_eq!(input.len() & 0x1, 0);

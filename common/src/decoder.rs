@@ -1,7 +1,4 @@
 
-// Temporary
-#![allow(dead_code)]
-
 use num_traits::FromPrimitive;
 
 use super::asm::*;

@@ -1,9 +1,9 @@
 use std::convert::TryInto;
 
-use crate::common::asm::*;
-use crate::assembler::ir::{Cmd, Stmt};
-use crate::assembler::helpers::parse_int;
-use crate::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins, make_single_operand_ins};
+use common::asm::*;
+use crate::ir::{Cmd, Stmt};
+use crate::helpers::parse_int;
+use common::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins, make_single_operand_ins};
 
 grammar;
 

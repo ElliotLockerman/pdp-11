@@ -1,7 +1,4 @@
 
-// Temporary
-#![allow(dead_code)]
-
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
 

@@ -1,22 +1,4 @@
-[package]
-name = "pdp-11"
-version = "0.1.0"
-authors = ["Elliot Lockerman <elliot@lockerman.info>"]
-edition = "2021"
+[workspace]
+members = ["common", "as-cli", "as-lib", "emu-cli", "emu-lib"]
+resolver = "2"
 
-[[bin]]
-name = "emu"
-path = "src/emu.rs"
-
-[[bin]]
-name = "as"
-path = "src/as.rs"
-
-[build-dependencies]
-lalrpop = "0.20.2"
-
-[dependencies]
-clap = { version = "4.5.8", features = ["derive"] }
-lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
-num-derive = "0.4.2"
-num-traits = "0.2.14"

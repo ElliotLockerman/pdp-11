@@ -1,7 +1,7 @@
 
-use crate::emulator::constants::*;
-use crate::common::asm::{Reg, NUM_REGS};
-use crate::common::mem::as_word_slice;
+use crate::constants::*;
+use common::asm::{Reg, NUM_REGS};
+use common::mem::as_word_slice;
 
 use num_traits::ToPrimitive;
 

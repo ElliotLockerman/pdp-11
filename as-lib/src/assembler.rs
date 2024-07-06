@@ -2,10 +2,10 @@
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-use crate::assembler::ir::*;
-use crate::assembler::grammar::StmtParser;
-use crate::common::asm::*;
-use crate::common::mem::as_byte_slice;
+use crate::ir::*;
+use crate::grammar::StmtParser;
+use common::asm::*;
+use common::mem::as_byte_slice;
 
 use num_traits::ToPrimitive;
 

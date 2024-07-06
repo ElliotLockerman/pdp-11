@@ -1,13 +1,8 @@
 
-#![feature(pointer_is_aligned_to)]
-
-mod assembler;
-mod common;
-
 use std::fs::File;
 use std::io::Write;
 
-use crate::assembler::assemble;
+use as_lib::assemble;
 
 use clap::Parser;
 
@@ -36,7 +31,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::assembler::assemble;
+    use crate::assemble;
     fn to_u16(arr: &Vec<u8>) -> Vec<u16> {
         assert_eq!(arr.len() % 2, 0);
         let mut out = Vec::new();

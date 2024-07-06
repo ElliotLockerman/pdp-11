@@ -1,5 +1,5 @@
 
-use crate::emulator::EmulatorState;
+use crate::EmulatorState;
 
 
 pub trait MMIOHandler {
@@ -11,7 +11,5 @@ pub trait MMIOHandler {
     fn write_byte(&mut self,  emu: &mut EmulatorState, addr: u16, val: u8);
     fn write_word(&mut self,  emu: &mut EmulatorState, addr: u16, val: u16);
 }
-
-type MMIOHandlerRef<'a> = &'a mut dyn MMIOHandler;
 
 

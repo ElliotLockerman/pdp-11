@@ -1,0 +1,10 @@
+[package]
+name = "common"
+version = "0.1.0"
+authors = ["Elliot Lockerman <elliot@lockerman.info>"]
+edition = "2021"
+
+[dependencies]
+num-derive = "0.4.2"
+num-traits = "0.2.14"
+

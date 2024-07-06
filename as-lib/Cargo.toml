@@ -1,0 +1,15 @@
+[package]
+name = "as-lib"
+version = "0.1.0"
+authors = ["Elliot Lockerman <elliot@lockerman.info>"]
+edition = "2021"
+
+
+[build-dependencies]
+lalrpop = "0.20.2"
+
+[dependencies]
+common = { path = "../common" }
+lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
+num-derive = "0.4.2"
+num-traits = "0.2.14"

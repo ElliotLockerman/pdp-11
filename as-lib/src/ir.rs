@@ -1,7 +1,7 @@
 
 use std::convert::TryInto;
 
-use crate::common::asm::*;
+use common::asm::*;
 
 
 // Args are src, dst
