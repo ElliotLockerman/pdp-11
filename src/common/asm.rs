@@ -92,6 +92,8 @@ pub enum Reg {
     PC,
 }
 
+pub const NUM_REGS: usize = 8;
+
 impl Reg {
     pub const NUM_BITS: usize = 3;
     pub const MASK: u16 = (1u16 << Self::NUM_BITS) - 1;
