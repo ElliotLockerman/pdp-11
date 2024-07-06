@@ -95,15 +95,15 @@ impl Assembler {
 
     fn emit_ins(&mut self, ins: &Ins) {
         match ins {
-            Ins::DoubleOperandIns(x) => self.emit_double_operand_ins(x),
-            Ins::BranchIns(x) => self.emit_branch_ins(x),
-            Ins::JmpIns(x) => self.emit_jmp_ins(x),
-            Ins::JsrIns(x) => self.emit_jsr_ins(x),
-            Ins::RtsIns(x) => self.emit_rts_ins(x),
-            Ins::SingleOperandIns(x) => self.emit_single_operand_ins(x),
-            Ins::CCIns(x) => self.emit_cc_ins(x),
-            Ins::MiscIns(x) => self.emit_misc_ins(x),
-            Ins::TrapIns(x) => self.emit_trap_ins(x),
+            Ins::DoubleOperand(x) => self.emit_double_operand_ins(x),
+            Ins::Branch(x) => self.emit_branch_ins(x),
+            Ins::Jmp(x) => self.emit_jmp_ins(x),
+            Ins::Jsr(x) => self.emit_jsr_ins(x),
+            Ins::Rts(x) => self.emit_rts_ins(x),
+            Ins::SingleOperand(x) => self.emit_single_operand_ins(x),
+            Ins::CC(x) => self.emit_cc_ins(x),
+            Ins::Misc(x) => self.emit_misc_ins(x),
+            Ins::Trap(x) => self.emit_trap_ins(x),
         }
     }
 
@@ -113,7 +113,7 @@ impl Assembler {
                 Cmd::Bytes(b) => self.buf.extend(b),
                 Cmd::Words(words) => self.buf.extend(unsafe { as_byte_slice(words.as_slice()) }),
                 Cmd::Ascii(a) => self.buf.extend(a),
-                Cmd::Ins(ins) => self.emit_ins(&ins),
+                Cmd::Ins(ins) => self.emit_ins(ins),
 
             }
         }
@@ -154,7 +154,7 @@ impl Assembler {
         *target = Target::Offset(offset);
     }
 
-    fn resolve_symbols(&mut self, prog: &mut Vec<Stmt>) {
+    fn resolve_symbols(&mut self, prog: &mut [Stmt]) {
         let mut addr: u16 = 0;
         for stmt in prog.iter() {
             if let Some(label) = &stmt.label_def {
@@ -164,20 +164,17 @@ impl Assembler {
 
         addr = 0;
         for stmt in prog.iter_mut() {
-            if let Some(cmd) = &mut stmt.cmd {
-                match cmd {
-                    Cmd::Ins(ins) => match ins {
-                        Ins::BranchIns(ins) => self.resolve_target(&mut ins.target, addr),
-                        Ins::DoubleOperandIns(ins) => {
-                            self.resolve_regarg(&mut ins.src, addr);
-                            self.resolve_regarg(&mut ins.dst, addr);
-                        },
-                        Ins::JmpIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
-                        Ins::JsrIns(ins) => self.resolve_regarg(&mut ins.dst, addr),
-
-                        // TODO: other kinds of labels!
-                        _ => (),
+            if let Some(Cmd::Ins(ins)) = &mut stmt.cmd {
+                match ins {
+                    Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr),
+                    Ins::DoubleOperand(ins) => {
+                        self.resolve_regarg(&mut ins.src, addr);
+                        self.resolve_regarg(&mut ins.dst, addr);
                     },
+                    Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, addr),
+                    Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, addr),
+
+                    // TODO: other kinds of labels!
                     _ => (),
                 }
             }
@@ -187,12 +184,12 @@ impl Assembler {
 
     fn assemble(mut self, prog: &str) -> Vec<u8> {
 
-        let lines = prog.split("\n");
+        let lines = prog.split('\n');
         let parser = StmtParser::new();
 
         let mut prog: Vec<Stmt> = lines
             .zip(1..)
-            .filter(|(x,_)| *x != "")
+            .filter(|(x,_)| !x.is_empty())
             .map(|(x,i)| {
                 parser.parse(x).unwrap_or_else(|e| panic!("Error line {}: {}", i, e))
             })

@@ -1,4 +1,7 @@
 
+// Temporary
+#![allow(dead_code)]
+
 use num_traits::FromPrimitive;
 
 use super::asm::*;
@@ -23,57 +26,59 @@ fn decode_double_operand_ins(input: &[u16]) -> Result<Ins, ()> {
     let src = decode_reg_arg(input[0] >> RegArg::NUM_BITS, input, 1);
     let dst = decode_reg_arg(input[0], input, (src.num_imm() + 1) as usize);
 
-    Ok(Ins::DoubleOperandIns(DoubleOperandIns{op, src, dst}))
+    Ok(Ins::DoubleOperand(DoubleOperandIns{op, src, dst}))
 }
 
 fn decode_branch_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = BranchIns::decode_opcode(input[0])?;
     let offset = Target::Offset((input[0] & BranchIns::OFFSET_MASK) as u8);
-    Ok(Ins::BranchIns(BranchIns{op, target: offset}))
+    Ok(Ins::Branch(BranchIns{op, target: offset}))
 }
 
 fn decode_jmp_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = JmpIns::decode_opcode(input[0])?;
     let dst = decode_reg_arg(input[0], input, 1);
-    Ok(Ins::JmpIns(JmpIns{op, dst}))
+    Ok(Ins::Jmp(JmpIns{op, dst}))
 }
 
 fn decode_jsr_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = JsrIns::decode_opcode(input[0])?;
     let dst = decode_reg_arg(input[0], input, 1);
     let reg = Reg::from_u16((input[0] >> RegArg::NUM_BITS) & Reg::MASK).unwrap();
-    Ok(Ins::JsrIns(JsrIns{op, reg, dst}))
+    Ok(Ins::Jsr(JsrIns{op, reg, dst}))
 }
 
 fn decode_rts_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = RtsIns::decode_opcode(input[0])?;
     let reg = Reg::from_u16(input[0] & Reg::MASK).unwrap();
-    Ok(Ins::RtsIns(RtsIns{op, reg}))
+    Ok(Ins::Rts(RtsIns{op, reg}))
 }
 
 fn decode_single_operand_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = SingleOperandIns::decode_opcode(input[0])?;
     let dst = decode_reg_arg(input[0], input, 1);
-    Ok(Ins::SingleOperandIns(SingleOperandIns{op, dst}))
+    Ok(Ins::SingleOperand(SingleOperandIns{op, dst}))
 }
 
 fn decode_cc_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = CCIns::decode_opcode(input[0])?;
-    Ok(Ins::CCIns(CCIns{op}))
+    Ok(Ins::CC(CCIns{op}))
 }
 
 fn decode_misc_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = MiscIns::decode_opcode(input[0])?;
-    Ok(Ins::MiscIns(MiscIns{op}))
+    Ok(Ins::Misc(MiscIns{op}))
 }
 
 fn decode_trap_ins(input: &[u16]) -> Result<Ins, ()> {
     let op = TrapIns::decode_opcode(input[0])?;
     let handler = Target::Offset((input[0] & TrapIns::HANDLER_MASK) as u8);
-    Ok(Ins::TrapIns(TrapIns{op, handler}))
+    Ok(Ins::Trap(TrapIns{op, handler}))
 }
 
-const DECODERS: [fn(&[u16]) -> Result<Ins, ()>; 9] = [
+type Decoder = fn(&[u16]) -> Result<Ins, ()>;
+
+const DECODERS: & [Decoder] = &[
     decode_double_operand_ins,
     decode_branch_ins,
     decode_jmp_ins,
@@ -87,7 +92,7 @@ const DECODERS: [fn(&[u16]) -> Result<Ins, ()>; 9] = [
 
 
 pub fn decode(input: &[u16]) -> Ins {
-    for decoder in &DECODERS {
+    for decoder in DECODERS {
         match decoder(input) {
             Ok(ins) => return ins,
             Err(()) => continue,

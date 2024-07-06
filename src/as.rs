@@ -1,4 +1,6 @@
 
+#![feature(pointer_is_aligned_to)]
+
 mod assembler;
 mod common;
 
@@ -27,7 +29,7 @@ fn main() {
     let input = std::fs::read_to_string(opt.input).unwrap();
     let output = assemble(input.as_str());
 
-    let outname = if let Some(ref name) = opt.output { name.as_str() } else { "a.out" };
+    let outname = opt.output.as_deref().unwrap_or("a.out");
     let mut out = File::create(outname).unwrap();
     out.write_all(output.as_slice()).unwrap();
 }

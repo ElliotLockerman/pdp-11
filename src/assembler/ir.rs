@@ -28,15 +28,15 @@ impl Stmt {
 
     // Size, in bytes, of assembled statement
     pub fn size(&self) -> u16 {
-        if let Some(cmd) = &self.cmd {
-            match cmd {
-                Cmd::Bytes(v) => v.len().try_into().unwrap(),
-                Cmd::Words(v) => (v.len() * 2).try_into().unwrap(),
-                Cmd::Ascii(v) => v.len().try_into().unwrap(),
-                Cmd::Ins(ins) => ins.size(),
-            }
-        } else {
-            0
+        let Some(cmd) = &self.cmd else {
+            return 0;
+        };
+
+        match cmd {
+            Cmd::Bytes(v) => v.len().try_into().unwrap(),
+            Cmd::Words(v) => (v.len() * 2).try_into().unwrap(),
+            Cmd::Ascii(v) => v.len().try_into().unwrap(),
+            Cmd::Ins(ins) => ins.size(),
         }
     }
 }

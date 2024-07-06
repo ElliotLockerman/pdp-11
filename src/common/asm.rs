@@ -1,4 +1,7 @@
 
+// Temporary
+#![allow(dead_code)]
+
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
 
@@ -114,10 +117,12 @@ impl RegArg {
     }
 
     pub fn has_imm(&self) -> bool {
-        (self.mode == AddrMode::AutoInc && self.reg == Reg::PC)
-            || (self.mode == AddrMode::AutoIncDef && self.reg == Reg::PC)
-            || self.mode == AddrMode::Index
-            || self.mode == AddrMode::IndexDef
+        use AddrMode::*;
+        match self.mode {
+            AutoInc | AutoIncDef => self.reg == Reg::PC,
+            Index | IndexDef => true,
+            _ => false,
+        }
     }
 
     pub fn num_imm(&self) -> u16 {
@@ -152,7 +157,7 @@ impl Target {
 
 #[macro_export]
 macro_rules! make_double_operand_ins {
-    ($op:ident, $src:expr, $dst:expr) => { Ins::DoubleOperandIns(DoubleOperandIns{op: DoubleOperandOpcode::$op, src: $src, dst: $dst}) };
+    ($op:ident, $src:expr, $dst:expr) => { Ins::DoubleOperand(DoubleOperandIns{op: DoubleOperandOpcode::$op, src: $src, dst: $dst}) };
 }
 
 // Also double operand byte inpub structions
@@ -200,7 +205,7 @@ impl DoubleOperandIns {
 #[macro_export]
 macro_rules! make_branch_ins {
     ($op:ident, $offset:expr) => { 
-        Ins::BranchIns(BranchIns{op: BranchOpcode::$op, target: Target::Label($offset)}) 
+        Ins::Branch(BranchIns{op: BranchOpcode::$op, target: Target::Label($offset)}) 
     };
 }
 
@@ -250,7 +255,7 @@ impl InstrVariant<BranchOpcode> for BranchIns {
 
 #[macro_export]
 macro_rules! make_jmp_ins {
-    ($dst:expr) => { Ins::JmpIns(JmpIns{op: JmpOpcode::Jmp, dst: $dst}) };
+    ($dst:expr) => { Ins::Jmp(JmpIns{op: JmpOpcode::Jmp, dst: $dst}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum JmpOpcode {
@@ -279,7 +284,7 @@ impl InstrVariant<JmpOpcode> for JmpIns {
 
 #[macro_export]
 macro_rules! make_jsr_ins {
-    ($reg:expr, $dst:expr) => { Ins::JsrIns(JsrIns{op: JsrOpcode::Jsr, reg: $reg, dst: $dst}) };
+    ($reg:expr, $dst:expr) => { Ins::Jsr(JsrIns{op: JsrOpcode::Jsr, reg: $reg, dst: $dst}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum JsrOpcode {
@@ -307,7 +312,7 @@ impl InstrVariant<JsrOpcode> for JsrIns {
 
 #[macro_export]
 macro_rules! make_rts_ins {
-    ($reg:expr) => { Ins::RtsIns(RtsIns{op: RtsOpcode::Rts, reg: $reg}) };
+    ($reg:expr) => { Ins::Rts(RtsIns{op: RtsOpcode::Rts, reg: $reg}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum RtsOpcode {
@@ -336,7 +341,7 @@ impl InstrVariant<RtsOpcode> for RtsIns {
 
 #[macro_export]
 macro_rules! make_single_operand_ins {
-    ($op:ident,  $dst:expr) => { Ins::SingleOperandIns(SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst}) };
+    ($op:ident,  $dst:expr) => { Ins::SingleOperand(SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst}) };
 }
 // Also rotates, single operand byte inpub structions
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -392,11 +397,11 @@ impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
 
 #[macro_export]
 macro_rules! make_cc_ins {
-    ($op:ident) => { Ins::CCIns(CCIns{op: CCOpcode::$op}) };
+    ($op:ident) => { Ins::CC(CCIns{op: CCOpcode::$op}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum CCOpcode {
-    Nop = 00240,
+    Nop = 0o240,
     Clc = 0o241,
     Clv = 0o242,
     Clz = 0o244,
@@ -430,7 +435,7 @@ impl InstrVariant<CCOpcode> for CCIns {
 
 #[macro_export]
 macro_rules! make_misc_ins {
-    ($op:ident) => { Ins::MiscIns(MiscIns{op: MiscOpcode::$op}) };
+    ($op:ident) => { Ins::Misc(MiscIns{op: MiscOpcode::$op}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum MiscOpcode {
@@ -501,34 +506,34 @@ impl InstrVariant<TrapOpcode> for TrapIns {
 
 #[derive(Debug, Clone)]
 pub enum Ins {
-    DoubleOperandIns(DoubleOperandIns),
-    BranchIns(BranchIns),
-    JmpIns(JmpIns),
-    JsrIns(JsrIns),
-    RtsIns(RtsIns),
-    SingleOperandIns(SingleOperandIns),
-    CCIns(CCIns),
-    MiscIns(MiscIns),
-    TrapIns(TrapIns),
+    DoubleOperand(DoubleOperandIns),
+    Branch(BranchIns),
+    Jmp(JmpIns),
+    Jsr(JsrIns),
+    Rts(RtsIns),
+    SingleOperand(SingleOperandIns),
+    CC(CCIns),
+    Misc(MiscIns),
+    Trap(TrapIns),
 }
 
 impl Ins {
     pub fn num_imm(&self) -> u16 {
         match self {
-            Ins::DoubleOperandIns(x) => x.num_imm(),
-            Ins::BranchIns(x) => x.num_imm(),
-            Ins::JmpIns(x) => x.num_imm(),
-            Ins::JsrIns(x) => x.num_imm(),
-            Ins::RtsIns(x) => x.num_imm(),
-            Ins::SingleOperandIns(x) => x.num_imm(),
-            Ins::CCIns(x) => x.num_imm(),
-            Ins::MiscIns(x) => x.num_imm(),
-            Ins::TrapIns(x) => x.num_imm(),
+            Ins::DoubleOperand(x) => x.num_imm(),
+            Ins::Branch(x) => x.num_imm(),
+            Ins::Jmp(x) => x.num_imm(),
+            Ins::Jsr(x) => x.num_imm(),
+            Ins::Rts(x) => x.num_imm(),
+            Ins::SingleOperand(x) => x.num_imm(),
+            Ins::CC(x) => x.num_imm(),
+            Ins::Misc(x) => x.num_imm(),
+            Ins::Trap(x) => x.num_imm(),
         }
     }
 
     pub fn size(&self) -> u16 {
-        2 + 2 * self.num_imm() as u16
+        2 + 2 * self.num_imm()
     }
 
 }

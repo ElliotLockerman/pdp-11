@@ -7,8 +7,6 @@ fn get_offset(s: &str) -> usize {
     offset
 }
 
-
-
 pub fn parse_int(s: &str, base: u32) -> u16 {
     let offset = get_offset(s);
     u16::from_str_radix(&s[offset..], base).unwrap()

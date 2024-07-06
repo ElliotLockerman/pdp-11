@@ -1,4 +1,7 @@
 
+// Temporary
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::{BitOr, BitAnd};
@@ -101,7 +104,7 @@ impl Status {
     pub fn set_prio(&mut self, val: u16) {
         assert!((val & !Self::PRIO_MASK) == 0);
         self.0 &= !(Self::PRIO_MASK << Self::PRIO);
-        self.0 |= (val as u16) << Self::PRIO;
+        self.0 |= val << Self::PRIO;
     }
 }
 
@@ -434,9 +437,9 @@ impl<'a> Emulator<'a> {
 
     // TODO: combine these?
     fn do_bitwise(&mut self, src: &RegArg, op: fn(u32, u32) -> u32, dst: &RegArg, size: Size, discard: bool) {
-        let src = self.resolve(&src, Size::Word);
+        let src = self.resolve(src, Size::Word);
         let src_val = self.read_resolved_widen(src, size);
-        let dst = self.resolve(&dst, size);
+        let dst = self.resolve(dst, size);
         let dst_val = self.read_resolved_widen(dst, size);
         let res = op(src_val, dst_val);
         let res_sign = sign_bit(res, size);
@@ -511,7 +514,7 @@ impl<'a> Emulator<'a> {
 
     fn exec_misc_ins(&mut self, ins: &MiscIns) -> ExecRet {
         match ins.op {
-            MiscOpcode::Halt => return ExecRet::Halt,
+            MiscOpcode::Halt => ExecRet::Halt,
             _ => todo!(),
         }
     }
@@ -545,7 +548,7 @@ impl<'a> Emulator<'a> {
             return ExecRet::Jmp;
         }
 
-        return ExecRet::Ok;
+        ExecRet::Ok
     }
 
 
@@ -762,14 +765,14 @@ impl<'a> Emulator<'a> {
 
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
-            Ins::DoubleOperandIns(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
-            Ins::BranchIns(ins) => self.exec_branch_ins(ins),
-            Ins::JmpIns(ins) => { self.exec_jmp_ins(ins); ExecRet::Jmp },
-            Ins::JsrIns(ins) => { self.exec_jsr_ins(ins); ExecRet::Jmp },
-            Ins::RtsIns(ins) => { self.exec_rts_ins(ins); ExecRet::Jmp },
-            Ins::SingleOperandIns(ins) => { self.exec_single_operand_ins(ins); ExecRet::Ok },
-            Ins::CCIns(ins) => { self.exec_cc_ins(ins); ExecRet::Ok },
-            Ins::MiscIns(ins) => self.exec_misc_ins(ins),
+            Ins::DoubleOperand(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
+            Ins::Branch(ins) => self.exec_branch_ins(ins),
+            Ins::Jmp(ins) => { self.exec_jmp_ins(ins); ExecRet::Jmp },
+            Ins::Jsr(ins) => { self.exec_jsr_ins(ins); ExecRet::Jmp },
+            Ins::Rts(ins) => { self.exec_rts_ins(ins); ExecRet::Jmp },
+            Ins::SingleOperand(ins) => { self.exec_single_operand_ins(ins); ExecRet::Ok },
+            Ins::CC(ins) => { self.exec_cc_ins(ins); ExecRet::Ok },
+            Ins::Misc(ins) => self.exec_misc_ins(ins),
             _ => todo!(),
         }
     }

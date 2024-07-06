@@ -1,4 +1,6 @@
 
+#![feature(pointer_is_aligned_to)]
+
 mod emulator;
 mod common;
 
@@ -29,7 +31,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::emulator::{Emulator, DATA_START};
+
+    use super::emulator::Emulator;
+    use super::emulator::emulate::DATA_START;
     use super::common::asm::Reg;
     use super::common::mem::as_byte_slice;
 
