@@ -7,9 +7,9 @@ pub trait InstrVariant<Opcode: FromPrimitive> {
     const OPCODE_BITS: usize;
     const LOWER_BITS: usize;
 
-    fn decode_opcode(input: u16) -> Result<Opcode, ()> {
+    fn decode_opcode(input: u16) -> Option<Opcode> {
         let op = input >> Self::LOWER_BITS;
-        Opcode::from_u16(op).ok_or(())
+        Opcode::from_u16(op)
     }
 }
 
