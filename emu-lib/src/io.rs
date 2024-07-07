@@ -19,7 +19,7 @@ pub trait MMIOHandler {
 pub struct Teleprinter {
     maintenance_control: bool, // Not used.
     interrupt_enabled: bool, // Not yet used.
-    ready: bool, // Currently always true.
+    ready: bool,
     cycles_until_ready: usize,
 }
 
@@ -72,7 +72,9 @@ impl Teleprinter {
 
     fn tpb_write(&mut self, val: u8) {
         if self.ready {
-            stdout().lock().write_all(&[val]).unwrap();
+            let mut out = stdout().lock();
+            out.write_all(&[val]).unwrap();
+            out.flush().unwrap();
             self.cycles_until_ready = Self::DELAY_CYCLES;
             self.ready = false;
         }
