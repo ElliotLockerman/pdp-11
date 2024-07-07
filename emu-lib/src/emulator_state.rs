@@ -5,6 +5,7 @@ use common::mem::as_word_slice;
 
 use num_traits::ToPrimitive;
 
+#[derive(Default, Debug)]
 pub struct Status(u16);
 
 impl Status {
@@ -19,7 +20,7 @@ impl Status {
 
 
     pub fn new() -> Status {
-        Status(0)
+        Default::default()
     }
     pub fn flags(&self) -> (bool, bool, bool, bool) {
         (self.get_zero(), self.get_negative(), self.get_carry(), self.get_overflow())
@@ -95,6 +96,7 @@ impl Status {
 
 // This is separate so a mutable borrow can be passed to the MMIO handlers.
 pub struct EmulatorState {
+    curr_cycle: usize,
     mem: Vec<u8>,
     regs: [u16; NUM_REGS],
     pub status: Status,
@@ -105,11 +107,16 @@ impl EmulatorState {
         assert!(mem_size >= DATA_START);
         assert!(mem_size < DATA_END);
         EmulatorState {
+            curr_cycle: 0usize,
             mem: vec![0; mem_size as usize],
             regs: [0; NUM_REGS],
             status: Status::new(),
         }
-}
+    }
+
+    pub fn inc_cycle(&mut self) {
+        self.curr_cycle += 1;
+    }
 
     pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
         self.mem[addr as usize]

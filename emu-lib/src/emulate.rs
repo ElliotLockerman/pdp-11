@@ -8,7 +8,8 @@ use crate::constants::*;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::{BitOr, BitAnd};
-
+use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(Debug, Clone, Copy)]
 enum Size {
@@ -63,7 +64,7 @@ enum ExecRet {
 
 pub struct Emulator {
     state: EmulatorState,
-    mmio_handlers: HashMap<u16, Box<dyn MMIOHandler>>,
+    mmio_handlers: HashMap<u16, Rc<RefCell<dyn MMIOHandler>>>,
 }
 
 impl Emulator {
@@ -75,6 +76,12 @@ impl Emulator {
     }
     pub fn run(&mut self) {
         loop {
+            // TODO: track actual time instead of assuming 1 cycle / ins
+            self.state.inc_cycle();
+            for handler in self.mmio_handlers.values_mut() { 
+                handler.borrow_mut().cycle(&mut self.state); 
+            }
+            
             let ins = self.decode();
             dbg!(self.state.pc(), &ins);
             let ins_size = ins.size();
@@ -103,11 +110,18 @@ impl Emulator {
         }
     }
 
-    // Returns old handler for addr
-    pub fn set_mmio_handler(&mut self, addr: u16, handler: Box<dyn MMIOHandler>)
-        -> Option<Box<dyn MMIOHandler>> {
-        assert!(addr >= MMIO_START);
-        self.mmio_handlers.insert(addr, handler)
+    pub fn set_mmio_handler<I, M>(&mut self, addrs: I, handler: M) 
+    where 
+        I: IntoIterator<Item = u16>,
+        M: MMIOHandler + 'static {
+
+        let handler = Rc::new(RefCell::new(handler));
+        for addr in addrs.into_iter() {
+            assert!(addr >= MMIO_START);
+            assert!(addr & 0x1 == 0, "MMIOHandler addr {addr:o} not aligned");
+            let prev = self.mmio_handlers.insert(addr, handler.clone());
+            assert!(prev.is_none(), "Duplicate MMIOHandler for {addr:o}");
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -116,7 +130,7 @@ impl Emulator {
     pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                return handler.read_byte(&mut self.state, addr);
+                return handler.borrow_mut().read_byte(&mut self.state, addr);
             }
             panic!("Invalid MMIO register {}", addr);
         } else {
@@ -127,7 +141,7 @@ impl Emulator {
     pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                handler.write_byte(&mut self.state, addr, val);
+                handler.borrow_mut().write_byte(&mut self.state, addr, val);
                 return;
             }
             panic!("Invalid MMIO register {}", addr);
@@ -140,7 +154,7 @@ impl Emulator {
         assert!(addr & 1 == 0);
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                return handler.read_word(&mut self.state, addr);
+                return handler.borrow_mut().read_word(&mut self.state, addr);
             }
             panic!("Invalid MMIO register {}", addr);
         } else {
@@ -152,7 +166,7 @@ impl Emulator {
         assert!(addr & 1 == 0);
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                handler.write_word(&mut self.state, addr, val);
+                handler.borrow_mut().write_word(&mut self.state, addr, val);
                 return;
             }
             panic!("Invalid MMIO register {}", addr);
