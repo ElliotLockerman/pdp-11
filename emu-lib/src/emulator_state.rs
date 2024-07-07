@@ -1,5 +1,4 @@
 
-use crate::constants::*;
 use common::asm::{Reg, NUM_REGS};
 use common::mem::as_word_slice;
 
@@ -103,12 +102,10 @@ pub struct EmulatorState {
 }
 
 impl EmulatorState {
-    pub fn new(mem_size: u16) -> Self {
-        assert!(mem_size >= DATA_START);
-        assert!(mem_size < DATA_END);
+    pub fn new() -> Self {
         EmulatorState {
             curr_cycle: 0usize,
-            mem: vec![0; mem_size as usize],
+            mem: vec![0; (u16::MAX as usize) + 1],
             regs: [0; NUM_REGS],
             status: Status::new(),
         }
@@ -165,4 +162,9 @@ impl EmulatorState {
     }
 }
 
+impl Default for EmulatorState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 

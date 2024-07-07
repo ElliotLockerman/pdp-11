@@ -68,9 +68,9 @@ pub struct Emulator {
 }
 
 impl Emulator {
-    pub fn new(mem_size: u16) -> Emulator {
+    pub fn new() -> Emulator {
         Emulator {
-            state: EmulatorState::new(mem_size),
+            state: EmulatorState::new(),
             mmio_handlers: HashMap::new(),
         }
     }
@@ -636,8 +636,12 @@ impl Emulator {
             _ => todo!(),
         }
     }
+}
 
-
+impl Default for Emulator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -655,7 +659,7 @@ mod tests {
         ];
         let bin = unsafe { as_byte_slice(bin) };
 
-        let mut emu = Emulator::new(2 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         emu.run_at(DATA_START);
         assert_eq!(emu.state.reg_read_word(Reg::PC), DATA_START + 2);
@@ -670,7 +674,7 @@ mod tests {
         let bin = unsafe { as_byte_slice(bin) };
 
         let val = 0xabcd;
-        let mut emu = Emulator::new(2 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         emu.state.reg_write_word(Reg::R0, val);
         assert_eq!(emu.state.reg_read_word(Reg::R1), 0);
@@ -687,7 +691,7 @@ mod tests {
         ];
         let bin = unsafe { as_byte_slice(bin) };
 
-        let mut emu = Emulator::new(2 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         assert_eq!(emu.state.reg_read_word(Reg::R0), 0);
         emu.run_at(DATA_START);
@@ -703,7 +707,7 @@ mod tests {
         ];
         let bin = unsafe { as_byte_slice(bin) };
 
-        let mut emu = Emulator::new(2 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         assert_eq!(emu.state.reg_read_word(Reg::R0), 0);
         emu.run_at(DATA_START);
@@ -725,7 +729,7 @@ mod tests {
         ];
         let bin = unsafe { as_byte_slice(bin) };
 
-        let mut emu = Emulator::new(2 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         assert_eq!(emu.mem_read_word(arr), 1);
         assert_eq!(emu.mem_read_word(arr + 2), 2);
@@ -750,7 +754,7 @@ mod tests {
         ];
         let bin = unsafe { as_byte_slice(bin) };
 
-        let mut emu = Emulator::new(2 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         assert_eq!(emu.state.reg_read_word(Reg::R0), 0);
         emu.run_at(DATA_START);
@@ -778,7 +782,7 @@ mod tests {
         ];
         let bin = unsafe { as_byte_slice(bin) };
 
-        let mut emu = Emulator::new(3 * DATA_START);
+        let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         emu.state.reg_write_word(Reg::SP, 2 * DATA_START);
         emu.run_at(DATA_START);

@@ -1,5 +1,5 @@
 
-use emu_lib::{Emulator, constants::DATA_END};
+use emu_lib::Emulator;
 use emu_lib::io::Teleprinter;
 
 use clap::Parser;
@@ -18,7 +18,7 @@ fn main() {
     let opt = Args::parse();
 
     let teleprinter = Teleprinter::new();
-    let mut emu = Emulator::new(DATA_END);
+    let mut emu = Emulator::new();
     emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
 
     let buf = std::fs::read(opt.bin).unwrap();
