@@ -357,7 +357,7 @@ impl Emulator {
             DoubleOperandOpcode::Mov => self.do_mov(&ins.src, &ins.dst, Size::Word),
             DoubleOperandOpcode::Cmp => self.do_sub(&ins.dst, &ins.src, Size::Word, true),
             DoubleOperandOpcode::Bis => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Word, false),
-            DoubleOperandOpcode::Bic => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Word, false),
+            DoubleOperandOpcode::Bic => self.do_bitwise(&ins.src, and_not, &ins.dst, Size::Word, false),
             DoubleOperandOpcode::Bit => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Word, true),
 
             DoubleOperandOpcode::Add => self.do_add(&ins.src, &ins.dst, Size::Word) ,
@@ -365,7 +365,7 @@ impl Emulator {
             DoubleOperandOpcode::MovB => self.do_mov(&ins.src, &ins.dst, Size::Byte),
             DoubleOperandOpcode::CmpB => self.do_sub(&ins.dst,  &ins.src, Size::Byte, true),
             DoubleOperandOpcode::BisB => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Byte, false),
-            DoubleOperandOpcode::BicB => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Byte, false),
+            DoubleOperandOpcode::BicB => self.do_bitwise(&ins.src, and_not, &ins.dst, Size::Byte, false),
             DoubleOperandOpcode::BitB => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Byte, true),
 
             DoubleOperandOpcode::Sub => self.do_sub(&ins.src, &ins.dst, Size::Word, false) ,
@@ -789,5 +789,9 @@ mod tests {
         assert_eq!(emu.state.reg_read_word(Reg::R1), 1);
         assert_eq!(emu.state.reg_read_word(Reg::R2), 0);
     }
+}
+
+fn and_not(lhs: u32, rhs: u32) -> u32 {
+    lhs & !rhs
 }
 
