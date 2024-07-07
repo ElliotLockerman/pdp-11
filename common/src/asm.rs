@@ -52,19 +52,14 @@ impl Extra {
         if let Extra::Imm(val) = self {
             return *val;
         }
-        panic!("Extra::unwrap_imm() called on non-imm");
+        panic!("Extra::unwrap_imm() called on non-imm: {self:?}");
     }
-    pub fn unwrap_label(self) -> String {
-        if let Extra::LabelRef(val) = self {
-            return val;
-        }
-        panic!("Extra::unwrap_imm() called on non-imm");
-    }
+
     pub fn unwrap_label_ref(&self) -> &String {
         if let Extra::LabelRef(val) = self {
             return val;
         }
-        panic!("Extra::unwrap_imm() called on non-imm");
+        panic!("Extra::unwrap_label_ref() called on non-label-ref: {self:?}");
     }
 
     pub fn is_label_ref(&self) -> bool {
