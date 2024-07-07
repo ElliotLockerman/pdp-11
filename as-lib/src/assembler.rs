@@ -40,7 +40,7 @@ impl Assembler {
         }
 
         if ins.dst.has_imm() {
-            self.emit(ins.src.extra.unwrap_imm());
+            self.emit(ins.dst.extra.unwrap_imm());
         }
     }
 
