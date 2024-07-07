@@ -83,7 +83,7 @@ impl Emulator {
             }
             
             let ins = self.decode();
-            dbg!(self.state.pc(), &ins);
+            // dbg!(self.state.pc(), &ins);
             let ins_size = ins.size();
             self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
             match self.exec(&ins) {
@@ -275,9 +275,7 @@ impl Emulator {
             AddrMode::Index => {
                 let reg_val = self.state.reg_read_word(arg.reg);
                 let imm = arg.extra.unwrap_imm();
-                let sum = reg_val.wrapping_add(imm);
-                dbg!(reg_val, imm, sum);
-                sum
+                reg_val.wrapping_add(imm)
             }
             AddrMode::IndexDef => self.mem_read_word(self.state.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm())),
         };
