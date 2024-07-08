@@ -160,6 +160,7 @@ impl Assembler {
             if let Some(label) = &stmt.label_def {
                 self.symbols.insert(label.clone(), addr); 
             }
+            addr += stmt.size();
         }
 
         addr = 0;
