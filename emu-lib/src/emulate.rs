@@ -285,11 +285,11 @@ impl Emulator {
 
     fn do_mov(&mut self, src: &RegArg, dst: &RegArg, size: Size) {
         let src = self.resolve(src, size);
-        let val = self.read_resolved_word(src);
+        let val = self.read_resolved_widen(src, size);
         let dst = self.resolve(dst, size);
-        self.write_resolved_word(dst, val);
+        self.write_resolved_narrow(dst, val, size);
         self.state.status.set_zero(val == 0);
-        self.state.status.set_negative(sign_bit(val as u32, size) != 0);
+        self.state.status.set_negative(sign_bit(val, size) != 0);
         self.state.status.set_overflow(false);
     }
 
