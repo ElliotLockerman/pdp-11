@@ -11,6 +11,8 @@ use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::cell::RefCell;
 
+use log::debug;
+
 #[derive(Debug, Clone, Copy)]
 enum Size {
     Byte,
@@ -75,7 +77,7 @@ impl Emulator {
             }
             
             let ins = self.decode();
-            // dbg!(self.state.pc(), &ins);
+            debug!("PC: 0{:0}: {:?}", self.state.pc(), ins);
             let ins_size = ins.size();
             self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
             match self.exec(&ins) {

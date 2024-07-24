@@ -3,6 +3,7 @@ use common::asm::{Reg, NUM_REGS};
 use common::mem::as_word_slice;
 
 use num_traits::ToPrimitive;
+use log::trace;
 
 #[derive(Default, Debug)]
 pub struct Status(u16);
@@ -120,6 +121,7 @@ impl EmulatorState {
     }
 
     pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
+        trace!("Mem: writing {val} to 0{addr:?} (byte)");
         self.mem[addr as usize] = val;
     }
 
@@ -129,12 +131,14 @@ impl EmulatorState {
     }
 
     pub fn mem_write_word(&mut self, addr: u16, val: u16) {
+        trace!("Mem: writing {val} to 0{addr:?} (word)");
         assert!(addr & 1 == 0);
         self.mem[addr as usize] = val as u8;
         self.mem[(addr + 1) as usize] = (val >> 8) as u8;
     }
 
     pub fn reg_write_word(&mut self, reg: Reg, val: u16) {
+        trace!("Reg: writing {val} to {reg:?} (word)");
         self.regs[reg.to_usize().unwrap()] = val;
     }
 
@@ -147,6 +151,7 @@ impl EmulatorState {
     }
 
     pub fn reg_write_byte(&mut self, reg: Reg, val: u8) {
+        trace!("Reg: writing {val} to {reg:?} (byte)");
         self.reg_write_word(reg, val as i8 as i16 as u16);
     }
 

@@ -15,6 +15,8 @@ struct Args {
 
 
 fn main() {
+    env_logger::init();
+
     let opt = Args::parse();
 
     let teleprinter = Teleprinter::new();

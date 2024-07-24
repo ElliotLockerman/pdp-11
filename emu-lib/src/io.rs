@@ -3,6 +3,8 @@ use std::io::{stdout, Write};
 
 use crate::EmulatorState;
 
+use log::error;
+
 
 pub trait MMIOHandler {
     fn cycle(&mut self, _emu: &mut EmulatorState) {}
@@ -77,6 +79,8 @@ impl Teleprinter {
             out.flush().unwrap();
             self.cycles_until_ready = Self::DELAY_CYCLES;
             self.ready = false;
+        } else {
+            error!("Teleprinter: write to TPB of {val} when not ready");
         }
     }
 
