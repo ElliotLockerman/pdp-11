@@ -197,10 +197,10 @@ impl Assembler {
 
         let mut prog: Vec<Stmt> = lines
             .zip(1..)
-            .filter(|(x,_)| !x.is_empty())
             .map(|(x,i)| {
                 parser.parse(x).unwrap_or_else(|e| panic!("Error line {}: {}", i, e))
             })
+            .filter(|x| !x.is_empty())
             .collect();
 
         self.resolve_symbols(&mut prog);

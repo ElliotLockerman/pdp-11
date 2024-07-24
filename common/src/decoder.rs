@@ -95,5 +95,5 @@ pub fn decode(input: &[u16]) -> Ins {
         }
     }
 
-    panic!("Invalid instruction {:x}", input[0]);
+    panic!("Invalid instruction 0{:o}", input[0]);
 }

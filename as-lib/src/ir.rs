@@ -22,8 +22,11 @@ pub struct Stmt {
 }
 impl Stmt {
     pub fn new(label_def: Option<String>, cmd: Option<Cmd>) -> Stmt {
-        assert!(label_def.is_some() || cmd.is_some());
         Stmt{label_def, cmd}
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.label_def.is_none() && self.cmd.is_none()
     }
 
     // Size, in bytes, of assembled statement

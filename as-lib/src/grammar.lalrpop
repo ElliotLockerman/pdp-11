@@ -157,12 +157,14 @@ pub Stmt: Stmt = {
     <label_def: Label> ":" => Stmt::new(Some(label_def), None),
     <cmd:Cmd> => Stmt::new(None, Some(cmd)),
     <label_def: Label> ":" <cmd:Cmd> => Stmt::new(Some(label_def), Some(cmd)),
+    () => Stmt::new(None, None),
 }
 
 match {
-    // Skip whitespace and comments
-    r"\s*" => { },
-    r";[^\n\r]*[\n\r]*" => { },
+    // Skip comments
+    r";[^\n\r]*" => { },
 } else {
+    // Ignore whitespace
+    r"\s*" => { },
     _,
 }
