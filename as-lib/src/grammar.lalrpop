@@ -46,6 +46,7 @@ RegArg: RegArg = {
     "@" "#" <Imm> => RegArg::new(AddrMode::AutoIncDef, Reg::PC, Extra::Imm(<>)),
 
     <Label> => RegArg::new(AddrMode::Index, Reg::PC, Extra::LabelRef(<>)),
+    "#" <Label> => RegArg::new(AddrMode::AutoInc, Reg::PC, Extra::LabelRef(<>)),
     "@" <Label> => RegArg::new(AddrMode::IndexDef, Reg::PC, Extra::LabelRef(<>)),
 };
 

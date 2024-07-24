@@ -41,17 +41,9 @@ fn sign_bit(n: u32, size: Size) -> u32 {
 enum ResolvedRegArg {
     Reg(Reg),
     Mem(u16),
-    Imm(u16),
+    Imm(u16), // Also includes index(rx), which are rvalues
 }
 
-impl ResolvedRegArg {
-    fn unwrap_mem(&self) -> u16 {
-        match self {
-            ResolvedRegArg::Mem(m) => *m,
-            _ => panic!("ResolvedRegArg::unwrap_mem(): wasn't mem"),
-        }
-    }
-}
 
 
 #[derive(Debug, Clone, Copy)]
@@ -271,15 +263,15 @@ impl Emulator {
                 self.mem_read_word(addr)
 
             },
-            // AddrMode::Index => self.state.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm()),
             AddrMode::Index => {
                 let reg_val = self.state.reg_read_word(arg.reg);
                 let imm = arg.extra.unwrap_imm();
                 reg_val.wrapping_add(imm)
-            }
+            },
             AddrMode::IndexDef => self.mem_read_word(self.state.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm())),
         };
 
+        // println!("resolved addr: {loc}");
         ResolvedRegArg::Mem(loc)
     }
 
@@ -412,7 +404,8 @@ impl Emulator {
 
     fn exec_jmp_ins(&mut self, ins: &JmpIns) {
         assert_eq!(ins.op, JmpOpcode::Jmp);
-        let new_pc = self.resolve(&ins.dst, Size::Word).unwrap_mem();
+        let dst = self.resolve(&ins.dst, Size::Word);
+        let new_pc = self.read_resolved_word(dst);
         assert_eq!(new_pc & 0x1, 0);
         self.state.reg_write_word(Reg::PC,  new_pc);
     }
@@ -433,7 +426,8 @@ impl Emulator {
     fn exec_jsr_ins(&mut self, ins: &JsrIns) {
         assert_eq!(ins.op, JsrOpcode::Jsr);
 
-        let new_pc = self.resolve(&ins.dst, Size::Word).unwrap_mem();
+        let dst = self.resolve(&ins.dst, Size::Word);
+        let new_pc = self.read_resolved_word(dst);
         assert_eq!(new_pc & 0x1, 0);
 
         if ins.reg == Reg::PC {
@@ -761,9 +755,9 @@ mod tests {
 
     #[test]
     fn call() {
-        let bin = &[
+        let bin: &[u16] = &[
             0o12701, 0o0,   // mov #0, r1
-            0o12702, 0o0,   // mov #0, r1
+            0o12702, 0o0,   // mov #0, r2
             0o407,          // br start
 
             0o12702, 0o2,   // mov #2, r2 ; shouldn't be executed
@@ -775,8 +769,8 @@ mod tests {
             0o12702, 0o2,   // mov #2, r2 ; shouldn't be executed
 
         // start:
-            0o4767, 0o177764,   // jsr pc, fun
-            0o0                 // halt
+            0o4727, DATA_START + 0o16,   // jsr pc, fun
+            0o0                          // halt
         ];
         let bin = unsafe { as_byte_slice(bin) };
 

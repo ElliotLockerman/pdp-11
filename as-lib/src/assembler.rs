@@ -131,12 +131,19 @@ impl Assembler {
             return;
         }
         // TODO: switch to relative/deferred relative (index/indexdef pc)
-        assert!(arg.mode == AddrMode::Index|| arg.mode == AddrMode::IndexDef);
-        assert_eq!(arg.reg, Reg::PC);
+        if matches!(arg.mode, AddrMode::Index | AddrMode::IndexDef) {
+            assert_eq!(arg.reg, Reg::PC);
 
-        let extra = arg.extra.take();
-        let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
-        arg.extra = Extra::Imm((*loc as i32 - curr_addr as i32 - 2) as u16);
+            let extra = arg.extra.take();
+            let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
+            arg.extra = Extra::Imm((*loc as i32 - curr_addr as i32 - 2) as u16);
+            println!("Resolving label \"{}\" to loc {loc}, curr_addr: {curr_addr}, final: {:?}", extra.unwrap_label_ref(), arg.extra);
+
+        } else if matches!(arg.mode, AddrMode::AutoInc) {
+            let extra = arg.extra.take();
+            let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
+            arg.extra = Extra::Imm(*loc);
+        }
     }
 
     fn resolve_target(&self, target: &mut Target, curr_addr: u16) {

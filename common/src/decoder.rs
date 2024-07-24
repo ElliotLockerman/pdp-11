@@ -75,7 +75,7 @@ fn decode_trap_ins(input: &[u16]) -> Option<Ins> {
 
 type Decoder = fn(&[u16]) -> Option<Ins>;
 
-const DECODERS: & [Decoder] = &[
+const DECODERS: &[Decoder] = &[
     decode_double_operand_ins,
     decode_branch_ins,
     decode_jmp_ins,
