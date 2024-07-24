@@ -642,7 +642,7 @@ impl Default for Emulator {
 mod tests {
 
     use super::Emulator;
-    use crate::emulate::DATA_START;
+    use crate::emulator::DATA_START;
     use common::asm::Reg;
     use common::mem::as_byte_slice;
 
