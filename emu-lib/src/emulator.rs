@@ -406,9 +406,15 @@ impl Emulator {
 
     fn exec_jmp_ins(&mut self, ins: &JmpIns) {
         assert_eq!(ins.op, JmpOpcode::Jmp);
+
         let dst = self.resolve(&ins.dst, Size::Word);
-        let new_pc = self.read_resolved_word(dst);
+        assert!(!matches!(dst, ResolvedRegArg::Reg(_)));
+        let new_pc = match dst {
+            ResolvedRegArg::Mem(loc) => loc,
+            dst => self.read_resolved_word(dst),
+        };
         assert_eq!(new_pc & 0x1, 0);
+
         self.state.reg_write_word(Reg::PC,  new_pc);
     }
 
@@ -429,7 +435,11 @@ impl Emulator {
         assert_eq!(ins.op, JsrOpcode::Jsr);
 
         let dst = self.resolve(&ins.dst, Size::Word);
-        let new_pc = self.read_resolved_word(dst);
+        assert!(!matches!(dst, ResolvedRegArg::Reg(_)));
+        let new_pc = match dst {
+            ResolvedRegArg::Mem(loc) => loc,
+            dst => self.read_resolved_word(dst),
+        };
         assert_eq!(new_pc & 0x1, 0);
 
         if ins.reg == Reg::PC {
