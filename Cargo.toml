@@ -1,4 +1,4 @@
 [workspace]
-members = ["common", "as-cli", "as-lib", "emu-cli", "emu-lib"]
+members = ["common", "as-cli", "as-lib", "emu-cli", "emu-lib", "tests"]
 resolver = "2"
 

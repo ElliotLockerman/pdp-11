@@ -169,6 +169,10 @@ impl Emulator {
         }
     }
 
+    pub fn get_state(&self) -> &EmulatorState {
+        &self.state
+    }
+
     fn write_resolved_word(&mut self, res: ResolvedRegArg, val: u16) {
         match res {
             ResolvedRegArg::Reg(r) => self.state.reg_write_word(r, val),
