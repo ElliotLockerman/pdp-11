@@ -13,7 +13,7 @@ use std::cell::RefCell;
 
 use log::debug;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Size {
     Byte,
     Word,
@@ -43,7 +43,6 @@ fn sign_bit(n: u32, size: Size) -> u32 {
 enum ResolvedRegArg {
     Reg(Reg),
     Mem(u16),
-    Imm(u16), // Also includes index(rx), which are rvalues
 }
 
 
@@ -78,10 +77,9 @@ impl Emulator {
             
             let ins = self.decode();
             debug!("PC: 0{:0}: {:?}", self.state.pc(), ins);
-            let ins_size = ins.size();
             self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
             match self.exec(&ins) {
-                ExecRet::Ok => self.state.reg_write_word(Reg::PC, self.state.pc() + ins_size - 2),
+                ExecRet::Ok => (),
                 ExecRet::Jmp => (),
                 ExecRet::Halt => return,
             }
@@ -177,7 +175,6 @@ impl Emulator {
         match res {
             ResolvedRegArg::Reg(r) => self.state.reg_write_word(r, val),
             ResolvedRegArg::Mem(addr) => self.mem_write_word(addr, val),
-            ResolvedRegArg::Imm(_) => panic!("Can't write to immediate"),
         }
     }
 
@@ -185,24 +182,18 @@ impl Emulator {
         match res {
             ResolvedRegArg::Reg(r) => self.state.reg_write_byte(r, val),
             ResolvedRegArg::Mem(addr) => self.mem_write_byte(addr, val),
-            ResolvedRegArg::Imm(_) => panic!("Can't write to immediate"),
         }
     }
     fn read_resolved_byte(&mut self, res: ResolvedRegArg) -> u8 {
         match res {
             ResolvedRegArg::Reg(r) => self.state.reg_read_byte(r),
             ResolvedRegArg::Mem(addr) => self.mem_read_byte(addr),
-            ResolvedRegArg::Imm(imm) => {
-                assert_eq!(imm >> 8, 0);
-                imm as u8
-            },
         }
     }
     fn read_resolved_word(&mut self, res: ResolvedRegArg) -> u16 {
         match res {
             ResolvedRegArg::Reg(r) => self.state.reg_read_word(r),
             ResolvedRegArg::Mem(addr) => self.mem_read_word(addr),
-            ResolvedRegArg::Imm(imm) => imm,
         }
     }
 
@@ -224,7 +215,11 @@ impl Emulator {
     // Execute
     ///////////////////////////////////////////////////////////////////////////
     // Returns the address, not the value
-    fn exec_auto(&mut self, reg: Reg, inc: bool, size: Size) -> u16 {
+    fn exec_auto(&mut self, reg: Reg, inc: bool, mut size: Size) -> u16 {
+        if reg == Reg::PC {
+            // Special case for literals for byte instructions
+            size = Size::Word;
+        }
         let mut val = self.state.reg_read_word(reg);
         if !inc { 
             val -= size.bytes();
@@ -242,39 +237,31 @@ impl Emulator {
         let loc = match arg.mode {
             AddrMode::Gen => return ResolvedRegArg::Reg(arg.reg),
             AddrMode::Def => self.state.reg_read_word(arg.reg),
-            AddrMode::AutoInc => {
-                if arg.has_imm() {
-                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
-                }
-                self.exec_auto(arg.reg, true, size)
-            }
+            AddrMode::AutoInc => self.exec_auto(arg.reg, true, size),
             AddrMode::AutoIncDef => {
-                if arg.has_imm() {
-                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
-                }
                 let addr = self.exec_auto(arg.reg, true, Size::Word);
                 self.mem_read_word(addr)
             },
-            AddrMode::AutoDec => {
-                if arg.has_imm() {
-                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
-                }
-                self.exec_auto(arg.reg, false, size)
-            }
+            AddrMode::AutoDec => self.exec_auto(arg.reg, false, size),
+           
             AddrMode::AutoDecDef => {
-                if arg.has_imm() {
-                    return ResolvedRegArg::Imm(arg.extra.unwrap_imm());
-                }
                 let addr = self.exec_auto(arg.reg, false, Size::Word);
                 self.mem_read_word(addr)
 
             },
             AddrMode::Index => {
                 let reg_val = self.state.reg_read_word(arg.reg);
-                let imm = arg.extra.unwrap_imm();
+                let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
+                let imm = self.mem_read_word(imm_addr);
                 reg_val.wrapping_add(imm)
             },
-            AddrMode::IndexDef => self.mem_read_word(self.state.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm())),
+            AddrMode::IndexDef => {
+                // self.mem_read_word(self.state.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm())),
+                let reg_val = self.state.reg_read_word(arg.reg);
+                let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
+                let imm = self.mem_read_word(imm_addr);
+                self.mem_read_word(reg_val.wrapping_add(imm))
+            }
         };
 
         // println!("resolved addr: {loc}");
@@ -445,13 +432,6 @@ impl Emulator {
             dst => self.read_resolved_word(dst),
         };
         assert_eq!(new_pc & 0x1, 0);
-
-        if ins.reg == Reg::PC {
-            // This is a hack, since its not clear when the extra pc increment for the index is
-            // supposed to happen
-            let ret_addr = self.state.pc() + ins.num_imm() * 2;
-            self.state.reg_write_word(ins.reg, ret_addr);
-        }
         let old_val = self.state.reg_read_word(ins.reg);
         self.push_word(old_val);
         
@@ -785,7 +765,7 @@ mod tests {
             0o12702, 0o2,   // mov #2, r2 ; shouldn't be executed
 
         // start:
-            0o4727, DATA_START + 0o16,   // jsr pc, fun
+            0o4737, DATA_START + 0o16,   // jsr pc, fun
             0o0                          // halt
         ];
         let bin = unsafe { as_byte_slice(bin) };

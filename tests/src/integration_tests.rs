@@ -20,6 +20,19 @@ mod tests {
     }
 
     #[test]
+    fn test_literal_read_byte() {
+        let bin = assemble(r#"
+            movb #1, r0
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    }
+
+    #[test]
     #[should_panic]
     fn test_literal_write() {
         let bin = assemble(r#"
@@ -30,6 +43,20 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START);
         assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    }
+
+    #[test]
+    fn test_absolute_read() {
+        let bin = assemble(r#"
+            mov @#020, r0
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.mem_write_word(0o20, 0o321);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o321);
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
