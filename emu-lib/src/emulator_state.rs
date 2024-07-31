@@ -116,7 +116,7 @@ impl EmulatorState {
         self.curr_cycle += 1;
     }
 
-    pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
+    pub fn mem_read_byte(&self, addr: u16) -> u8 {
         self.mem[addr as usize]
     }
 
@@ -125,7 +125,7 @@ impl EmulatorState {
         self.mem[addr as usize] = val;
     }
 
-    pub fn mem_read_word(&mut self, addr: u16) -> u16 {
+    pub fn mem_read_word(&self, addr: u16) -> u16 {
         assert!(addr & 1 == 0);
         (self.mem[addr as usize] as u16) | ((self.mem[(addr + 1) as usize] as u16) << 8)
     }
