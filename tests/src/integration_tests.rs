@@ -580,4 +580,168 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o100);
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
+
+
+    #[test]
+    fn test_relative_label_read() {
+        let bin = assemble(r#"
+        label:
+            .word 012
+            mov label, r0
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o012);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+
+        let bin = assemble(r#"
+        label:
+            .word 0533
+            movb label, r0
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o133);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+        let bin = assemble(r#"
+        label:
+            .word 012
+            mov label, r0
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        let offset = 16;
+        emu.load_image(&bin, DATA_START + offset);
+        emu.run_at(DATA_START + offset + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o012);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + offset + bin.len() as u16);
+    }
+
+    #[test]
+    fn test_relative_label_write() {
+        let bin = assemble(r#"
+        label:
+            .word 07777
+            mov #012, r0
+            mov r0, label
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().mem_read_word(DATA_START), 0o012);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+        let bin = assemble(r#"
+        label:
+            .word 07777
+            mov     #012, r0
+            movb    r0, label
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().mem_read_word(DATA_START), 0o7412);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+
+        let bin = assemble(r#"
+        label:
+            .word 07777
+            mov     #012, r0
+            movb    r0, label
+            halt
+        "#);
+        let mut emu = Emulator::new();
+        let offset = 16;
+        emu.load_image(&bin, DATA_START + offset);
+        emu.run_at(DATA_START + offset + 2);
+        assert_eq!(emu.get_state().mem_read_word(DATA_START + offset), 0o7412);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 + offset);
+    }
+
+    #[test]
+    fn test_immediate_label_read() {
+        let bin = assemble(r#"
+            mov #label, r0
+            halt
+        label:
+            .word 012
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 6);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+    }
+
+    #[test]
+    fn test_relative_def_label_read() {
+        let bin = assemble(r#"
+        label:
+            .word 0410
+            mov @label, r0
+            halt
+            .word 066
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o66);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+
+        let bin = assemble(r#"
+        label:
+            .word 0410
+            movb @label, r0
+            halt
+            .word 0533
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o133);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+    }
+
+
+    #[test]
+    fn test_relative_def_label_write() {
+        let bin = assemble(r#"
+        label:
+            .word 0410
+            mov #033, r0
+            mov r0, @label
+            halt
+            .word 066
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().mem_read_word(0o410), 0o33);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+
+
+        let bin = assemble(r#"
+        label:
+            .word 0414
+            mov     #00, r0
+            movb    r0, @label
+            halt
+            .word 07777
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().mem_read_word(0o414), 0o7400);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+    }
+
 }
