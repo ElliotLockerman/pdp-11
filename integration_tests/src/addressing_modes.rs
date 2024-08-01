@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn test_absolute_read() {
         let bin = assemble(r#"
-            mov @#020, r0
+            mov @#20, r0
             halt
         "#);
         let mut emu = Emulator::new();
@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn test_indirect_read() {
         let bin = assemble(r#"
-            mov #0100, r0
+            mov #100, r0
             mov @r0, r1
             halt
         "#);
@@ -86,7 +86,7 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov #0100, r0
+            mov #100, r0
             mov (r0), r1
             halt
         "#);
@@ -98,7 +98,7 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
         let bin = assemble(r#"
-            mov     #0100, r0
+            mov     #100, r0
             movb    (r0), r1
             halt
         "#);
@@ -113,8 +113,8 @@ mod tests {
     #[test]
     fn test_indirect_write() {
         let bin = assemble(r#"
-            mov #0100, r0
-            mov #020, @r0
+            mov #100, r0
+            mov #20, @r0
             halt
         "#);
         let mut emu = Emulator::new();
@@ -126,8 +126,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov #0100, r0
-            mov #020, (r0)
+            mov #100, r0
+            mov #20, (r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -139,8 +139,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0100, r0
-            movb    #020, (r0)
+            mov     #100, r0
+            movb    #20, (r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -155,7 +155,7 @@ mod tests {
     #[should_panic]
     fn test_unaligned() {
         let bin = assemble(r#"
-            mov #0101, r0
+            mov #101, r0
             mov @r0, r1
             halt
         "#);
@@ -166,8 +166,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov #0101, r0
-            mov #020, @r0
+            mov #101, r0
+            mov #20, @r0
             halt
         "#);
         let mut emu = Emulator::new();
@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_autoinc_read() {
         let bin = assemble(r#"
-            mov #0100, r0
+            mov #100, r0
             mov (r0)+, r1
             halt
         "#);
@@ -193,7 +193,7 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
         let bin = assemble(r#"
-            mov     #0100, r0
+            mov     #100, r0
             movb    (r0)+, r1
             halt
         "#);
@@ -206,7 +206,7 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
         let bin = assemble(r#"
-            mov     #0100, r0
+            mov     #100, r0
             movb    (r0)+, r1
             halt
         "#);
@@ -223,8 +223,8 @@ mod tests {
     #[test]
     fn test_autoinc_write() {
         let bin = assemble(r#"
-            mov #0100, r0
-            mov #020, (r0)+
+            mov #100, r0
+            mov #20, (r0)+
             halt
         "#);
         let mut emu = Emulator::new();
@@ -237,8 +237,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0100, r0
-            movb    #020, (r0)+
+            mov     #100, r0
+            movb    #20, (r0)+
             halt
         "#);
         let mut emu = Emulator::new();
@@ -255,7 +255,7 @@ mod tests {
     #[test]
     fn test_autodec_read() {
         let bin = assemble(r#"
-            mov #0102, r0
+            mov #102, r0
             mov -(r0), r1
             halt
         "#);
@@ -269,7 +269,7 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0101, r0
+            mov     #101, r0
             movb    -(r0), r1
             halt
         "#);
@@ -286,8 +286,8 @@ mod tests {
     #[test]
     fn test_autodec_write() {
         let bin = assemble(r#"
-            mov #0102, r0
-            mov #020, -(r0)
+            mov #102, r0
+            mov #20, -(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -300,8 +300,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0101, r0
-            movb    #020, -(r0)
+            mov     #101, r0
+            movb    #20, -(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -317,7 +317,7 @@ mod tests {
     #[test]
     fn test_autoinc_def_read() {
         let bin = assemble(r#"
-            mov #0100, r0
+            mov #100, r0
             mov @(r0)+, r1
             halt
         "#);
@@ -331,7 +331,7 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
         let bin = assemble(r#"
-            mov     #0100, r0
+            mov     #100, r0
             movb    @(r0)+, r1
             halt
         "#);
@@ -350,8 +350,8 @@ mod tests {
     #[test]
     fn test_autoinc_def_write() {
         let bin = assemble(r#"
-            mov #0100, r0
-            mov #07720, @(r0)+
+            mov #100, r0
+            mov #7720, @(r0)+
             halt
         "#);
         let mut emu = Emulator::new();
@@ -365,8 +365,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0100, r0
-            movb    #020, @(r0)+
+            mov     #100, r0
+            movb    #20, @(r0)+
             halt
         "#);
         let mut emu = Emulator::new();
@@ -383,7 +383,7 @@ mod tests {
     #[test]
     fn test_autodec_def_read() {
         let bin = assemble(r#"
-            mov #0102, r0
+            mov #102, r0
             mov @-(r0), r1
             halt
         "#);
@@ -397,7 +397,7 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
         let bin = assemble(r#"
-            mov     #0102, r0
+            mov     #102, r0
             movb    @-(r0), r1
             halt
         "#);
@@ -415,8 +415,8 @@ mod tests {
     #[test]
     fn test_autodec_def_write() {
         let bin = assemble(r#"
-            mov #0102, r0
-            mov #07720, @-(r0)
+            mov #102, r0
+            mov #7720, @-(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -430,8 +430,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0102, r0
-            movb    #020, @-(r0)
+            mov     #102, r0
+            movb    #20, @-(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -447,7 +447,7 @@ mod tests {
     #[test]
     fn test_index_read() {
         let bin = assemble(r#"
-            mov #0100, r0
+            mov #100, r0
             mov 2(r0), r1
             mov 4(r0), r2
             halt
@@ -464,7 +464,7 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0100, r0
+            mov     #100, r0
             movb    1(r0), r1
             movb    2(r0), r2
             halt
@@ -483,9 +483,9 @@ mod tests {
     #[test]
     fn test_index_write() {
         let bin = assemble(r#"
-            mov #0100, r0
-            mov #01, 2(r0)
-            mov #02, 4(r0)
+            mov #100, r0
+            mov #1, 2(r0)
+            mov #2, 4(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -499,9 +499,9 @@ mod tests {
         assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
         let bin = assemble(r#"
-            mov     #0100, r0
-            movb    #020, 2(r0)
-            movb    #040, 4(r0)
+            mov     #100, r0
+            movb    #20, 2(r0)
+            movb    #40, 4(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -520,7 +520,7 @@ mod tests {
     #[test]
     fn test_index_def_read() {
         let bin = assemble(r#"
-            mov #0100, r0
+            mov #100, r0
             mov @2(r0), r1
             halt
         "#);
@@ -535,7 +535,7 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0100, r0
+            mov     #100, r0
             movb    @2(r0), r1
             halt
         "#);
@@ -553,8 +553,8 @@ mod tests {
     #[test]
     fn test_index_def_write() {
         let bin = assemble(r#"
-            mov #0100, r0
-            mov #011, @2(r0)
+            mov #100, r0
+            mov #11, @2(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -568,8 +568,8 @@ mod tests {
 
 
         let bin = assemble(r#"
-            mov     #0100, r0
-            movb    #011, @2(r0)
+            mov     #100, r0
+            movb    #11, @2(r0)
             halt
         "#);
         let mut emu = Emulator::new();
@@ -629,7 +629,7 @@ mod tests {
         let bin = assemble(r#"
         label:
             .word 07777
-            mov #012, r0
+            mov #12, r0
             mov r0, label
             halt
         "#);
@@ -642,7 +642,7 @@ mod tests {
         let bin = assemble(r#"
         label:
             .word 07777
-            mov     #012, r0
+            mov     #12, r0
             movb    r0, label
             halt
         "#);
@@ -656,7 +656,7 @@ mod tests {
         let bin = assemble(r#"
         label:
             .word 07777
-            mov     #012, r0
+            mov     #12, r0
             movb    r0, label
             halt
         "#);
@@ -718,7 +718,7 @@ mod tests {
         let bin = assemble(r#"
         label:
             .word 0410
-            mov #033, r0
+            mov #33, r0
             mov r0, @label
             halt
             .word 066
@@ -733,7 +733,7 @@ mod tests {
         let bin = assemble(r#"
         label:
             .word 0414
-            mov     #00, r0
+            mov     #0, r0
             movb    r0, @label
             halt
             .word 07777
@@ -773,7 +773,7 @@ mod tests {
     #[test]
     fn test_relative_write() {
         let bin = assemble(r#"
-            mov #011, r0
+            mov #11, r0
             mov r0, 012
             halt
             .word 033
@@ -829,7 +829,7 @@ mod tests {
     fn test_relative_def_write() {
         let bin = assemble(r#"
             .word 0410
-            mov #033, r0
+            mov #33, r0
             mov r0, @00
             halt
             .word 066
@@ -843,7 +843,7 @@ mod tests {
 
         let bin = assemble(r#"
             .word 0414
-            mov     #00, r0
+            mov     #0, r0
             movb    r0, @00
             halt
             .word 07777
