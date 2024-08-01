@@ -54,7 +54,7 @@ impl Status {
     }
 
     pub fn get_negative(&self) -> bool {
-        ((self.0 >> Self::ZERO) & 0x1) != 0
+        ((self.0 >> Self::NEGATIVE) & 0x1) != 0
     }
 
     pub fn set_negative(&mut self, val: bool) {
