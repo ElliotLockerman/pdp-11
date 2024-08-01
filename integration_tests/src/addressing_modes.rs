@@ -680,7 +680,7 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START);
         assert_eq!(emu.get_state().reg_read_word(Reg::R0), 6);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
     }
 
     #[test]
@@ -696,7 +696,7 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START + 2);
         assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o66);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
 
         let bin = assemble(r#"
         label:
@@ -709,7 +709,7 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START + 2);
         assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o133);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
     }
 
 
@@ -727,7 +727,7 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START + 2);
         assert_eq!(emu.get_state().mem_read_word(0o410), 0o33);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
 
 
         let bin = assemble(r#"
@@ -742,13 +742,12 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START + 2);
         assert_eq!(emu.get_state().mem_read_word(0o414), 0o7400);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
     }
 
     #[test]
     fn test_relative_read() {
         let bin = assemble(r#"
-        label:
             mov 06, r0
             halt
             .word 066
@@ -757,6 +756,102 @@ mod tests {
         emu.load_image(&bin, DATA_START);
         emu.run_at(DATA_START);
         assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o66);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+
+        let bin = assemble(r#"
+            movb 06, r0
+            halt
+            .word 0533
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o133);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+    }
+
+    #[test]
+    fn test_relative_write() {
+        let bin = assemble(r#"
+            mov #011, r0
+            mov r0, 012
+            halt
+            .word 033
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o12), 0o11);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+
+
+        let bin = assemble(r#"
+            movb 06, r0
+            halt
+            .word 0533
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o133);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+    }
+
+    #[test]
+    fn test_relative_def_read() {
+        let bin = assemble(r#"
+            .word 0410
+            mov @00, r0
+            halt
+            .word 066
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o66);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+
+        let bin = assemble(r#"
+        label:
+            .word 0410
+            movb @00, r0
+            halt
+            .word 0533
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o133);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+    }
+
+    #[test]
+    fn test_relative_def_write() {
+        let bin = assemble(r#"
+            .word 0410
+            mov #033, r0
+            mov r0, @00
+            halt
+            .word 066
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().mem_read_word(0o410), 0o33);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
+
+
+        let bin = assemble(r#"
+            .word 0414
+            mov     #00, r0
+            movb    r0, @00
+            halt
+            .word 07777
+        "#);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.run_at(DATA_START + 2);
+        assert_eq!(emu.get_state().mem_read_word(0o414), 0o7400);
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
     }
 }
