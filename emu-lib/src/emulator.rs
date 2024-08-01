@@ -279,7 +279,17 @@ impl Emulator {
         let src = self.resolve(src, size);
         let val = self.read_resolved_widen(src, size);
         let dst = self.resolve(dst, size);
-        self.write_resolved_narrow(dst, val, size);
+
+        if size == Size::Byte {
+            if matches!(dst, ResolvedRegArg::Reg(_)) {
+                let val = val as u8 as i8 as i16 as u16;
+                self.write_resolved_word(dst, val);
+            } else {
+                self.write_resolved_narrow(dst, val, size);
+            }
+        } else {
+            self.write_resolved_word(dst, val as u16);
+        }
         self.state.status.set_zero(val == 0);
         self.state.status.set_negative(sign_bit(val, size) != 0);
         self.state.status.set_overflow(false);

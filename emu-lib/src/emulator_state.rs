@@ -152,7 +152,10 @@ impl EmulatorState {
 
     pub fn reg_write_byte(&mut self, reg: Reg, val: u8) {
         trace!("Reg: writing {val} to {reg:?} (byte)");
-        self.reg_write_word(reg, val as i8 as i16 as u16);
+        let mut old = self.reg_read_word(reg);
+        old &= !0xff;
+        old |= val as u16;
+        self.reg_write_word(reg, old);
     }
 
     pub fn pc(&self) -> u16 {
