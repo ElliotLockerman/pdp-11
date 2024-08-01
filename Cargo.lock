@@ -75,6 +75,7 @@ dependencies = [
  "common",
  "lalrpop",
  "lalrpop-util",
+ "log",
  "num-derive",
  "num-traits",
 ]

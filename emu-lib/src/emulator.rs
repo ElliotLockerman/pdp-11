@@ -1,9 +1,9 @@
 
 use common::asm::*;
 use common::decoder::decode;
+use common::constants::*;
 use crate::MMIOHandler;
 use crate::EmulatorState;
-use crate::constants::*;
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -243,11 +243,9 @@ impl Emulator {
                 self.mem_read_word(addr)
             },
             AddrMode::AutoDec => self.exec_auto(arg.reg, false, size),
-           
             AddrMode::AutoDecDef => {
                 let addr = self.exec_auto(arg.reg, false, Size::Word);
                 self.mem_read_word(addr)
-
             },
             AddrMode::Index => {
                 let reg_val = self.state.reg_read_word(arg.reg);
@@ -256,15 +254,13 @@ impl Emulator {
                 reg_val.wrapping_add(imm)
             },
             AddrMode::IndexDef => {
-                // self.mem_read_word(self.state.reg_read_word(arg.reg).wrapping_add(arg.extra.unwrap_imm())),
                 let reg_val = self.state.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
                 self.mem_read_word(reg_val.wrapping_add(imm))
-            }
+            },
         };
 
-        // println!("resolved addr: {loc}");
         ResolvedRegArg::Mem(loc)
     }
 

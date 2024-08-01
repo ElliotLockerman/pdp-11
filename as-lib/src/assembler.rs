@@ -5,9 +5,11 @@ use std::convert::TryInto;
 use crate::ir::*;
 use crate::grammar::StmtParser;
 use common::asm::*;
+use common::constants::WORD_SIZE;
 use common::mem::as_byte_slice;
 
 use num_traits::ToPrimitive;
+use log::trace;
 
 pub fn assemble(prog: &str) -> Vec<u8> {
     Assembler::new().assemble(prog)
@@ -126,23 +128,30 @@ impl Assembler {
         self.buf.push(upper);
     }
 
-    fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: u16) {
-        if !arg.extra.is_label_ref() {
-            return;
-        }
-        // TODO: switch to relative/deferred relative (index/indexdef pc)
-        if matches!(arg.mode, AddrMode::Index | AddrMode::IndexDef) {
-            assert_eq!(arg.reg, Reg::PC);
+    fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: &mut u16) {
+        if arg.extra.is_label_ref() {
+            if matches!(arg.mode, AddrMode::Index | AddrMode::IndexDef) {
+                assert_eq!(arg.reg, Reg::PC);
 
-            let extra = arg.extra.take();
-            let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
-            arg.extra = Extra::Imm((*loc as i32 - curr_addr as i32 - 2) as u16);
-            println!("Resolving label \"{}\" to loc {loc}, curr_addr: {curr_addr}, final: {:?}", extra.unwrap_label_ref(), arg.extra);
+                let extra = arg.extra.take();
+                let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
+                arg.extra = Extra::Imm((*loc as i32 - *curr_addr as i32 - 2) as u16);
+                trace!("Resolving label \"{}\" to loc {loc}, curr_addr: {curr_addr}, final: {:?}", extra.unwrap_label_ref(), arg.extra);
+                *curr_addr += WORD_SIZE;
 
-        } else if matches!(arg.mode, AddrMode::AutoInc) {
-            let extra = arg.extra.take();
-            let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
-            arg.extra = Extra::Imm(*loc);
+            } else if matches!(arg.mode, AddrMode::AutoInc) {
+                let extra = arg.extra.take();
+                let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
+                arg.extra = Extra::Imm(*loc);
+                *curr_addr += WORD_SIZE;
+            }
+        } else if arg.extra.is_rel() {
+            assert!(matches!(arg.mode, AddrMode::Index | AddrMode::IndexDef));
+            let loc = arg.extra.take().unwrap_rel();
+            arg.extra = Extra::Imm((loc as i32 - *curr_addr as i32 - 2) as u16);
+            *curr_addr += WORD_SIZE;
+        } else if arg.extra.is_imm() {
+            *curr_addr += WORD_SIZE;
         }
     }
 
@@ -176,17 +185,19 @@ impl Assembler {
                 match ins {
                     Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr),
                     Ins::DoubleOperand(ins) => {
-                        self.resolve_regarg(&mut ins.src, addr);
-                        self.resolve_regarg(&mut ins.dst, addr);
+                        self.resolve_regarg(&mut ins.src, &mut addr);
+                        self.resolve_regarg(&mut ins.dst, &mut addr);
                     },
-                    Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, addr),
-                    Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, addr),
+                    Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
+                    Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
 
                     // TODO: other kinds of labels!
                     _ => (),
                 }
+                addr += WORD_SIZE;
+            } else {
+                addr += stmt.size();
             }
-            addr += stmt.size();
         }
     }
 

@@ -1,4 +1,6 @@
 
+use crate::constants::WORD_SIZE;
+
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
 
@@ -40,6 +42,7 @@ impl AddrMode {
 pub enum Extra {
     None,
     Imm(u16),
+    Rel(u16),
     LabelRef(String),
 }
 
@@ -55,6 +58,10 @@ impl Extra {
         panic!("Extra::unwrap_imm() called on non-imm: {self:?}");
     }
 
+    pub fn is_imm(&self) -> bool {
+        matches!{self, Extra::Imm(_)}
+    }
+
     pub fn unwrap_label_ref(&self) -> &String {
         if let Extra::LabelRef(val) = self {
             return val;
@@ -64,6 +71,17 @@ impl Extra {
 
     pub fn is_label_ref(&self) -> bool {
         matches!{self, Extra::LabelRef(_)}
+    }
+
+    pub fn unwrap_rel(&self) -> u16 {
+        if let Extra::Rel(val) = self {
+            return *val;
+        }
+        panic!("Extra::unwrap_rel() called on non-rel: {self:?}");
+    }
+
+    pub fn is_rel(&self) -> bool {
+        matches!{self, Extra::Rel(_)}
     }
 
     pub fn take(&mut self) -> Self {
@@ -527,7 +545,7 @@ impl Ins {
     }
 
     pub fn size(&self) -> u16 {
-        2 + 2 * self.num_imm()
+        WORD_SIZE + WORD_SIZE * self.num_imm()
     }
 
 }

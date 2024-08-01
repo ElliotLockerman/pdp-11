@@ -1,4 +1,6 @@
 
+pub const WORD_SIZE: u16 = 2; // Bytes
+
 pub const INTERUPT_START: u16 = 0o0;
 pub const INTERUPT_END: u16 = DATA_START; // Exclusive
 pub const DATA_START: u16 = 0o400;

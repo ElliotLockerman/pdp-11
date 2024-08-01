@@ -42,6 +42,8 @@ RegArg: RegArg = {
     <i:Imm> "(" <r:R> ")" => RegArg::new(AddrMode::Index, r, Extra::Imm(i)),
     "@" <i:Imm> "(" <r:R> ")" => RegArg::new(AddrMode::IndexDef, r, Extra::Imm(i)),
 
+    <Imm> => RegArg::new(AddrMode::Index, Reg::PC, Extra::Rel(<>)),
+    "@" <Imm> => RegArg::new(AddrMode::IndexDef, Reg::PC, Extra::Rel(<>)),
     "#" <Imm> => RegArg::new(AddrMode::AutoInc, Reg::PC, Extra::Imm(<>)),
     "@" "#" <Imm> => RegArg::new(AddrMode::AutoIncDef, Reg::PC, Extra::Imm(<>)),
 
