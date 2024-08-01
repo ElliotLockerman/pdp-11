@@ -1,0 +1,87 @@
+
+
+#[cfg(test)]
+mod tests {
+    use as_lib::assemble;
+    use emu_lib::Emulator;
+    use common::asm::Reg;
+    use common::constants::DATA_START;
+
+
+    // Because each test is run on a fresh emulator, unaffected flags will be false
+    #[derive(Debug, Clone, Copy)]
+    struct Flags {
+        c: bool,
+        v: bool, // overflow
+        z: bool,
+        n: bool,
+    }
+    const T: bool = true;
+    const F: bool = false;
+
+
+    fn run(
+        asm: &str,
+        r0_init: u16,
+        r1_init: u16,
+        r1_exp: u16,
+        flags_exp: Flags,
+    ) {
+        let asm = format!(r#"
+            {asm}
+            halt
+        "#);
+        let bin = assemble(&asm);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.get_state_mut().reg_write_word(Reg::R0, r0_init);
+        emu.get_state_mut().reg_write_word(Reg::R1, r1_init);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), r0_init);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R1), r1_exp);
+        let status = emu.get_state().get_status();
+        assert_eq!(status.get_carry(), flags_exp.c, "carry flag");
+        assert_eq!(status.get_overflow(),flags_exp.v, "overflow flag");
+        assert_eq!(status.get_zero(), flags_exp.z, "zero flag");
+        assert_eq!(status.get_negative(), flags_exp.n, "negative flag");
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    }
+
+
+    #[test]
+    fn test_mov() {
+        run("mov r0, r1", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
+        run("mov r0, r1", 1, 0, 1, Flags{z:F, n:F, c:F, v:F});
+        run("mov r0, r1", 0o177777, 0, 0o177777, Flags{z:F, n:T, c:F, v:F});
+    }
+
+    #[test]
+    fn test_add() {
+        run("add r0, r1", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
+        run("add r0, r1", 0, 1, 1, Flags{z:F, n:F, c:F, v:F});
+        run("add r0, r1", 1, 0, 1, Flags{z:F, n:F, c:F, v:F});
+        run("add r0, r1", 1, 1, 2, Flags{z:F, n:F, c:F, v:F});
+        run("add r0, r1", 0o177777, 0, 0o177777, Flags{z:F, n:T, c:F, v:F});
+        run("add r0, r1", 1, 0o177777, 0, Flags{z:T, n:F, c:T, v:F});
+        run("add r0, r1", 1, 0o077777, 0o100000, Flags{z:F, n:T, c:F, v:T});
+    }
+
+    #[test]
+    fn test_sub() {
+        run("sub r0, r1", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
+        run("sub r0, r1", 1, 1, 0, Flags{z:T, n:F, c:F, v:F});
+        run("sub r0, r1", 1, 0o100000, 0o077777, Flags{z:F, n:F, c:F, v:T});
+        run("sub r0, r1", 1, 0, 0o177777, Flags{z:F, n:T, c:T, v:F});
+        run("sub r0, r1", 1, 0o177777, 0o177776, Flags{z:F, n:T, c:F, v:F});
+    }
+
+    #[test]
+    fn test_movb() {
+        run("movb r0, r1", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
+        run("movb r0, r1", 1, 0, 1, Flags{z:F, n:F, c:F, v:F});
+        run("movb r0, r1", 0o377, 0, 0o177777, Flags{z:F, n:T, c:F, v:F});
+        run("movb r0, r1", 0o400, 0, 0, Flags{z:T, n:F, c:F, v:F});
+    }
+
+}
+    

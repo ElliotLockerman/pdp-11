@@ -20,7 +20,7 @@ enum Size {
 }
 
 impl Size {
-    fn bytes(&self) -> u16 {
+    fn bytes(self) -> u16 {
         match self {
             Size::Byte => 1,
             Size::Word => 2,
@@ -29,6 +29,13 @@ impl Size {
 
     fn bits(&self) -> u16 {
         self.bytes() * 8
+    }
+
+    fn mask(self) -> u32 {
+        match self {
+            Size::Byte => 0xff,
+            Size::Word => 0xffff,
+        }
     }
 }
 
@@ -171,6 +178,10 @@ impl Emulator {
         &self.state
     }
 
+    pub fn get_state_mut(&mut self) -> &mut EmulatorState {
+        &mut self.state
+    }
+
     fn write_resolved_word(&mut self, res: ResolvedRegArg, val: u16) {
         match res {
             ResolvedRegArg::Reg(r) => self.state.reg_write_word(r, val),
@@ -294,6 +305,7 @@ impl Emulator {
     }
 
     fn do_add(&mut self, src: &RegArg, dst: &RegArg, size: Size) {
+        assert!(size == Size::Word);
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
         let src_sign = sign_bit(src_val, size);
@@ -303,7 +315,7 @@ impl Emulator {
         let res = src_val + dst_val;
         let res_sign = sign_bit(res, size);
 
-        self.state.status.set_zero(res == 0);
+        self.state.status.set_zero((res & size.mask()) == 0);
         self.state.status.set_negative(res_sign != 0);
         self.state.status.set_carry(res >> size.bits() != 0);
         self.state.status.set_overflow(src_sign == dst_sign && dst_sign != res_sign);
@@ -318,10 +330,10 @@ impl Emulator {
         let dst = self.resolve(dst, size);
         let dst_val = self.read_resolved_widen(dst, size);
         let dst_sign = sign_bit(dst_val, size);
-        let res = dst_val - src_val;
+        let res = dst_val.wrapping_add((!src_val).wrapping_add(1) & size.mask());
         let res_sign = sign_bit(res, size);
 
-        self.state.status.set_zero(res == 0);
+        self.state.status.set_zero((res & size.mask()) == 0);
         self.state.status.set_negative(res_sign != 0);
         self.state.status.set_carry(dst_val < src_val);
         self.state.status.set_overflow(src_sign != dst_sign && src_sign == res_sign);
