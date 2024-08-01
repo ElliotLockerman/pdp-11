@@ -99,7 +99,6 @@ mod tests {
         run("bic", 0o2, 0o7, 0o5, Flags{z:F, n:F, c:F, v:F});
         run("bic", 0o0, 0o177777, 0o177777, Flags{z:F, n:T, c:F, v:F});
         run("bic", 0o1, 0o177777, 0o177776, Flags{z:F, n:T, c:F, v:F});
-        run("bic", 0o1, 0o177777, 0o177776, Flags{z:F, n:T, c:F, v:F});
     }
 
     #[test]
@@ -139,7 +138,28 @@ mod tests {
         run("bisb", 0o1, 0o1, 0o1, Flags{z:F, n:F, c:F, v:F});
         run("bisb", 0o1, 0o2, 0o3, Flags{z:F, n:F, c:F, v:F});
         run("bisb", 0o207, 0o20, 0o227, Flags{z:F, n:T, c:F, v:F});
+        run("bisb", 0o207, 0o7020, 0o7227, Flags{z:F, n:T, c:F, v:F});
+        run("bisb", 0o50207, 0o7020, 0o7227, Flags{z:F, n:T, c:F, v:F});
     }
 
+    #[test]
+    fn test_bicb() {
+        run("bicb", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
+        run("bicb", 0o7, 0o7, 0o0, Flags{z:T, n:F, c:F, v:F});
+        run("bicb", 0o2, 0o7, 0o5, Flags{z:F, n:F, c:F, v:F});
+        run("bicb", 0o10000, 0o177777, 0o177777, Flags{z:F, n:T, c:F, v:F});
+        run("bicb", 0o10000, 0o77, 0o77, Flags{z:F, n:F, c:F, v:F});
+        run("bicb", 0o10010, 0o177777, 0o177767, Flags{z:F, n:T, c:F, v:F});
+        run("bicb", 0o10010, 0o177477, 0o177467, Flags{z:F, n:F, c:F, v:F});
+    }
+
+    #[test]
+    fn test_bitb() {
+        run("bitb", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
+        run("bitb", 0o1, 0o1, 0o1, Flags{z:F, n:F, c:F, v:F});
+        run("bitb", 0o1, 0o2, 0o2, Flags{z:T, n:F, c:F, v:F});
+        run("bitb", 0o200, 0o200, 0o200, Flags{z:F, n:T, c:F, v:F});
+        run("bitb", 0o100000, 0o100000, 0o100000, Flags{z:T, n:F, c:F, v:F});
+    }
 }
     
