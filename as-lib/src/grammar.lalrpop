@@ -22,11 +22,11 @@ R: Reg = {
 };
 
 Imm: u16 = {
-    <r#"\d*\."#> => {
+    <r#"-?\d*\."#> => {
         let s = <>;
         parse_int(&s[..s.len() - 1], 10)
     },
-    <r#"[0-7]+"#> => parse_int(<>, 8),
+    <r#"-?[0-7]+"#> => parse_int(<>, 8),
 };
 
 Label: String = {

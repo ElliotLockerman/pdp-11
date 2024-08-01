@@ -312,6 +312,51 @@ mod tests {
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 17);
     }
+
+    #[test]
+    fn negative_numbers() {
+        let prog = r#"
+            .word -0
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o0);
+
+        let prog = r#"
+            .word -7
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], -0o7i16 as u16);
+
+        let prog = r#"
+            .word 17
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o17);
+
+        let prog = r#"
+            .word 0.
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0);
+
+        let prog = r#"
+            .word 7.
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 7);
+
+        let prog = r#"
+            .word 17.
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 17);
+    }
 }
 
 
