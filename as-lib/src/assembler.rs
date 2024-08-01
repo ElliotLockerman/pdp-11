@@ -190,8 +190,7 @@ impl Assembler {
                     },
                     Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
                     Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
-
-                    // TODO: other kinds of labels!
+                    Ins::SingleOperand(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
                     _ => (),
                 }
                 addr += WORD_SIZE;
