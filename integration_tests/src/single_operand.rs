@@ -153,6 +153,36 @@ mod multiple_precision_tests {
         run("sbc", 0o100001, 0o100001, flags(), flags().c().n());
         run("sbc", 0o100001, 0o100000, flags().c(), flags().c().v().n());
     }
+
+    #[test]
+    fn test_ror() {
+        run("ror", 0o0, 0o0, flags(), flags().z());
+        run("ror", 0o1, 0o0, flags(), flags().c().v().z());
+        run("ror", 0o2, 0o1, flags(), flags());
+        run("ror", 0o50, 0o24, flags(), flags());
+        run("ror", 0o0, 0o100000, flags().c(), flags().n().v());
+        run("ror", 0o1, 0o100000, flags().c(), flags().n().c());
+        run("ror", 0o100000, 0o040000, flags(), flags());
+        run("ror", 0o100000, 0o140000, flags().c(), flags().n().v());
+        run("ror", 0o177777, 0o077777, flags(), flags().c().v());
+        run("ror", 0o177777, 0o177777, flags().c(), flags().c().n());
+    }
+
+
+    #[test]
+    fn test_rol() {
+        run("rol", 0o0, 0o0, flags(), flags().z());
+        run("rol", 0o1, 0o2, flags(), flags());
+        run("rol", 0o50, 0o120, flags(), flags());
+        run("rol", 0o0, 0o1, flags().c(), flags());
+        run("rol", 0o100000, 0o0, flags(), flags().z().c().v());
+        run("rol", 0o100000, 0o1, flags().c(), flags().c().v());
+        run("rol", 0o040000, 0o100000, flags(), flags().n().v());
+        run("rol", 0o040000, 0o100001, flags().c(), flags().n().v());
+        run("rol", 0o140000, 0o100001, flags().c(), flags().n().c());
+        run("rol", 0o177777, 0o177776, flags(), flags().n().c());
+        run("rol", 0o177777, 0o177777, flags().c(), flags().c().n());
+    }
 }
 
 
