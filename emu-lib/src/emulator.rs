@@ -552,13 +552,13 @@ impl Emulator {
             SingleOperandOpcode::Sbc => {
                 let carry = self.state.status.get_carry();
                 let val = self.read_resolved_word(dst);
-                let res = val - carry as u16;
+                let res = val.wrapping_sub(carry as u16);
 
                 self.write_resolved_word(dst, res);
                 self.state.status.set_zero(res == 0);
                 self.state.status.set_negative(res >> 15 != 0);
-                self.state.status.set_carry(val == 0 && carry);
-                self.state.status.set_overflow(val == 0o100000);
+                self.state.status.set_carry(!(res == 0 && carry));
+                self.state.status.set_overflow(res == 0o100000);
             },
             SingleOperandOpcode::Ror => {
                 let val = self.read_resolved_word(dst);

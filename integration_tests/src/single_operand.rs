@@ -140,6 +140,19 @@ mod multiple_precision_tests {
         run("adc", 0o100000, 0o100001, flags().c(), flags().n());
         run("adc", 0o100000, 0o100000, flags(), flags().n());
     }
+
+    #[test]
+    fn test_sbc() {
+        run("sbc", 0o0, 0o0, flags(), flags().c().z());
+        run("sbc", 0o1, 0o0, flags().c(), flags().z());
+        run("sbc", 0o0, 0o177777, flags().c(), flags().c().n());
+        run("sbc", 0o5, 0o5, flags(), flags().c());
+        run("sbc", 0o5, 0o4, flags().c(), flags().c());
+        run("sbc", 0o100000, 0o077777, flags().c(), flags().c());
+        run("sbc", 0o100000, 0o100000, flags(), flags().c().v().n());
+        run("sbc", 0o100001, 0o100001, flags(), flags().c().n());
+        run("sbc", 0o100001, 0o100000, flags().c(), flags().c().v().n());
+    }
 }
 
 
