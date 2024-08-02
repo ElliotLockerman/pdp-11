@@ -100,6 +100,26 @@ mod tests {
         run("swab", 0xff00, 0x00ff, flags().n());
         run("swab", 0xbeef, 0xefbe, flags().n());
     }
+
+    #[test]
+    fn test_asr() {
+        run("asr", 0o0, 0o0, flags().z());
+        run("asr", 0o1, 0o0, flags().z().c().v());
+        run("asr", 0o2, 0o1, flags());
+        run("asr", 0o50, 0o24, flags());
+        run("asr", 0o100000, 0o140000, flags().n().v());
+        run("asr", 0o177777, 0o177777, flags().n().c());
+        run("asr", 0o077777, 0o037777, flags().c().v());
+    }
+
+    #[test]
+    fn test_asl() {
+        run("asl", 0o0, 0o0, flags().z());
+        run("asl", 0o1, 0o2, flags());
+        run("asl", 0o50, 0o120, flags());
+        run("asl", 0o077777, 0o177776, flags().n().v());
+        run("asl", 0o177777, 0o177776, flags().n().c());
+    }
 }
 
 
