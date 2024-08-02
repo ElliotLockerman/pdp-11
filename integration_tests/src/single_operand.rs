@@ -170,6 +170,13 @@ mod tests {
         run("tstb", 0xfa81, 0xfa81, flags());
         run("tstb", 0xff01, 0xff01, flags().n());
     }
+
+    #[test]
+    fn test_comb() {
+        run("comb", 0x0, 0xff, flags().c().n());
+        run("comb", 0xffff, 0xff00, flags().c().z());
+        run("comb", 0xff38, 0xffc7, flags().c().n());
+    }
 }
 
 
@@ -213,6 +220,7 @@ mod multiple_precision_tests {
         run("adc", 0o0, 0o0, flags(), flags().z());
         run("adc", 0o0, 0o1, flags().c(), flags());
         run("adc", 0o7, 0o10, flags().c(), flags());
+        run("adc", 0o7, 0o7, flags(), flags());
         run("adc", 0o177777, 0o0, flags().c(), flags().z().c());
         run("adc", 0o177777, 0o177777, flags(), flags().n());
         run("adc", 0o077777, 0o100000, flags().c(), flags().n().v());
@@ -261,6 +269,35 @@ mod multiple_precision_tests {
         run("rol", 0o140000, 0o100001, flags().c(), flags().n().c());
         run("rol", 0o177777, 0o177776, flags(), flags().n().c());
         run("rol", 0o177777, 0o177777, flags().c(), flags().c().n());
+    }
+    
+    #[test]
+    fn test_adcb() {
+        run("adcb", 0x0, 0x0, flags(), flags().z());
+        run("adcb", 0x0, 0x1, flags().c(), flags());
+        run("adcb", 0x7, 0x7, flags(), flags());
+        run("adcb", 0xff00, 0xff00, flags(), flags().z());
+        run("adcb", 0xab07, 0xab08, flags().c(), flags());
+        run("adcb", 0xdd07, 0xdd07, flags(), flags());
+        run("adcb", 0xddff, 0xdd00, flags().c(), flags().z().c());
+        run("adcb", 0xddff, 0xddff, flags(), flags().n());
+        run("adcb", 0xdd7f, 0xdd7f, flags(), flags());
+        run("adcb", 0xdd7f, 0xdd80, flags().c(), flags().n().v());
+        run("adcb", 0xdd80, 0xdd80, flags(), flags().n());
+        run("adcb", 0xdd80, 0xdd81, flags().c(), flags().n());
+    }
+
+    #[test]
+    fn test_sbcb() {
+        run("sbcb", 0x0, 0x0, flags(), flags().c().z());
+        run("sbcb", 0x1, 0x0, flags().c(), flags().z());
+        run("sbcb", 0xaa00, 0xaaff, flags().c(), flags().c().n());
+        run("sbcb", 0xaa05, 0xaa05, flags(), flags().c());
+        run("sbcb", 0xaa05, 0xaa04, flags().c(), flags().c());
+        run("sbcb", 0xaa80, 0xaa7f, flags().c(), flags().c());
+        run("sbcb", 0xaa80, 0xaa80, flags(), flags().c().v().n());
+        run("sbcb", 0xaa81, 0xaa81, flags(), flags().c().n());
+        run("sbcb", 0xaa81, 0xaa80, flags().c(), flags().c().v().n());
     }
 }
 
