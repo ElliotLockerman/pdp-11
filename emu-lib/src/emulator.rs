@@ -511,7 +511,7 @@ impl Emulator {
             },
             SingleOperandOpcode::Neg => {
                 let val = self.read_resolved_word(dst);
-                let res = !val + 1;
+                let res = (!val).wrapping_add(1);
 
                 self.write_resolved_word(dst, res);
                 self.state.status.set_zero(res == 0);
