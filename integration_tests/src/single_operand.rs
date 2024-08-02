@@ -69,6 +69,7 @@ mod tests {
         run("neg", 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
         run("neg", 0o1, 0o177777, Flags{z:F, n:T, c:T, v:F});
         run("neg", 0o177777, 0o1, Flags{z:F, n:F, c:T, v:F});
+        run("neg", 0o077777, 0o100001, Flags{z:F, n:T, c:T, v:F});
         run("neg", 0o100000, 0o100000, Flags{z:F, n:T, c:T, v:T});
         run("neg", 0o6, 0o177772, Flags{z:F, n:T, c:T, v:F});
     }
@@ -148,6 +149,26 @@ mod tests {
         run("decb", 0xff80, 0xff7f, flags().v());
         run("decb", 0xffff, 0xfffe, flags().n());
         run("decb", 0xfff0, 0xffef, flags().n());
+    }
+
+    #[test]
+    fn test_negb() {
+        run("negb", 0x0, 0x0, flags().z());
+        run("negb", 0x1, 0xff, flags().n().c());
+        run("negb", 0xffff, 0xff01, flags().c());
+        run("negb", 0xff7f, 0xff81, flags().n().c());
+        run("negb", 0xff80, 0xff80, flags().n().c().v());
+        run("negb", 0x7706, 0x77fa, flags().n().c());
+    }
+
+    #[test]
+    fn test_tstb() {
+        run("tstb", 0x0, 0x0, flags().z());
+        run("tstb", 0x1, 0x1, flags().n());
+        run("tstb", 0x5, 0x5, flags().n());
+        run("tstb", 0xff80, 0xff80, flags().n());
+        run("tstb", 0xfa81, 0xfa81, flags());
+        run("tstb", 0xff01, 0xff01, flags().n());
     }
 }
 

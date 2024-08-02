@@ -37,6 +37,10 @@ impl Size {
             Size::Word => 0xffff,
         }
     }
+
+    fn smallest(self) -> u32 {
+        0x1 << (self.bits() - 1)
+    }
 }
 
 fn sign_bit(n: u32, size: Size) -> u32 {
@@ -497,7 +501,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative((res >> (size.bits() - 1) & 0x1) != 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
                 // Carry not affected
                 self.state.status.set_overflow(val == (size.mask() >> 1));
                 
@@ -508,26 +512,26 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative((res >> (size.bits() - 1) & 0x1) != 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
                 // Carry not affected
-                self.state.status.set_overflow(val == (0x1 << (size.bits() - 1)));
+                self.state.status.set_overflow(val == size.smallest());
             },
-            Neg => {
-                let val = self.read_resolved_word(dst);
+            Neg | NegB => {
+                let val = self.read_resolved_widen(dst, size);
                 let res = (!val).wrapping_add(1);
 
-                self.write_resolved_word(dst, res);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
-                self.state.status.set_carry(res != 0);
-                self.state.status.set_overflow(res == 0o100000);
+                self.write_resolved_narrow(dst, res, size);
+                self.state.status.set_zero(res & size.mask() == 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_carry(res & size.mask() != 0);
+                self.state.status.set_overflow(val == size.smallest());
             },
-            Tst => {
-                let val = self.read_resolved_word(dst);
-                let (res, _) = 0u16.overflowing_sub(val);
+            Tst | TstB => {
+                let val = self.read_resolved_widen(dst, size);
+                let (res, _) = 0u32.overflowing_sub(val);
 
                 self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
                 self.state.status.set_carry(false);
                 self.state.status.set_overflow(false);
             },
