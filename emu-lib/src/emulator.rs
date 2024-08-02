@@ -471,13 +471,13 @@ impl Emulator {
         match ins.op {
             SingleOperandOpcode::Swab => {
                 let val = self.read_resolved_word(dst);
-                let upper = val >> 7;
-                let lower = val & ((1u16 << 7) - 1);
-                let res = (lower << 7) | upper;
+                let upper = val >> 8;
+                let lower = val & ((1u16 << 8) - 1);
+                let res = (lower << 8) | upper;
 
                 self.write_resolved_word(dst, res);
-                self.state.status.set_zero(upper == 0);
-                self.state.status.set_negative((res >> 7) & 0x1 == 0);
+                self.state.status.set_zero((res & 0xff) == 0);
+                self.state.status.set_negative((res >> 7) & 0x1 == 1);
                 self.state.status.set_carry(false);
                 self.state.status.set_overflow(false);
             },

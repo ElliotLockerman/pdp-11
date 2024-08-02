@@ -6,7 +6,7 @@ mod tests {
     use emu_lib::Emulator;
     use common::asm::Reg;
     use common::constants::DATA_START;
-    use crate::flags::Flags;
+    use crate::flags::{flags, Flags};
 
     const T: bool = true;
     const F: bool = false;
@@ -90,6 +90,15 @@ mod tests {
         run("com", 0o177777, 0o0, Flags{z:T, n:F, c:T, v:F});
         run("com", 0o133333, 0o044444, Flags{z:F, n:F, c:T, v:F});
         run("com", 0o134343, 0o043434, Flags{z:F, n:F, c:T, v:F});
+    }
+
+
+    #[test]
+    fn test_swab() {
+        run("swab", 0x0, 0x0, flags().z());
+        run("swab", 0x00ff, 0xff00, flags().z());
+        run("swab", 0xff00, 0x00ff, flags().n());
+        run("swab", 0xbeef, 0xefbe, flags().n());
     }
 }
 

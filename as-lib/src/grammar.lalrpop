@@ -108,6 +108,7 @@ I: Ins = {
     "rol" <RegArg> => make_single_operand_ins!(Rol, <>),
     "asr" <RegArg> => make_single_operand_ins!(Asr, <>),
     "asl" <RegArg> => make_single_operand_ins!(Asl, <>),
+    "swab" <RegArg> => make_single_operand_ins!(Swab, <>),
 
     "nop" => make_cc_ins!(Nop),
     "clc" => make_cc_ins!(Clc),
