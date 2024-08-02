@@ -9,10 +9,10 @@ use log::trace;
 pub struct Status(u16);
 
 impl Status {
-    const CARRY: usize = 0;
-    const OVERFLOW: usize = 1;
-    const ZERO: usize = 2;
-    const NEGATIVE: usize = 3;
+    pub const CARRY: usize = 0;
+    pub const OVERFLOW: usize = 1;
+    pub const ZERO: usize = 2;
+    pub const NEGATIVE: usize = 3;
     const T: usize = 4;
 
     const PRIO: usize = 5;
@@ -171,6 +171,10 @@ impl EmulatorState {
 
     pub fn get_status(&self) -> &Status {
         &self.status
+    }
+
+    pub fn get_status_mut(&mut self) -> &mut Status {
+        &mut self.status
     }
 }
 

@@ -6,20 +6,14 @@ mod tests {
     use emu_lib::Emulator;
     use common::asm::Reg;
     use common::constants::DATA_START;
+    use crate::flags::Flags;
 
 
-    // Because each test is run on a fresh emulator, unaffected flags will be false
-    #[derive(Debug, Clone, Copy)]
-    struct Flags {
-        c: bool,
-        v: bool, // overflow
-        z: bool,
-        n: bool,
-    }
     const T: bool = true;
     const F: bool = false;
 
 
+    // Because each test is run on a fresh emulator, unaffected flags will be false
     fn run(
         ins: &str,
         r0_init: u16,

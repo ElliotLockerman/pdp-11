@@ -541,7 +541,7 @@ impl Emulator {
             SingleOperandOpcode::Adc => {
                 let carry = self.state.status.get_carry();
                 let val = self.read_resolved_word(dst);
-                let res = val + carry as u16;
+                let res = val.wrapping_add(carry as u16);
 
                 self.write_resolved_word(dst, res);
                 self.state.status.set_zero(res == 0);
