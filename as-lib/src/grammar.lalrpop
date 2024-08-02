@@ -108,6 +108,20 @@ I: Ins = {
     "rol" <RegArg> => make_single_operand_ins!(Rol, <>),
     "asr" <RegArg> => make_single_operand_ins!(Asr, <>),
     "asl" <RegArg> => make_single_operand_ins!(Asl, <>),
+
+    "clrb" <RegArg> => make_single_operand_ins!(ClrB, <>),
+    "comb" <RegArg> => make_single_operand_ins!(ComB, <>),
+    "incb" <RegArg> => make_single_operand_ins!(IncB, <>),
+    "decb" <RegArg> => make_single_operand_ins!(DecB, <>),
+    "negb" <RegArg> => make_single_operand_ins!(NegB, <>),
+    "adcb" <RegArg> => make_single_operand_ins!(AdcB, <>),
+    "sbcb" <RegArg> => make_single_operand_ins!(SbcB, <>),
+    "tstb" <RegArg> => make_single_operand_ins!(TstB, <>),
+    "rorb" <RegArg> => make_single_operand_ins!(RorB, <>),
+    "rolb" <RegArg> => make_single_operand_ins!(RolB, <>),
+    "asrb" <RegArg> => make_single_operand_ins!(AsrB, <>),
+    "aslb" <RegArg> => make_single_operand_ins!(AslB, <>),
+
     "swab" <RegArg> => make_single_operand_ins!(Swab, <>),
 
     "nop" => make_cc_ins!(Nop),

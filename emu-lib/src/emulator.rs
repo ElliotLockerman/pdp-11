@@ -41,8 +41,8 @@ impl Size {
 
 fn sign_bit(n: u32, size: Size) -> u32 {
     match size {
-        Size::Word => n >> (15) & 0x1,
-        Size::Byte => n >> (7) & 0x1,
+        Size::Word => (n >> 15) & 0x1,
+        Size::Byte => (n >> 7) & 0x1,
     }
 }
 
@@ -354,22 +354,23 @@ impl Emulator {
     }
 
     fn exec_double_operand_ins(&mut self, ins: &DoubleOperandIns) {
+        use DoubleOperandOpcode::*;
         match ins.op {
-            DoubleOperandOpcode::Mov => self.do_mov(&ins.src, &ins.dst, Size::Word),
-            DoubleOperandOpcode::Cmp => self.do_sub(&ins.dst, &ins.src, Size::Word, true),
-            DoubleOperandOpcode::Bis => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Word, false),
-            DoubleOperandOpcode::Bic => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Word, false),
-            DoubleOperandOpcode::Bit => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Word, true),
+            Mov => self.do_mov(&ins.src, &ins.dst, Size::Word),
+            Cmp => self.do_sub(&ins.dst, &ins.src, Size::Word, true),
+            Bis => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Word, false),
+            Bic => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Word, false),
+            Bit => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Word, true),
 
-            DoubleOperandOpcode::Add => self.do_add(&ins.src, &ins.dst, Size::Word) ,
+            Add => self.do_add(&ins.src, &ins.dst, Size::Word) ,
 
-            DoubleOperandOpcode::MovB => self.do_mov(&ins.src, &ins.dst, Size::Byte),
-            DoubleOperandOpcode::CmpB => self.do_sub(&ins.dst,  &ins.src, Size::Byte, true),
-            DoubleOperandOpcode::BisB => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Byte, false),
-            DoubleOperandOpcode::BicB => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Byte, false),
-            DoubleOperandOpcode::BitB => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Byte, true),
+            MovB => self.do_mov(&ins.src, &ins.dst, Size::Byte),
+            CmpB => self.do_sub(&ins.dst,  &ins.src, Size::Byte, true),
+            BisB => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Byte, false),
+            BicB => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Byte, false),
+            BitB => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Byte, true),
 
-            DoubleOperandOpcode::Sub => self.do_sub(&ins.src, &ins.dst, Size::Word, false) ,
+            Sub => self.do_sub(&ins.src, &ins.dst, Size::Word, false) ,
         }
     }
 
@@ -467,9 +468,11 @@ impl Emulator {
     }
 
     fn exec_single_operand_ins(&mut self, ins: &SingleOperandIns) {
+        let size = if ins.is_byte() { Size::Byte } else { Size::Word };
         let dst = self.resolve(&ins.dst, Size::Word);
+        use SingleOperandOpcode::*;
         match ins.op {
-            SingleOperandOpcode::Swab => {
+            Swab => {
                 let val = self.read_resolved_word(dst);
                 let upper = val >> 8;
                 let lower = val & ((1u16 << 8) - 1);
@@ -481,35 +484,35 @@ impl Emulator {
                 self.state.status.set_carry(false);
                 self.state.status.set_overflow(false);
             },
-            SingleOperandOpcode::Clr => {
-                self.write_resolved_word(dst, 0);
+            Clr | ClrB => {
+                self.write_resolved_narrow(dst, 0, size);
                 self.state.status.set_zero(true);
                 self.state.status.set_negative(false);
                 self.state.status.set_carry(false);
                 self.state.status.set_overflow(false);
             },
-            SingleOperandOpcode::Inc => {
-                let val = self.read_resolved_word(dst);
+            Inc | IncB => {
+                let val = self.read_resolved_widen(dst, size);
                 let (res, _) = val.overflowing_add(1);
 
-                self.write_resolved_word(dst, res);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
+                self.write_resolved_narrow(dst, res, size);
+                self.state.status.set_zero((res & size.mask()) == 0);
+                self.state.status.set_negative((res >> (size.bits() - 1) & 0x1) != 0);
                 // Carry not affected
-                self.state.status.set_overflow(val == 0o77777);
+                self.state.status.set_overflow(val == (size.mask() >> 1));
                 
             },
-            SingleOperandOpcode::Dec => {
-                let val = self.read_resolved_word(dst);
+            Dec | DecB => {
+                let val = self.read_resolved_widen(dst, size);
                 let (res, _) = val.overflowing_sub(1);
 
-                self.write_resolved_word(dst, res);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
+                self.write_resolved_narrow(dst, res, size);
+                self.state.status.set_zero(res & size.mask() == 0);
+                self.state.status.set_negative((res >> (size.bits() - 1) & 0x1) != 0);
                 // Carry not affected
-                self.state.status.set_overflow(val == 0o100000);
+                self.state.status.set_overflow(val == (0x1 << (size.bits() - 1)));
             },
-            SingleOperandOpcode::Neg => {
+            Neg => {
                 let val = self.read_resolved_word(dst);
                 let res = (!val).wrapping_add(1);
 
@@ -519,7 +522,7 @@ impl Emulator {
                 self.state.status.set_carry(res != 0);
                 self.state.status.set_overflow(res == 0o100000);
             },
-            SingleOperandOpcode::Tst => {
+            Tst => {
                 let val = self.read_resolved_word(dst);
                 let (res, _) = 0u16.overflowing_sub(val);
 
@@ -528,7 +531,7 @@ impl Emulator {
                 self.state.status.set_carry(false);
                 self.state.status.set_overflow(false);
             },
-            SingleOperandOpcode::Com => {
+            Com => {
                 let val = self.read_resolved_word(dst);
                 let res = !val;
 
@@ -538,7 +541,7 @@ impl Emulator {
                 self.state.status.set_carry(true);
                 self.state.status.set_overflow(false);
             },
-            SingleOperandOpcode::Adc => {
+            Adc => {
                 let carry = self.state.status.get_carry();
                 let val = self.read_resolved_word(dst);
                 let res = val.wrapping_add(carry as u16);
@@ -549,7 +552,7 @@ impl Emulator {
                 self.state.status.set_carry(val == 0o177777 && carry);
                 self.state.status.set_overflow(val == 0o077777 && carry);
             },
-            SingleOperandOpcode::Sbc => {
+            Sbc => {
                 let carry = self.state.status.get_carry();
                 let val = self.read_resolved_word(dst);
                 let res = val.wrapping_sub(carry as u16);
@@ -560,7 +563,7 @@ impl Emulator {
                 self.state.status.set_carry(!(res == 0 && carry));
                 self.state.status.set_overflow(res == 0o100000);
             },
-            SingleOperandOpcode::Ror => {
+            Ror => {
                 let val = self.read_resolved_word(dst);
                 let carry = self.state.status.get_carry() as u16;
                 let new_carry = val & 0x1;
@@ -574,7 +577,7 @@ impl Emulator {
                 let n = self.state.status.get_negative() as u16;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
-            SingleOperandOpcode::Rol => {
+            Rol => {
                 let val = self.read_resolved_word(dst);
                 let carry = self.state.status.get_carry() as u16;
                 let new_carry = (val >> 15) & 0x1;
@@ -588,7 +591,7 @@ impl Emulator {
                 let n = self.state.status.get_negative() as u16;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
-            SingleOperandOpcode::Asr => {
+            Asr => {
                 let val = self.read_resolved_word(dst);
                 let new_carry = val & 0x1;
                 let res = (val as i16) >> 1; // i16 for arithmetic shift
@@ -601,7 +604,7 @@ impl Emulator {
                 let n = self.state.status.get_negative() as u16;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
-            SingleOperandOpcode::Asl => {
+            Asl => {
                 let val = self.read_resolved_word(dst);
                 let res = val << 1;
                 let new_carry = (val >> 15) & 0x1;

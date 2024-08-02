@@ -120,6 +120,35 @@ mod tests {
         run("asl", 0o077777, 0o177776, flags().n().v());
         run("asl", 0o177777, 0o177776, flags().n().c());
     }
+
+    #[test]
+    fn test_clrb() {
+        run("clrb", 0o0, 0, flags().z());
+        run("clrb", 0o4, 0, flags().z());
+        run("clrb", 0o377, 0, flags().z());
+        run("clrb", 0xffff, 0xff00, flags().z());
+        run("clrb", 0x3ff, 0x0300, flags().z());
+    }
+
+    #[test]
+    fn test_incb() {
+        run("incb", 0o0, 0o1, flags());
+        run("incb", 0o7, 0o10, flags());
+        run("incb", 0xffff, 0xff00, flags().z());
+        run("incb", 0xff6f, 0xff70, flags());
+        run("incb", 0xff7f, 0xff80, flags().n().v());
+    }
+
+    #[test]
+    fn test_decb() {
+        run("decb", 0o1, 0o0, flags().z());
+        run("decb", 0o7, 0o6, flags());
+        run("decb", 0x0, 0xff, flags().n());
+        run("decb", 0xff00, 0xffff, flags().n());
+        run("decb", 0xff80, 0xff7f, flags().v());
+        run("decb", 0xffff, 0xfffe, flags().n());
+        run("decb", 0xfff0, 0xffef, flags().n());
+    }
 }
 
 

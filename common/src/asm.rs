@@ -397,6 +397,10 @@ impl SingleOperandIns {
     pub fn num_imm(&self) -> u16 {
         self.dst.num_imm()
     }
+
+    pub fn is_byte(&self) -> bool {
+        (self.op as u32) >= (SingleOperandOpcode::ClrB as u32)
+    }
 }
 
 impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
