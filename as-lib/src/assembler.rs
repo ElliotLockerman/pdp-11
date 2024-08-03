@@ -38,11 +38,11 @@ impl Assembler {
         self.emit(bin);
 
         if ins.src.has_imm() {
-            self.emit(ins.src.extra.unwrap_imm());
+            self.emit(ins.src.extra.unwrap_val());
         }
 
         if ins.dst.has_imm() {
-            self.emit(ins.dst.extra.unwrap_imm());
+            self.emit(ins.dst.extra.unwrap_val());
         }
     }
 
@@ -56,7 +56,7 @@ impl Assembler {
         let bin = (ins.op.to_u16().unwrap() << JmpIns::LOWER_BITS) | ins.dst.format();
         self.emit(bin);
         if ins.dst.has_imm() {
-            self.emit(ins.dst.extra.unwrap_imm());
+            self.emit(ins.dst.extra.unwrap_val());
         }
     }
 
@@ -66,7 +66,7 @@ impl Assembler {
             | ins.dst.format();
         self.emit(bin);
         if ins.dst.has_imm() {
-            self.emit(ins.dst.extra.unwrap_imm());
+            self.emit(ins.dst.extra.unwrap_val());
         }
     }
 
@@ -79,7 +79,7 @@ impl Assembler {
         let bin = (ins.op.to_u16().unwrap() << SingleOperandIns::LOWER_BITS) | ins.dst.format();
         self.emit(bin);
         if ins.dst.has_imm() {
-            self.emit(ins.dst.extra.unwrap_imm());
+            self.emit(ins.dst.extra.unwrap_val());
         }
 
     }
@@ -129,30 +129,35 @@ impl Assembler {
     }
 
     fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: &mut u16) {
-        if arg.extra.is_label_ref() {
-            if matches!(arg.mode, AddrMode::Index | AddrMode::IndexDef) {
-                assert_eq!(arg.reg, Reg::PC);
+        match &arg.extra {
+            Extra::None => return,
+            Extra::Imm(expr) => match expr {
+                Expr::Val(_) => (),
+                Expr::SymbolRef(symbol) => {
+                    let loc = self.symbols.get(symbol)
+                        .unwrap_or_else(|| panic!("Symbol {} not found", symbol));
+                    trace!("Resolving symbol \"{symbol}\" (imm) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}");
+                    arg.extra = Extra::Imm(Expr::Val(*loc));
+                },
+            },
+            Extra::Rel(expr) => {
+                let loc = match expr {
+                    Expr::Val(val) => val,
+                    Expr::SymbolRef(symbol) => 
+                        self.symbols.get(symbol)
+                            .unwrap_or_else(|| panic!("Symbol {} not found", symbol)),
+                };
+                let val = *loc as i32 - *curr_addr as i32 - 2;
 
-                let extra = arg.extra.take();
-                let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
-                arg.extra = Extra::Imm((*loc as i32 - *curr_addr as i32 - 2) as u16);
-                trace!("Resolving label \"{}\" to loc {loc}, curr_addr: {curr_addr}, final: {:?}", extra.unwrap_label_ref(), arg.extra);
-                *curr_addr += WORD_SIZE;
+                if let Expr::SymbolRef(symbol) = expr {
+                    trace!("Resolving symbol \"{symbol}\" (rel) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}, final: 0o{val:o}");
+                }
 
-            } else if matches!(arg.mode, AddrMode::AutoInc) {
-                let extra = arg.extra.take();
-                let loc = self.symbols.get(extra.unwrap_label_ref()).unwrap();
-                arg.extra = Extra::Imm(*loc);
-                *curr_addr += WORD_SIZE;
+                arg.extra = Extra::Imm(Expr::Val(val as u16));
+
             }
-        } else if arg.extra.is_rel() {
-            assert!(matches!(arg.mode, AddrMode::Index | AddrMode::IndexDef));
-            let loc = arg.extra.take().unwrap_rel();
-            arg.extra = Extra::Imm((loc as i32 - *curr_addr as i32 - 2) as u16);
-            *curr_addr += WORD_SIZE;
-        } else if arg.extra.is_imm() {
-            *curr_addr += WORD_SIZE;
         }
+        *curr_addr += WORD_SIZE;
     }
 
     fn resolve_target(&self, target: &mut Target, curr_addr: u16) {

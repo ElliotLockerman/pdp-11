@@ -3,6 +3,7 @@ use crate::constants::WORD_SIZE;
 
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
+use derive_more::{IsVariant, Unwrap};
 
 
 pub trait InstrVariant<Opcode: FromPrimitive> {
@@ -38,54 +39,26 @@ impl AddrMode {
     pub const MASK: u16 = (1u16 << Self::NUM_BITS) - 1;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, IsVariant, Unwrap)]
+pub enum Expr {
+    Val(u16),
+    SymbolRef(String),
+}
+
+#[derive(Debug, Clone, IsVariant, Unwrap)]
 pub enum Extra {
     None,
-    Imm(u16),
-    Rel(u16),
-    LabelRef(String),
+    Imm(Expr),
+    Rel(Expr),
 }
 
 impl Extra {
-    pub fn is_some(&self) -> bool {
-        !std::matches!(self, Extra::None)
-    }
-
-    pub fn unwrap_imm(&self) -> u16 {
-        if let Extra::Imm(val) = self {
-            return *val;
+    pub fn unwrap_val(&self) -> u16 {
+        match &self {
+            Extra::Imm(e) => e.clone().unwrap_val(),
+            Extra::Rel(e) => e.clone().unwrap_val(),
+            Extra::None => todo!(),
         }
-        panic!("Extra::unwrap_imm() called on non-imm: {self:?}");
-    }
-
-    pub fn is_imm(&self) -> bool {
-        matches!{self, Extra::Imm(_)}
-    }
-
-    pub fn unwrap_label_ref(&self) -> &String {
-        if let Extra::LabelRef(val) = self {
-            return val;
-        }
-        panic!("Extra::unwrap_label_ref() called on non-label-ref: {self:?}");
-    }
-
-    pub fn is_label_ref(&self) -> bool {
-        matches!{self, Extra::LabelRef(_)}
-    }
-
-    pub fn unwrap_rel(&self) -> u16 {
-        if let Extra::Rel(val) = self {
-            return *val;
-        }
-        panic!("Extra::unwrap_rel() called on non-rel: {self:?}");
-    }
-
-    pub fn is_rel(&self) -> bool {
-        matches!{self, Extra::Rel(_)}
-    }
-
-    pub fn take(&mut self) -> Self {
-        std::mem::replace(self, Extra::None)
     }
 }
 
@@ -124,17 +97,21 @@ impl RegArg {
 
     pub fn new(mode: AddrMode, reg: Reg, extra: Extra) -> RegArg {
         let ret = RegArg{mode, reg, extra};
-        assert!(!ret.has_imm() || ret.extra.is_some());
+        assert!(!ret.needs_imm() || !ret.extra.is_none());
         ret
     }
 
-    pub fn has_imm(&self) -> bool {
+    fn needs_imm(&self) -> bool {
         use AddrMode::*;
         match self.mode {
             AutoInc | AutoIncDef => self.reg == Reg::PC,
             Index | IndexDef => true,
             _ => false,
         }
+    }
+
+    pub fn has_imm(&self) -> bool {
+        !self.extra.is_none()
     }
 
     pub fn num_imm(&self) -> u16 {

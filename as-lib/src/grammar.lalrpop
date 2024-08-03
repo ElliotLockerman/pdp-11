@@ -35,9 +35,15 @@ Imm: u16 = {
     },
 };
 
-Label: String = {
+Symbol: String = {
     <r#"[a-zA-Z_][a-zA-Z0-9_]*"#> => <>.to_string(),
 };
+
+Expr: Expr = {
+    <Imm> => Expr::Val(<>),
+    <Symbol> => Expr::SymbolRef(<>),
+}
+
  
 RegArg: RegArg = {
     <R> => RegArg::new(AddrMode::Gen, <>, Extra::None),
@@ -47,17 +53,13 @@ RegArg: RegArg = {
     "@" "(" <R> ")" "+" => RegArg::new(AddrMode::AutoIncDef, <>, Extra::None),
     "-" "(" <R> ")" => RegArg::new(AddrMode::AutoDec, <>, Extra::None),
     "@" "-" "(" <R> ")" => RegArg::new(AddrMode::AutoDecDef, <>, Extra::None),
-    <i:Imm> "(" <r:R> ")" => RegArg::new(AddrMode::Index, r, Extra::Imm(i)),
-    "@" <i:Imm> "(" <r:R> ")" => RegArg::new(AddrMode::IndexDef, r, Extra::Imm(i)),
+    <e:Expr> "(" <r:R> ")" => RegArg::new(AddrMode::Index, r, Extra::Imm(e)),
+    "@" <e:Expr> "(" <r:R> ")" => RegArg::new(AddrMode::IndexDef, r, Extra::Imm(e)),
 
-    <Imm> => RegArg::new(AddrMode::Index, Reg::PC, Extra::Rel(<>)),
-    "@" <Imm> => RegArg::new(AddrMode::IndexDef, Reg::PC, Extra::Rel(<>)),
-    "#" <Imm> => RegArg::new(AddrMode::AutoInc, Reg::PC, Extra::Imm(<>)),
-    "@" "#" <Imm> => RegArg::new(AddrMode::AutoIncDef, Reg::PC, Extra::Imm(<>)),
-
-    <Label> => RegArg::new(AddrMode::Index, Reg::PC, Extra::LabelRef(<>)),
-    "#" <Label> => RegArg::new(AddrMode::AutoInc, Reg::PC, Extra::LabelRef(<>)),
-    "@" <Label> => RegArg::new(AddrMode::IndexDef, Reg::PC, Extra::LabelRef(<>)),
+    <Expr> => RegArg::new(AddrMode::Index, Reg::PC, Extra::Rel(<>)),
+    "@" <Expr> => RegArg::new(AddrMode::IndexDef, Reg::PC, Extra::Rel(<>)),
+    "#" <Expr> => RegArg::new(AddrMode::AutoInc, Reg::PC, Extra::Imm(<>)),
+    "@" "#" <Expr> => RegArg::new(AddrMode::AutoIncDef, Reg::PC, Extra::Imm(<>)),
 };
 
 
@@ -78,24 +80,24 @@ I: Ins = {
     "bisb" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(BisB, src, dst),
     "sub" <src:RegArg> "," <dst:RegArg> => make_double_operand_ins!(Sub, src, dst),
 
-    "br" <Label> => make_branch_ins!(Br, <>),
-    "bne" <Label> => make_branch_ins!(Bne, <>),
-    "beq" <Label> => make_branch_ins!(Beq, <>),
-    "bge" <Label> => make_branch_ins!(Bge, <>),
-    "blt" <Label> => make_branch_ins!(Blt, <>),
-    "bgt" <Label> => make_branch_ins!(Bgt, <>),
-    "ble" <Label> => make_branch_ins!(Ble, <>),
+    "br" <Symbol> => make_branch_ins!(Br, <>),
+    "bne" <Symbol> => make_branch_ins!(Bne, <>),
+    "beq" <Symbol> => make_branch_ins!(Beq, <>),
+    "bge" <Symbol> => make_branch_ins!(Bge, <>),
+    "blt" <Symbol> => make_branch_ins!(Blt, <>),
+    "bgt" <Symbol> => make_branch_ins!(Bgt, <>),
+    "ble" <Symbol> => make_branch_ins!(Ble, <>),
 
-    "bpl" <Label> => make_branch_ins!(Bpl, <>),
-    "bmi" <Label> => make_branch_ins!(Bmi, <>),
-    "bhi" <Label> => make_branch_ins!(Bhi, <>),
-    "bhis" <Label> => make_branch_ins!(Bcc, <>),
-    "blo" <Label> => make_branch_ins!(Bcs, <>),
-    "blos" <Label> => make_branch_ins!(Blos, <>),
-    "bvc" <Label> => make_branch_ins!(Bvc, <>),
-    "bvs" <Label> => make_branch_ins!(Bvs, <>),
-    "bcc" <Label> => make_branch_ins!(Bcc, <>),
-    "bcs" <Label> => make_branch_ins!(Bcs, <>),
+    "bpl" <Symbol> => make_branch_ins!(Bpl, <>),
+    "bmi" <Symbol> => make_branch_ins!(Bmi, <>),
+    "bhi" <Symbol> => make_branch_ins!(Bhi, <>),
+    "bhis" <Symbol> => make_branch_ins!(Bcc, <>),
+    "blo" <Symbol> => make_branch_ins!(Bcs, <>),
+    "blos" <Symbol> => make_branch_ins!(Blos, <>),
+    "bvc" <Symbol> => make_branch_ins!(Bvc, <>),
+    "bvs" <Symbol> => make_branch_ins!(Bvs, <>),
+    "bcc" <Symbol> => make_branch_ins!(Bcc, <>),
+    "bcs" <Symbol> => make_branch_ins!(Bcs, <>),
 
     "jmp" <RegArg> => make_jmp_ins!(<>),
 
@@ -179,9 +181,9 @@ pub Cmd: Cmd = {
 };
 
 pub Stmt: Stmt = {
-    <label_def: Label> ":" => Stmt::new(Some(label_def), None),
+    <label_def: Symbol> ":" => Stmt::new(Some(label_def), None),
     <cmd:Cmd> => Stmt::new(None, Some(cmd)),
-    <label_def: Label> ":" <cmd:Cmd> => Stmt::new(Some(label_def), Some(cmd)),
+    <label_def: Symbol> ":" <cmd:Cmd> => Stmt::new(Some(label_def), Some(cmd)),
     () => Stmt::new(None, None),
 }
 

@@ -10,8 +10,7 @@ fn decode_reg_arg(arg: u16, input: &[u16], imm_idx: usize) -> RegArg {
     let mut arg = RegArg{mode, reg, extra: Extra::None};
 
     if arg.has_imm() {
-        // A normal immediate  is taken care of by pc-autoincrement
-        arg.extra = Extra::Imm(input[imm_idx]);
+        arg.extra = Extra::Imm(Expr::Val(input[imm_idx]));
     }
     arg
 }
