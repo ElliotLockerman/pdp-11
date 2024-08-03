@@ -571,32 +571,32 @@ impl Emulator {
                 self.state.status.set_carry(!((res & size.mask()) == 0 && carry));
                 self.state.status.set_overflow(res == size.smallest());
             },
-            Ror => {
-                let val = self.read_resolved_word(dst);
-                let carry = self.state.status.get_carry() as u16;
+            Ror | RorB => {
+                let val = self.read_resolved_widen(dst, size);
+                let carry = self.state.status.get_carry() as u32;
                 let new_carry = val & 0x1;
-                let res = (val >> 1) | (carry << 15);
+                let res = (val >> 1) | (carry << (size.bits() - 1));
 
-                self.write_resolved_word(dst, res);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
+                self.write_resolved_narrow(dst, res, size);
+                self.state.status.set_zero((res & size.mask()) == 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
                 self.state.status.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u16;
+                let n = self.state.status.get_negative() as u32;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
-            Rol => {
-                let val = self.read_resolved_word(dst);
-                let carry = self.state.status.get_carry() as u16;
-                let new_carry = (val >> 15) & 0x1;
+            Rol | RolB => {
+                let val = self.read_resolved_widen(dst, size);
+                let carry = self.state.status.get_carry() as u32;
+                let new_carry = (val >> (size.bits() - 1)) & 0x1;
                 let res = (val << 1) | carry;
 
-                self.write_resolved_word(dst, res);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
+                self.write_resolved_narrow(dst, res, size);
+                self.state.status.set_zero((res & size.mask()) == 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
                 self.state.status.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u16;
+                let n = self.state.status.get_negative() as u32;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
             Asr => {

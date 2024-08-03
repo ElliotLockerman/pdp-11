@@ -299,6 +299,35 @@ mod multiple_precision_tests {
         run("sbcb", 0xaa81, 0xaa81, flags(), flags().c().n());
         run("sbcb", 0xaa81, 0xaa80, flags().c(), flags().c().v().n());
     }
+
+    #[test]
+    fn test_rorb() {
+        run("rorb", 0xaa00, 0xaa00, flags(), flags().z());
+        run("rorb", 0xaa01, 0xaa00, flags(), flags().c().v().z());
+        run("rorb", 0xaa02, 0xaa01, flags(), flags());
+        run("rorb", 0xaa50, 0xaa28, flags(), flags());
+        run("rorb", 0xaa00, 0xaa80, flags().c(), flags().n().v());
+        run("rorb", 0xaa01, 0xaa80, flags().c(), flags().c().n());
+        run("rorb", 0xaa80, 0xaa40, flags(), flags());
+        run("rorb", 0xaa80, 0xaac0, flags().c(), flags().n().v());
+        run("rorb", 0xaaff, 0xaa7f, flags(), flags().c().v());
+        run("rorb", 0xaaff, 0xaaff, flags().c(), flags().c().n());
+    }
+
+    #[test]
+    fn test_rolb() {
+        run("rolb", 0xaa00, 0xaa00, flags(), flags().z());
+        run("rolb", 0xaa01, 0xaa02, flags(), flags());
+        run("rolb", 0xaa30, 0xaa60, flags(), flags());
+        run("rolb", 0xaa00, 0xaa01, flags().c(), flags());
+        run("rolb", 0xaa80, 0xaa00, flags(), flags().z().c().v());
+        run("rolb", 0xaa80, 0xaa01, flags().c(), flags().c().v());
+        run("rolb", 0xaa40, 0xaa80, flags(), flags().n().v());
+        run("rolb", 0xaa40, 0xaa81, flags().c(), flags().n().v());
+        run("rolb", 0xaac0, 0xaa81, flags().c(), flags().n().c());
+        run("rolb", 0xaaff, 0xaafe, flags(), flags().n().c());
+        run("rolb", 0xaaff, 0xaaff, flags().c(), flags().c().n());
+    }
 }
 
 
