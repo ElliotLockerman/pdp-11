@@ -64,6 +64,34 @@ fn test_literal_read_byte() {
 }
 
 #[test]
+fn test_char_literal_read() {
+    let bin = assemble(r#"
+        mov #177777, r0
+        mov #'a, r0
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0x61);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+}
+
+#[test]
+fn test_char_literal_read_byte() {
+    let bin = assemble(r#"
+        mov     #177777, r0
+        movb    #'a, r0
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0x61);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+}
+
+#[test]
 #[should_panic]
 fn test_literal_write() {
     let bin = assemble(r#"

@@ -357,6 +357,17 @@ mod tests {
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 17);
     }
+
+
+    #[test]
+    fn char_literal() {
+        let prog = r#"
+            .byte 'A
+        "#;
+        let bin = assemble(prog);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0x41);
+    }
 }
 
 

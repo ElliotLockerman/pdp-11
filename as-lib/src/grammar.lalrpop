@@ -27,6 +27,12 @@ Imm: u16 = {
         parse_int(&s[..s.len() - 1], 10)
     },
     <r#"-?[0-7]+"#> => parse_int(<>, 8),
+    <r#"'[!-~]"#> => {
+        let s = <>;
+        let mut chars = s.chars();
+        chars.next().unwrap();
+        chars.next().unwrap() as u8 as u16
+    },
 };
 
 Label: String = {
