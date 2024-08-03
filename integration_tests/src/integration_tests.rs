@@ -7,4 +7,5 @@ mod single_operand;
 mod condition_code;
 mod branch;
 mod jmp;
+mod call;
 

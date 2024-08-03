@@ -165,6 +165,9 @@ impl EmulatorState {
     // Returns next instruction and word after for 
     pub fn next_ins(&self) -> &[u16] {
         let pc = self.pc() as usize;
+        if pc & 0x1 != 0 {
+            panic!("PC 0o{pc:o} not aligned");
+        }
         let mem = &self.mem.as_slice()[pc..pc+6];
         unsafe { as_word_slice(mem) }
     }

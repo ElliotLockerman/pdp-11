@@ -239,11 +239,11 @@ impl Emulator {
         }
         let mut val = self.state.reg_read_word(reg);
         if !inc { 
-            val -= size.bytes();
+            val = val.wrapping_sub(size.bytes());
         }
         let ret = val;
         if inc { 
-            val += size.bytes();
+            val = val.wrapping_add(size.bytes());
         }
         self.state.reg_write_word(reg, val);
         ret
