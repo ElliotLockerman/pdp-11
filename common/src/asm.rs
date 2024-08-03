@@ -422,6 +422,7 @@ pub enum CCOpcode {
     Clv = 0o242,
     Clz = 0o244,
     Cln = 0o250,
+    // 0o260 is an alternate nop
     Sec = 0o261,
     Sev = 0o262,
     Sez = 0o264,
