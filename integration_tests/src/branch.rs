@@ -7,11 +7,7 @@ mod branch {
     use common::constants::DATA_START;
     use crate::flags::{Flags, flags};
 
-    fn run(
-        ins: &str,
-        flags: Flags,
-        should_take: bool
-    ) {
+    fn run(ins: &str, flags: Flags, should_take: bool) {
 
         let asm = format!(r#"
             {ins} taken

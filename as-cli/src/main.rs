@@ -20,6 +20,8 @@ struct Args {
 }
 
 fn main() {
+    env_logger::init();
+
     let opt = Args::parse();
     let input = std::fs::read_to_string(opt.input).unwrap();
     let output = assemble(input.as_str());

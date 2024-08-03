@@ -121,7 +121,7 @@ impl EmulatorState {
     }
 
     pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
-        trace!("Mem: writing {val} to 0{addr:?} (byte)");
+        trace!("Mem: writing {val} to 0o{addr:o} (byte)");
         self.mem[addr as usize] = val;
     }
 
@@ -131,7 +131,7 @@ impl EmulatorState {
     }
 
     pub fn mem_write_word(&mut self, addr: u16, val: u16) {
-        trace!("Mem: writing {val} to 0{addr:?} (word)");
+        trace!("Mem: writing {val} to 0o{addr:o} (word)");
         assert!(addr & 1 == 0);
         self.mem[addr as usize] = val as u8;
         self.mem[(addr + 1) as usize] = (val >> 8) as u8;

@@ -11,7 +11,7 @@ use std::ops::{BitOr, BitAnd};
 use std::rc::Rc;
 use std::cell::RefCell;
 
-use log::debug;
+use log::{debug, trace};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Size {
@@ -90,7 +90,7 @@ impl Emulator {
             }
             
             let ins = self.decode();
-            debug!("PC: 0{:0}: {:?}", self.state.pc(), ins);
+            debug!("PC: 0o{:o}: {:?}", self.state.pc(), ins);
             self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
             match self.exec(&ins) {
                 ExecRet::Ok => (),
@@ -383,7 +383,11 @@ impl Emulator {
     fn exec_misc_ins(&mut self, ins: &MiscIns) -> ExecRet {
         match ins.op {
             MiscOpcode::Halt => ExecRet::Halt,
-            _ => todo!(),
+            _ => panic!(
+                "Instruction {ins:?} (0o{:o}) at pc 0o{:o} not yet implemented",
+                ins.op as u16,
+                self.state.reg_read_word(Reg::PC)
+            ),
         }
     }
 
@@ -431,6 +435,7 @@ impl Emulator {
         };
         assert_eq!(new_pc & 0x1, 0);
 
+        trace!("PC: 0o{:o}: JMP to 0o{new_pc:o}", self.state.pc());
         self.state.reg_write_word(Reg::PC,  new_pc);
     }
 
