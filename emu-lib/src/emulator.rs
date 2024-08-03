@@ -45,12 +45,12 @@ impl Size {
     fn largest(self) -> u32 {
         self.smallest().wrapping_sub(1)
     }
-}
 
-fn sign_bit(n: u32, size: Size) -> u32 {
-    match size {
-        Size::Word => (n >> 15) & 0x1,
-        Size::Byte => (n >> 7) & 0x1,
+    fn sign_bit(self, val: u32) -> u32 {
+        match self {
+            Size::Word => (val >> 15) & 0x1,
+            Size::Byte => (val >> 7) & 0x1,
+        }
     }
 }
 
@@ -297,7 +297,7 @@ impl Emulator {
             self.write_resolved_word(dst, val as u16);
         }
         self.state.status.set_zero(val == 0);
-        self.state.status.set_negative(sign_bit(val, size) != 0);
+        self.state.status.set_negative(size.sign_bit(val) != 0);
         self.state.status.set_overflow(false);
     }
 
@@ -308,7 +308,7 @@ impl Emulator {
         let dst = self.resolve(dst, size);
         let dst_val = self.read_resolved_widen(dst, size);
         let res = op(src_val, dst_val);
-        let res_sign = sign_bit(res, size);
+        let res_sign = size.sign_bit(res);
 
         self.state.status.set_zero(res == 0);
         self.state.status.set_negative(res_sign != 0);
@@ -324,12 +324,12 @@ impl Emulator {
         assert!(size == Size::Word);
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
-        let src_sign = sign_bit(src_val, size);
+        let src_sign = size.sign_bit(src_val);
         let dst = self.resolve(dst, size);
         let dst_val = self.read_resolved_widen(dst, size);
-        let dst_sign = sign_bit(dst_val, size);
+        let dst_sign = size.sign_bit(dst_val);
         let res = src_val + dst_val;
-        let res_sign = sign_bit(res, size);
+        let res_sign = size.sign_bit(res);
 
         self.state.status.set_zero((res & size.mask()) == 0);
         self.state.status.set_negative(res_sign != 0);
@@ -342,12 +342,12 @@ impl Emulator {
     fn do_sub(&mut self, src: &RegArg, dst: &RegArg, size: Size, discard: bool) {
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
-        let src_sign = sign_bit(src_val, size);
+        let src_sign = size.sign_bit(src_val);
         let dst = self.resolve(dst, size);
         let dst_val = self.read_resolved_widen(dst, size);
-        let dst_sign = sign_bit(dst_val, size);
+        let dst_sign = size.sign_bit(dst_val);
         let res = dst_val.wrapping_add((!src_val).wrapping_add(1) & size.mask());
-        let res_sign = sign_bit(res, size);
+        let res_sign = size.sign_bit(res);
 
         self.state.status.set_zero((res & size.mask()) == 0);
         self.state.status.set_negative(res_sign != 0);
@@ -508,7 +508,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
                 self.state.status.set_overflow(val == (size.mask() >> 1));
                 
@@ -519,7 +519,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
                 self.state.status.set_overflow(val == size.smallest());
             },
@@ -529,7 +529,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(res & size.mask() != 0);
                 self.state.status.set_overflow(val == size.smallest());
             },
@@ -538,7 +538,7 @@ impl Emulator {
                 let (res, _) = 0u32.overflowing_sub(val);
 
                 self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(false);
                 self.state.status.set_overflow(false);
             },
@@ -548,7 +548,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(true);
                 self.state.status.set_overflow(false);
             },
@@ -559,7 +559,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(val == size.mask() && carry);
                 self.state.status.set_overflow(val == size.largest() && carry);
             },
@@ -570,7 +570,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(!((res & size.mask()) == 0 && carry));
                 self.state.status.set_overflow(res == size.smallest());
             },
@@ -582,7 +582,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(new_carry != 0);
 
                 let n = self.state.status.get_negative() as u32;
@@ -596,7 +596,7 @@ impl Emulator {
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(new_carry != 0);
 
                 let n = self.state.status.get_negative() as u32;
@@ -631,11 +631,11 @@ impl Emulator {
             Asl | AslB => {
                 let val = self.read_resolved_widen(dst, size);
                 let res = val << 1;
-                let new_carry = sign_bit(val, size);
+                let new_carry = size.sign_bit(val);
 
                 self.write_resolved_narrow(dst, res, size);
                 self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(new_carry != 0);
 
                 let n = self.state.status.get_negative() as u32;
