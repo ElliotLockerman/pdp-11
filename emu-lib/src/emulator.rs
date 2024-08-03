@@ -65,7 +65,6 @@ enum ResolvedRegArg {
 #[derive(Debug, Clone, Copy)]
 enum ExecRet {
     Ok,
-    Jmp,
     Halt,
 }
 
@@ -95,7 +94,6 @@ impl Emulator {
             self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
             match self.exec(&ins) {
                 ExecRet::Ok => (),
-                ExecRet::Jmp => (),
                 ExecRet::Halt => return,
             }
         }
@@ -415,7 +413,7 @@ impl Emulator {
             let pc = self.state.pc();
             let pc = pc.wrapping_add(off as i16 as u16);
             self.state.reg_write_word(Reg::PC,  pc);
-            return ExecRet::Jmp;
+            return ExecRet::Ok;
         }
 
         ExecRet::Ok
@@ -656,9 +654,9 @@ impl Emulator {
         match ins {
             Ins::DoubleOperand(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
             Ins::Branch(ins) => self.exec_branch_ins(ins),
-            Ins::Jmp(ins) => { self.exec_jmp_ins(ins); ExecRet::Jmp },
-            Ins::Jsr(ins) => { self.exec_jsr_ins(ins); ExecRet::Jmp },
-            Ins::Rts(ins) => { self.exec_rts_ins(ins); ExecRet::Jmp },
+            Ins::Jmp(ins) => { self.exec_jmp_ins(ins); ExecRet::Ok },
+            Ins::Jsr(ins) => { self.exec_jsr_ins(ins); ExecRet::Ok },
+            Ins::Rts(ins) => { self.exec_rts_ins(ins); ExecRet::Ok },
             Ins::SingleOperand(ins) => { self.exec_single_operand_ins(ins); ExecRet::Ok },
             Ins::CC(ins) => { self.exec_cc_ins(ins); ExecRet::Ok },
             Ins::Misc(ins) => self.exec_misc_ins(ins),
