@@ -612,20 +612,32 @@ impl Emulator {
                 let n = self.state.status.get_negative() as u16;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
-            Asl => {
-                let val = self.read_resolved_word(dst);
-                let res = val << 1;
-                let new_carry = (val >> 15) & 0x1;
+            AsrB => {
+                let val = self.read_resolved_byte(dst);
+                let new_carry = val & 0x1;
+                let res = (val as i8) >> 1; // i16 for arithmetic shift
 
-                self.write_resolved_word(dst, res);
+                self.write_resolved_byte(dst, res as u8);
                 self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
+                self.state.status.set_negative(res >> 7 != 0);
                 self.state.status.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u16;
+                let n = self.state.status.get_negative() as u8;
                 self.state.status.set_overflow((n ^ new_carry) != 0);
             },
-            _ => panic!("{:?} not yet implemented", ins.op),
+            Asl | AslB => {
+                let val = self.read_resolved_widen(dst, size);
+                let res = val << 1;
+                let new_carry = sign_bit(val, size);
+
+                self.write_resolved_narrow(dst, res, size);
+                self.state.status.set_zero(res & size.mask() == 0);
+                self.state.status.set_negative(sign_bit(res, size) != 0);
+                self.state.status.set_carry(new_carry != 0);
+
+                let n = self.state.status.get_negative() as u32;
+                self.state.status.set_overflow((n ^ new_carry) != 0);
+            },
         }
     }
 

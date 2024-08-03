@@ -177,6 +177,26 @@ mod tests {
         run("comb", 0xffff, 0xff00, flags().c().z());
         run("comb", 0xff38, 0xffc7, flags().c().n());
     }
+
+    #[test]
+    fn test_asrb() {
+        run("asrb", 0x0, 0x0, flags().z());
+        run("asrb", 0x1, 0x0, flags().z().c().v());
+        run("asrb", 0x2, 0x1, flags());
+        run("asrb", 0xaa50, 0xaa28, flags());
+        run("asrb", 0xaa80, 0xaac0, flags().n().v());
+        run("asrb", 0xaaff, 0xaaff, flags().n().c());
+        run("asrb", 0xaa7f, 0xaa3f, flags().c().v());
+    }
+
+    #[test]
+    fn test_aslb() {
+        run("aslb", 0x0, 0x0, flags().z());
+        run("aslb", 0x1, 0x2, flags());
+        run("aslb", 0xaa30, 0xaa60, flags());
+        run("aslb", 0xaa7f, 0xaafe, flags().n().v());
+        run("aslb", 0xaaff, 0xaafe, flags().n().c());
+    }
 }
 
 
