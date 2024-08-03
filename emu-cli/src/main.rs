@@ -19,7 +19,7 @@ fn main() {
 
     let opt = Args::parse();
 
-    let teleprinter = Teleprinter::new();
+    let teleprinter = Teleprinter::default();
     let mut emu = Emulator::new();
     emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
 

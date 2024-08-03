@@ -1,5 +1,7 @@
 
 use std::io::{stdout, Write};
+use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
 
 use crate::EmulatorState;
 
@@ -18,7 +20,45 @@ pub trait MMIOHandler {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+pub trait Printer {
+    fn write(&self, val: u8);
+}
+
+#[derive(Default, Clone, Copy)]
+struct StdoutPrinter();
+
+impl Printer for StdoutPrinter {
+    fn write(&self, val: u8) {
+        let mut out = stdout().lock();
+        out.write_all(&[val]).unwrap();
+        out.flush().unwrap();
+    }
+}
+
+const STDOUT: StdoutPrinter = StdoutPrinter();
+
+
+#[derive(Default)]
+pub struct PipePrinter {
+    buf: Mutex<VecDeque<u8>>,
+}
+
+impl Printer for PipePrinter {
+    fn write(&self, val: u8) {
+        self.buf.lock().unwrap().push_back(val);
+    }
+}
+
+impl PipePrinter {
+    pub fn take(&self) -> VecDeque<u8> {
+        std::mem::take(&mut self.buf.lock().unwrap())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 pub struct Teleprinter {
+    device: Arc<dyn Printer>,
     maintenance_control: bool, // Not used.
     interrupt_enabled: bool, // Not yet used.
     ready: bool,
@@ -27,12 +67,7 @@ pub struct Teleprinter {
 
 impl Default for Teleprinter {
     fn default() -> Self {
-        Teleprinter{
-            maintenance_control: false,
-            interrupt_enabled: false,
-            ready: true,
-            cycles_until_ready: 0,
-        }
+        Teleprinter::new_to_stdout()
     }
 }
 
@@ -56,8 +91,18 @@ impl Teleprinter {
 
     const DELAY_CYCLES: usize = 125_000;
 
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new_to_stdout() -> Self {
+        Self::new(Arc::new(STDOUT))
+    }
+
+    pub fn new(printer: Arc<dyn Printer>) -> Self {
+        Teleprinter{
+            device: printer,
+            maintenance_control: false,
+            interrupt_enabled: false,
+            ready: true,
+            cycles_until_ready: 0,
+        }
     }
 
     fn tps_write(&mut self, val: u8) {
@@ -74,9 +119,7 @@ impl Teleprinter {
 
     fn tpb_write(&mut self, val: u8) {
         if self.ready {
-            let mut out = stdout().lock();
-            out.write_all(&[val]).unwrap();
-            out.flush().unwrap();
+            self.device.write(val);
             self.cycles_until_ready = Self::DELAY_CYCLES;
             self.ready = false;
         } else {
@@ -124,7 +167,7 @@ impl MMIOHandler for Teleprinter {
         match addr {
             Self::TPS => self.tps_write(val),
             Self::TPB => self.tpb_write(val),
-            Self::TPS_UPPER | Self::TPB_UPPER => return,
+            Self::TPS_UPPER | Self::TPB_UPPER => (),
             _ => panic!("Teleprinter doesn't handle address {addr:o}"),
         }
     }
