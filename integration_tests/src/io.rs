@@ -8,7 +8,12 @@ use emu_lib::io;
 #[test]
 fn hello() {
     let bin = assemble(r#"
-        mov #0150000, sp
+        STACK_TOP = 150000 
+        TPS = 177564
+        TPB = 177566
+        TPS_READY_MASK = 177
+
+        mov #STACK_TOP, sp
         mov #msg, r1
 
     msg_loop:
@@ -27,22 +32,14 @@ fn hello() {
     ; char to print in r0, others callee save
     print:
         mov r1, -(sp)
-        mov r2, -(sp)
-        mov r3, -(sp)
-        mov #0177564, r2   ; TPS
-        mov #0177566, r3   ; TPB
 
     print_loop:
-        movb (r2), r1
-        bicb #0177, r1 
+        movb @#TPS, r1
+        bicb #TPS_READY_MASK, r1
         beq print_loop
 
-        movb r0, (r3)
-
-        mov (sp)+, r3
-        mov (sp)+, r2
+        movb r0, @#TPB
         mov (sp)+, r1
-
         rts pc  
 
 

@@ -166,6 +166,19 @@ fn test_indirect_read() {
     emu.run_at(DATA_START);
     assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o177777);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+    let bin = assemble(r#"
+        loc = 100
+        mov     #loc, r0
+        movb    (r0), r1
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.mem_write_word(0o100, 0o777);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o177777);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -520,6 +533,24 @@ fn test_index_read() {
     assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o100);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
+    let bin = assemble(r#"
+        FIELD_A = 2
+        FIELD_B = 4
+        mov #100, r0
+        mov FIELD_A(r0), r1
+        mov FIELD_B(r0), r2
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.mem_write_word(0o102, 0o320);
+    emu.mem_write_word(0o104, 0o300);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R2), 0o300);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o320);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o100);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
 
     let bin = assemble(r#"
         mov     #100, r0
@@ -555,6 +586,25 @@ fn test_index_read() {
     assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o320);
     assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o106);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+    let bin = assemble(r#"
+        FIELD_A = -2
+        FIELD_B = -4
+        mov #106, r0
+        mov FIELD_B(r0), r1
+        mov FIELD_A(r0), r2
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.mem_write_word(0o102, 0o320);
+    emu.mem_write_word(0o104, 0o300);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R2), 0o300);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o320);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o106);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
 
     let bin = assemble(r#"
         mov     #103, r0
