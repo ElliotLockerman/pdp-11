@@ -12,6 +12,7 @@ pub enum Cmd {
     Ascii(Vec<u8>),
 
     Ins(Ins),
+    SymbolDef(String, Expr),
 }
 
 
@@ -40,6 +41,7 @@ impl Stmt {
             Cmd::Words(v) => (v.len() * 2).try_into().unwrap(),
             Cmd::Ascii(v) => v.len().try_into().unwrap(),
             Cmd::Ins(ins) => ins.size(),
+            Cmd::SymbolDef(_, _) => 0,
         }
     }
 }

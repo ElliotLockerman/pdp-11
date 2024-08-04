@@ -178,6 +178,8 @@ pub Cmd: Cmd = {
         Cmd::Ascii(v)
     },
     <I> => Cmd::Ins(<>),
+
+    <s:Symbol> "=" <e:Expr> => Cmd::SymbolDef(s, e),
 };
 
 pub Stmt: Stmt = {

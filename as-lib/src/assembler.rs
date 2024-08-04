@@ -116,7 +116,7 @@ impl Assembler {
                 Cmd::Words(words) => self.buf.extend(unsafe { as_byte_slice(words.as_slice()) }),
                 Cmd::Ascii(a) => self.buf.extend(a),
                 Cmd::Ins(ins) => self.emit_ins(ins),
-
+                Cmd::SymbolDef(_, _) => (),
             }
         }
     }
@@ -128,79 +128,104 @@ impl Assembler {
         self.buf.push(upper);
     }
 
-    fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: &mut u16) {
-        match &arg.extra {
+    fn eval_expr(&self, expr: &Expr, iter: i32) -> Option<u16> {
+        match expr {
+            Expr::Val(val) => Some(*val),
+            Expr::SymbolRef(symbol) => {
+                let val = self.symbols.get(symbol).cloned();
+                if val.is_some() {
+                    val
+                } else if iter == Self::MAX_ITER {
+                    panic!("Can't resolve {}", expr.clone().unwrap_symbol_ref());
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: &mut u16, iter: i32) {
+        let loc = match &arg.extra {
             Extra::None => return,
-            Extra::Imm(expr) => match expr {
-                Expr::Val(_) => (),
-                Expr::SymbolRef(symbol) => {
-                    let loc = self.symbols.get(symbol)
-                        .unwrap_or_else(|| panic!("Symbol {} not found", symbol));
+            Extra::Imm(expr) => {
+                let loc = self.eval_expr(expr, iter);
+                if let (Expr::SymbolRef(symbol), Some(loc)) = (expr, loc) {
                     trace!("Resolving symbol \"{symbol}\" (imm) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}");
-                    arg.extra = Extra::Imm(Expr::Val(*loc));
-                },
+                }
+                loc
             },
             Extra::Rel(expr) => {
-                let loc = match expr {
-                    Expr::Val(val) => val,
-                    Expr::SymbolRef(symbol) => 
-                        self.symbols.get(symbol)
-                            .unwrap_or_else(|| panic!("Symbol {} not found", symbol)),
-                };
-                let val = *loc as i32 - *curr_addr as i32 - 2;
+                self.eval_expr(expr, iter).map(|val| {
+                    let loc = (val as i32 - *curr_addr as i32 - 2) as u16;
 
-                if let Expr::SymbolRef(symbol) = expr {
-                    trace!("Resolving symbol \"{symbol}\" (rel) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}, final: 0o{val:o}");
-                }
-
-                arg.extra = Extra::Imm(Expr::Val(val as u16));
-
+                    if let Expr::SymbolRef(symbol) = expr {
+                        trace!("Resolving symbol \"{symbol}\" (rel) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}, final: 0o{val:o}");
+                    }
+                    loc
+                })
             }
+        };
+
+        if let Some(loc) = loc {
+            arg.extra = Extra::Imm(Expr::Val(loc));
         }
         *curr_addr += WORD_SIZE;
     }
 
-    fn resolve_target(&self, target: &mut Target, curr_addr: u16) {
+    fn resolve_target(&self, target: &mut Target, curr_addr: u16, iter: i32) {
         let offset = match target {
             Target::Offset(x) => *x,
             Target::Label(ref label) => {
                 if let Some(dst) = self.symbols.get(label) {
                     let addr = curr_addr as i32;
                     TryInto::<i8>::try_into((*dst as i32 - addr - 2)/2).unwrap() as u8
-                } else {
+                } else if iter == Self::MAX_ITER {
                     panic!("Label {} not found", label)
+                } else {
+                    return
                 }
             },
         };
         *target = Target::Offset(offset);
     }
 
-    fn resolve_symbols(&mut self, prog: &mut [Stmt]) {
-        let mut addr: u16 = 0;
-        for stmt in prog.iter() {
-            if let Some(label) = &stmt.label_def {
-                self.symbols.insert(label.clone(), addr); 
-            }
-            addr += stmt.size();
-        }
+    const MAX_ITER: i32 = 2;
 
-        addr = 0;
-        for stmt in prog.iter_mut() {
-            if let Some(Cmd::Ins(ins)) = &mut stmt.cmd {
-                match ins {
-                    Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr),
-                    Ins::DoubleOperand(ins) => {
-                        self.resolve_regarg(&mut ins.src, &mut addr);
-                        self.resolve_regarg(&mut ins.dst, &mut addr);
-                    },
-                    Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
-                    Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
-                    Ins::SingleOperand(ins) => self.resolve_regarg(&mut ins.dst, &mut addr),
-                    _ => (),
+    fn resolve_symbols(&mut self, prog: &mut [Stmt]) {
+        for iter in 1..=Self::MAX_ITER {
+            let mut addr: u16 = 0;
+            for stmt in prog.iter_mut() {
+
+                if let Some(label) = &stmt.label_def {
+                    self.symbols.insert(label.clone(), addr); 
                 }
-                addr += WORD_SIZE;
-            } else {
-                addr += stmt.size();
+
+                if stmt.cmd.is_none() {
+                    continue;
+                }
+
+                match stmt.cmd.as_mut().unwrap() {
+                    Cmd::SymbolDef(symbol, expr) => {
+                        if let Some(val) = self.eval_expr(expr, iter) {
+                            self.symbols.insert(symbol.clone(), val);
+                        }
+                    },
+                    Cmd::Ins(ins) => {
+                        match ins {
+                            Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr, iter),
+                            Ins::DoubleOperand(ins) => {
+                                self.resolve_regarg(&mut ins.src, &mut addr, iter);
+                                self.resolve_regarg(&mut ins.dst, &mut addr, iter);
+                            },
+                            Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, &mut addr, iter),
+                            Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, &mut addr, iter),
+                            Ins::SingleOperand(ins) => self.resolve_regarg(&mut ins.dst, &mut addr, iter),
+                            _ => (),
+                        }
+                        addr += WORD_SIZE;
+                    }
+                    _ => { addr += stmt.size(); },
+                }
             }
         }
     }
@@ -372,6 +397,43 @@ mod tests {
         let bin = assemble(prog);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0x41);
+    }
+
+    #[test]
+    fn symbol() {
+        let prog = r#"
+            SYM = 37
+            mov #SYM, r0
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[1], 0o37);
+    }
+
+    #[test]
+    fn forward_symbol() {
+        let prog = r#"
+            a = b
+            b = 37
+            mov #a, r0
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[1], 0o37);
+    }
+
+    #[test]
+    #[should_panic]
+    fn not_too_forward() {
+        let prog = r#"
+            a = b
+            b = c
+            c = 37
+            mov #a, r0
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[1], 0o37);
     }
 }
 
