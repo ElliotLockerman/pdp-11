@@ -6,10 +6,10 @@ use crate::ir::*;
 use crate::grammar::StmtParser;
 use common::asm::*;
 use common::constants::WORD_SIZE;
-use common::mem::as_byte_slice;
 
 use num_traits::ToPrimitive;
 use log::trace;
+use byteorder::{LittleEndian, ByteOrder};
 
 pub fn assemble(prog: &str) -> Vec<u8> {
     Assembler::new().assemble(prog)
@@ -112,11 +112,22 @@ impl Assembler {
     fn emit_stmt(&mut self, stmt: &Stmt) {
         if let Some(cmd) = &stmt.cmd {
             match cmd {
-                Cmd::Bytes(b) => self.buf.extend(b),
-                Cmd::Words(words) => {
-                    let is_le = || u16::from_ne_bytes([1, 0]) == 1;
-                    assert!(is_le(), "Only little-endian hosts supported");
-                    self.buf.extend(as_byte_slice(words.as_slice()));
+                Cmd::Bytes(exprs) => {
+                    for e in exprs {
+                        let val = TryInto::<u8>::try_into(
+                            e.clone().unwrap_val()
+                        ).unwrap();
+                        self.buf.push(val);
+                    }
+                }
+                Cmd::Words(exprs) => {
+                    // self.buf.extend(as_byte_slice(words.as_slice()));
+                    for e in exprs {
+                        let val = e.clone().unwrap_val();
+                        let mut tmp = [0u8; 2];
+                        LittleEndian::write_u16(&mut tmp, val);
+                        self.buf.extend(tmp);
+                    }
                 },
                 Cmd::Ascii(a) => self.buf.extend(a),
                 Cmd::Ins(ins) => self.emit_ins(ins),
@@ -228,6 +239,22 @@ impl Assembler {
                         }
                         addr += WORD_SIZE;
                     }
+                    Cmd::Bytes(exprs) => {
+                        for e in exprs {
+                            if let Some(val) = self.eval_expr(e, iter) {
+                                *e = Expr::Val(val);
+                            }
+                        }
+                        addr += stmt.size(); 
+                    }
+                    Cmd::Words(exprs) => {
+                        for e in exprs {
+                            if let Some(val) = self.eval_expr(e, iter) {
+                                *e = Expr::Val(val);
+                            }
+                        }
+                        addr += stmt.size(); 
+                    },
                     _ => { addr += stmt.size(); },
                 }
             }
@@ -455,6 +482,28 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[1], 0o37);
+    }
+
+    #[test]
+    fn symbol_byte() {
+        let prog = r#"
+            a = 37
+            .byte a
+        "#;
+        let bin = assemble(prog);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o37);
+    }
+
+    #[test]
+    fn symbol_word() {
+        let prog = r#"
+            a = 777
+            .word a
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o777);
     }
 }
 

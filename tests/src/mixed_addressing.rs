@@ -32,9 +32,9 @@ fn double_autoinc() {
         halt
 
     arr_a:
-        .word 01 02
+        .word 01, 02
     arr_b:
-        .word 07 07
+        .word 07, 07
     "#);
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
@@ -58,9 +58,9 @@ fn index_autoinc() {
         halt
 
     arr_a:
-        .word 00 00 01 02
+        .word 00, 00, 01, 02
     arr_b:
-        .word 07 07
+        .word 07, 07
     "#);
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);

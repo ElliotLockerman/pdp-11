@@ -66,7 +66,7 @@ fn fib() {
     br start
 
     out:
-    .word 0 0 0 0 0 0 0 0 0 0
+    .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
     ; Arg and return in r0, rest callee save
     fib:

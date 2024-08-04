@@ -7,8 +7,8 @@ use common::asm::*;
 // Args are src, dst
 #[derive(Debug)]
 pub enum Cmd {
-    Bytes(Vec<u8>),
-    Words(Vec<u16>),
+    Bytes(Vec<Expr>),
+    Words(Vec<Expr>),
     Ascii(Vec<u8>),
 
     Ins(Ins),

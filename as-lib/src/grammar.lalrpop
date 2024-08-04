@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 
 use common::asm::*;
 use crate::ir::{Cmd, Stmt};
@@ -147,17 +146,21 @@ I: Ins = {
 // Doesn't support escapes
 StrLiteral = r#""[^"]*""#;
 
-Bytes: Vec<u8> = {
-    ".byte" <b:(<Imm>)*> => b.iter().map(|x| TryInto::<u8>::try_into(*x).unwrap()).collect(),
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T?> => match e {
+        None=> v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
 };
 
-Words: Vec<u16> = {
-    ".word" <(<Imm>)*> => <>,
-};
+Exprs = Comma<Expr>;
 
 pub Cmd: Cmd = {
-    <Bytes> => Cmd::Bytes(<>),
-    <Words> => Cmd::Words(<>),
+    ".byte" <Exprs> => Cmd::Bytes(<>),
+    ".word" <Exprs> => Cmd::Words(<>),
     ".ascii" <StrLiteral> => {
         let mut v = <>.as_bytes().to_vec();
 
