@@ -11,5 +11,5 @@ emu-lib = { path = "../emu-lib" }
 common = { path = "../common" }
 
 [[test]]
-name = "integration_tests"
-path = "src/integration_tests.rs"
+name = "tests"
+path = "src/tests.rs"
