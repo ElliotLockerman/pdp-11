@@ -33,7 +33,7 @@ impl Assembler {
 
     fn emit_double_operand_ins(&mut self, ins: &DoubleOperandIns) {
         let bin = (ins.op.to_u16().unwrap() <<DoubleOperandIns::LOWER_BITS) 
-            | (ins.src.format() << RegArg::NUM_BITS) 
+            | (ins.src.format() << Operand::NUM_BITS) 
             | ins.dst.format();
         self.emit(bin);
 
@@ -62,7 +62,7 @@ impl Assembler {
 
     fn emit_jsr_ins(&mut self, ins: &JsrIns) {
         let bin = (ins.op.to_u16().unwrap() << JsrIns::LOWER_BITS)
-            | (ins.reg.to_u16().unwrap() << RegArg::NUM_BITS)
+            | (ins.reg.to_u16().unwrap() << Operand::NUM_BITS)
             | ins.dst.format();
         self.emit(bin);
         if ins.dst.has_imm() {
@@ -144,7 +144,7 @@ impl Assembler {
         }
     }
 
-    fn resolve_regarg(&self, arg: &mut RegArg, curr_addr: &mut u16, iter: i32) {
+    fn resolve_operand(&self, arg: &mut Operand, curr_addr: &mut u16, iter: i32) {
         let loc = match &arg.extra {
             Extra::None => return,
             Extra::Imm(expr) => {
@@ -214,12 +214,12 @@ impl Assembler {
                         match ins {
                             Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr, iter),
                             Ins::DoubleOperand(ins) => {
-                                self.resolve_regarg(&mut ins.src, &mut addr, iter);
-                                self.resolve_regarg(&mut ins.dst, &mut addr, iter);
+                                self.resolve_operand(&mut ins.src, &mut addr, iter);
+                                self.resolve_operand(&mut ins.dst, &mut addr, iter);
                             },
-                            Ins::Jmp(ins) => self.resolve_regarg(&mut ins.dst, &mut addr, iter),
-                            Ins::Jsr(ins) => self.resolve_regarg(&mut ins.dst, &mut addr, iter),
-                            Ins::SingleOperand(ins) => self.resolve_regarg(&mut ins.dst, &mut addr, iter),
+                            Ins::Jmp(ins) => self.resolve_operand(&mut ins.dst, &mut addr, iter),
+                            Ins::Jsr(ins) => self.resolve_operand(&mut ins.dst, &mut addr, iter),
+                            Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, iter),
                             _ => (),
                         }
                         addr += WORD_SIZE;

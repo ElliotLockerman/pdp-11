@@ -83,20 +83,20 @@ impl Reg {
 }
 
 #[derive(Debug, Clone)]
-pub struct RegArg {
+pub struct Operand {
     pub mode: AddrMode,
     pub reg: Reg,
     pub extra: Extra, // Only used by assembler
 }
 
-impl RegArg {
+impl Operand {
     pub const NUM_BITS: usize = AddrMode::NUM_BITS + Reg::NUM_BITS;
 
     #[allow(dead_code)]
     pub const MASK: u16 = (1u16 << Self::NUM_BITS) - 1;
 
-    pub fn new(mode: AddrMode, reg: Reg, extra: Extra) -> RegArg {
-        let ret = RegArg{mode, reg, extra};
+    pub fn new(mode: AddrMode, reg: Reg, extra: Extra) -> Operand {
+        let ret = Operand{mode, reg, extra};
         assert!(!ret.needs_imm() || !ret.extra.is_none());
         ret
     }
@@ -172,8 +172,8 @@ pub enum DoubleOperandOpcode {
 #[derive(Debug, Clone)]
 pub struct DoubleOperandIns {
     pub op: DoubleOperandOpcode,
-    pub src: RegArg,
-    pub dst: RegArg,
+    pub src: Operand,
+    pub dst: Operand,
 }
 
 
@@ -254,7 +254,7 @@ pub enum JmpOpcode {
 #[derive(Debug, Clone)]
 pub struct JmpIns {
     pub op: JmpOpcode,
-    pub dst: RegArg,
+    pub dst: Operand,
 }
 
 impl JmpIns {
@@ -284,7 +284,7 @@ pub enum JsrOpcode {
 pub struct JsrIns {
     pub op: JsrOpcode,
     pub reg: Reg,
-    pub dst: RegArg,
+    pub dst: Operand,
 }
 
 impl JsrIns {
@@ -367,7 +367,7 @@ pub enum SingleOperandOpcode {
 #[derive(Debug, Clone)]
 pub struct SingleOperandIns {
     pub op: SingleOperandOpcode,
-    pub dst: RegArg,
+    pub dst: Operand,
 }
 
 impl SingleOperandIns {

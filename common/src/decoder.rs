@@ -3,11 +3,11 @@ use num_traits::FromPrimitive;
 
 use super::asm::*;
 
-fn decode_reg_arg(arg: u16, input: &[u16], imm_idx: usize) -> RegArg {
+fn decode_reg_arg(arg: u16, input: &[u16], imm_idx: usize) -> Operand {
     let reg = Reg::from_u16(arg & Reg::MASK).unwrap();
     let mode = AddrMode::from_u16((arg >> Reg::NUM_BITS) & AddrMode::MASK).unwrap();
 
-    let mut arg = RegArg{mode, reg, extra: Extra::None};
+    let mut arg = Operand{mode, reg, extra: Extra::None};
 
     if arg.has_imm() {
         arg.extra = Extra::Imm(Expr::Val(input[imm_idx]));
@@ -19,7 +19,7 @@ fn decode_reg_arg(arg: u16, input: &[u16], imm_idx: usize) -> RegArg {
 fn decode_double_operand_ins(input: &[u16]) -> Option<Ins> {
     let op = DoubleOperandIns::decode_opcode(input[0])?;
 
-    let src = decode_reg_arg(input[0] >> RegArg::NUM_BITS, input, 1);
+    let src = decode_reg_arg(input[0] >> Operand::NUM_BITS, input, 1);
     let dst = decode_reg_arg(input[0], input, (src.num_imm() + 1) as usize);
 
     Some(Ins::DoubleOperand(DoubleOperandIns{op, src, dst}))
@@ -40,7 +40,7 @@ fn decode_jmp_ins(input: &[u16]) -> Option<Ins> {
 fn decode_jsr_ins(input: &[u16]) -> Option<Ins> {
     let op = JsrIns::decode_opcode(input[0])?;
     let dst = decode_reg_arg(input[0], input, 1);
-    let reg = Reg::from_u16((input[0] >> RegArg::NUM_BITS) & Reg::MASK).unwrap();
+    let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
     Some(Ins::Jsr(JsrIns{op, reg, dst}))
 }
 

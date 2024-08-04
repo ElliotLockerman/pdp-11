@@ -55,7 +55,7 @@ impl Size {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum ResolvedRegArg {
+enum ResolvedOperand {
     Reg(Reg),
     Mem(u16),
 }
@@ -188,40 +188,40 @@ impl Emulator {
         &mut self.state
     }
 
-    fn write_resolved_word(&mut self, res: ResolvedRegArg, val: u16) {
+    fn write_resolved_word(&mut self, res: ResolvedOperand, val: u16) {
         match res {
-            ResolvedRegArg::Reg(r) => self.state.reg_write_word(r, val),
-            ResolvedRegArg::Mem(addr) => self.mem_write_word(addr, val),
+            ResolvedOperand::Reg(r) => self.state.reg_write_word(r, val),
+            ResolvedOperand::Mem(addr) => self.mem_write_word(addr, val),
         }
     }
 
-    fn write_resolved_byte(&mut self, res: ResolvedRegArg, val: u8) {
+    fn write_resolved_byte(&mut self, res: ResolvedOperand, val: u8) {
         match res {
-            ResolvedRegArg::Reg(r) => self.state.reg_write_byte(r, val),
-            ResolvedRegArg::Mem(addr) => self.mem_write_byte(addr, val),
+            ResolvedOperand::Reg(r) => self.state.reg_write_byte(r, val),
+            ResolvedOperand::Mem(addr) => self.mem_write_byte(addr, val),
         }
     }
-    fn read_resolved_byte(&mut self, res: ResolvedRegArg) -> u8 {
+    fn read_resolved_byte(&mut self, res: ResolvedOperand) -> u8 {
         match res {
-            ResolvedRegArg::Reg(r) => self.state.reg_read_byte(r),
-            ResolvedRegArg::Mem(addr) => self.mem_read_byte(addr),
+            ResolvedOperand::Reg(r) => self.state.reg_read_byte(r),
+            ResolvedOperand::Mem(addr) => self.mem_read_byte(addr),
         }
     }
-    fn read_resolved_word(&mut self, res: ResolvedRegArg) -> u16 {
+    fn read_resolved_word(&mut self, res: ResolvedOperand) -> u16 {
         match res {
-            ResolvedRegArg::Reg(r) => self.state.reg_read_word(r),
-            ResolvedRegArg::Mem(addr) => self.mem_read_word(addr),
+            ResolvedOperand::Reg(r) => self.state.reg_read_word(r),
+            ResolvedOperand::Mem(addr) => self.mem_read_word(addr),
         }
     }
 
-    fn read_resolved_widen(&mut self, res: ResolvedRegArg, size: Size) -> u32 {
+    fn read_resolved_widen(&mut self, res: ResolvedOperand, size: Size) -> u32 {
         match size {
             Size::Word => self.read_resolved_word(res) as u32,
             Size::Byte => self.read_resolved_byte(res) as u32,
         }
     }
 
-    fn write_resolved_narrow(&mut self, res: ResolvedRegArg, val: u32, size: Size) {
+    fn write_resolved_narrow(&mut self, res: ResolvedOperand, val: u32, size: Size) {
         match size {
             Size::Word => self.write_resolved_word(res, val as u16),
             Size::Byte => self.write_resolved_byte(res, val as u8),
@@ -250,9 +250,9 @@ impl Emulator {
     }
 
 
-    fn resolve(&mut self, arg: &RegArg, size: Size) -> ResolvedRegArg {
+    fn resolve(&mut self, arg: &Operand, size: Size) -> ResolvedOperand {
         let loc = match arg.mode {
-            AddrMode::Gen => return ResolvedRegArg::Reg(arg.reg),
+            AddrMode::Gen => return ResolvedOperand::Reg(arg.reg),
             AddrMode::Def => self.state.reg_read_word(arg.reg),
             AddrMode::AutoInc => self.exec_auto(arg.reg, true, size),
             AddrMode::AutoIncDef => {
@@ -278,16 +278,16 @@ impl Emulator {
             },
         };
 
-        ResolvedRegArg::Mem(loc)
+        ResolvedOperand::Mem(loc)
     }
 
-    fn do_mov(&mut self, src: &RegArg, dst: &RegArg, size: Size) {
+    fn do_mov(&mut self, src: &Operand, dst: &Operand, size: Size) {
         let src = self.resolve(src, size);
         let val = self.read_resolved_widen(src, size);
         let dst = self.resolve(dst, size);
 
         if size == Size::Byte {
-            if matches!(dst, ResolvedRegArg::Reg(_)) {
+            if matches!(dst, ResolvedOperand::Reg(_)) {
                 let val = val as u8 as i8 as i16 as u16;
                 self.write_resolved_word(dst, val);
             } else {
@@ -302,7 +302,7 @@ impl Emulator {
     }
 
     // TODO: combine these?
-    fn do_bitwise(&mut self, src: &RegArg, op: fn(u32, u32) -> u32, dst: &RegArg, size: Size, discard: bool) {
+    fn do_bitwise(&mut self, src: &Operand, op: fn(u32, u32) -> u32, dst: &Operand, size: Size, discard: bool) {
         let src = self.resolve(src, Size::Word);
         let src_val = self.read_resolved_widen(src, size);
         let dst = self.resolve(dst, size);
@@ -320,7 +320,7 @@ impl Emulator {
         }
     }
 
-    fn do_add(&mut self, src: &RegArg, dst: &RegArg, size: Size) {
+    fn do_add(&mut self, src: &Operand, dst: &Operand, size: Size) {
         assert!(size == Size::Word);
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
@@ -339,7 +339,7 @@ impl Emulator {
     }
 
     // NB: src and dst are flipped for cmp
-    fn do_sub(&mut self, src: &RegArg, dst: &RegArg, size: Size, discard: bool) {
+    fn do_sub(&mut self, src: &Operand, dst: &Operand, size: Size, discard: bool) {
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
         let src_sign = size.sign_bit(src_val);
@@ -428,9 +428,9 @@ impl Emulator {
         assert_eq!(ins.op, JmpOpcode::Jmp);
 
         let dst = self.resolve(&ins.dst, Size::Word);
-        assert!(!matches!(dst, ResolvedRegArg::Reg(_)));
+        assert!(!matches!(dst, ResolvedOperand::Reg(_)));
         let new_pc = match dst {
-            ResolvedRegArg::Mem(loc) => loc,
+            ResolvedOperand::Mem(loc) => loc,
             dst => self.read_resolved_word(dst),
         };
         assert_eq!(new_pc & 0x1, 0);
@@ -456,9 +456,9 @@ impl Emulator {
         assert_eq!(ins.op, JsrOpcode::Jsr);
 
         let dst = self.resolve(&ins.dst, Size::Word);
-        assert!(!matches!(dst, ResolvedRegArg::Reg(_)));
+        assert!(!matches!(dst, ResolvedOperand::Reg(_)));
         let new_pc = match dst {
-            ResolvedRegArg::Mem(loc) => loc,
+            ResolvedOperand::Mem(loc) => loc,
             dst => self.read_resolved_word(dst),
         };
         assert_eq!(new_pc & 0x1, 0);
