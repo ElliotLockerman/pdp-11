@@ -392,6 +392,23 @@ mod tests {
         assert_eq!(bin[0], 17);
     }
 
+    #[test]
+    #[should_panic]
+    fn byte_size() {
+        let prog = r#"
+            .byte 400
+        "#;
+        assemble(prog);
+    }
+
+    #[test]
+    #[should_panic]
+    fn word_size() {
+        let prog = r#"
+            .word 200000
+        "#;
+        assemble(prog);
+    }
 
     #[test]
     fn char_literal() {
