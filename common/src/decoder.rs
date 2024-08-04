@@ -10,7 +10,7 @@ fn decode_reg_arg(arg: u16, input: &[u16], imm_idx: usize) -> Operand {
     let mut arg = Operand{mode, reg, extra: Extra::None};
 
     if arg.has_imm() {
-        arg.extra = Extra::Imm(Expr::Val(input[imm_idx]));
+        arg.extra = Extra::Imm(Expr::Atom(Atom::Val(input[imm_idx])));
     }
     arg
 }

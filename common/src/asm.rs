@@ -40,9 +40,37 @@ impl AddrMode {
 }
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
-pub enum Expr {
+pub enum Op {
+    Add,
+    Sub,
+    And,
+    Or,
+}
+
+
+#[derive(Debug, Clone, IsVariant, Unwrap)]
+pub enum Atom {
     Val(u16),
     SymbolRef(String),
+}
+
+#[derive(Debug, Clone, IsVariant, Unwrap)]
+pub enum Expr {
+    Atom(Atom),
+    Op(Box<Expr>, Op, Atom),
+}
+
+impl Expr {
+    pub fn unwrap_val(&self) -> u16 {
+        let Expr::Atom(atom) = &self else {
+            panic!("unwrap_val() called on non-Atom Expr");
+        };
+
+        let Atom::Val(val) = atom else {
+            panic!("unwrap_val() called on non-Val Expr::Atom");
+        };
+        *val
+    }
 }
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
@@ -55,8 +83,8 @@ pub enum Extra {
 impl Extra {
     pub fn unwrap_val(&self) -> u16 {
         match &self {
-            Extra::Imm(e) => e.clone().unwrap_val(),
-            Extra::Rel(e) => e.clone().unwrap_val(),
+            Extra::Imm(e) => e.unwrap_val(),
+            Extra::Rel(e) => e.unwrap_val(),
             Extra::None => todo!(),
         }
     }

@@ -9,7 +9,6 @@ use common::constants::WORD_SIZE;
 
 use num_traits::ToPrimitive;
 use log::trace;
-use byteorder::{LittleEndian, ByteOrder};
 
 pub fn assemble(prog: &str) -> Vec<u8> {
     Assembler::new().assemble(prog)
@@ -114,19 +113,13 @@ impl Assembler {
             match cmd {
                 Cmd::Bytes(exprs) => {
                     for e in exprs {
-                        let val = TryInto::<u8>::try_into(
-                            e.clone().unwrap_val()
-                        ).unwrap();
+                        let val = TryInto::<u8>::try_into(e.unwrap_val()).unwrap();
                         self.buf.push(val);
                     }
                 }
                 Cmd::Words(exprs) => {
-                    // self.buf.extend(as_byte_slice(words.as_slice()));
                     for e in exprs {
-                        let val = e.clone().unwrap_val();
-                        let mut tmp = [0u8; 2];
-                        LittleEndian::write_u16(&mut tmp, val);
-                        self.buf.extend(tmp);
+                        self.emit(e.unwrap_val());
                     }
                 },
                 Cmd::Ascii(a) => self.buf.extend(a),
@@ -143,19 +136,39 @@ impl Assembler {
         self.buf.push(upper);
     }
 
-    fn eval_expr(&self, expr: &Expr, iter: i32) -> Option<u16> {
-        match expr {
-            Expr::Val(val) => Some(*val),
-            Expr::SymbolRef(symbol) => {
+    fn eval_atom(&self, atom: &Atom, iter: i32) -> Option<u16> {
+        match atom {
+            Atom::Val(val) => Some(*val),
+            Atom::SymbolRef(symbol) => {
                 let val = self.symbols.get(symbol).cloned();
                 if val.is_some() {
                     val
                 } else if iter == Self::MAX_ITER {
-                    panic!("Can't resolve {}", expr.clone().unwrap_symbol_ref());
+                    panic!("Can't resolve {}", atom.clone().unwrap_symbol_ref());
                 } else {
                     None
                 }
             }
+        }
+    }
+
+    fn eval_expr(&self, expr: &Expr, iter: i32) -> Option<u16> {
+        match expr {
+            Expr::Atom(atom) => self.eval_atom(atom, iter),
+            Expr::Op(lhs, op, rhs) => {
+                let lhs = self.eval_expr(lhs, iter);
+                let rhs = self.eval_atom(rhs, iter);
+                let (Some(lhs), Some(rhs)) = (lhs, rhs) else {
+                    return None;
+                };
+
+                match op {
+                    Op::Add => Some(lhs.wrapping_add(rhs)),
+                    Op::Sub => Some(lhs.wrapping_sub(rhs)),
+                    Op::And => Some(lhs & rhs),
+                    Op::Or => Some(lhs | rhs),
+                }
+            },
         }
     }
 
@@ -164,7 +177,7 @@ impl Assembler {
             Extra::None => return,
             Extra::Imm(expr) => {
                 let loc = self.eval_expr(expr, iter);
-                if let (Expr::SymbolRef(symbol), Some(loc)) = (expr, loc) {
+                if let (Expr::Atom(Atom::SymbolRef(symbol)), Some(loc)) = (expr, loc) {
                     trace!("Resolving symbol \"{symbol}\" (imm) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}");
                 }
                 loc
@@ -173,7 +186,7 @@ impl Assembler {
                 self.eval_expr(expr, iter).map(|val| {
                     let loc = (val as i32 - *curr_addr as i32 - 2) as u16;
 
-                    if let Expr::SymbolRef(symbol) = expr {
+                    if let Expr::Atom(Atom::SymbolRef(symbol)) = expr {
                         trace!("Resolving symbol \"{symbol}\" (rel) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}, final: 0o{val:o}");
                     }
                     loc
@@ -182,7 +195,7 @@ impl Assembler {
         };
 
         if let Some(loc) = loc {
-            arg.extra = Extra::Imm(Expr::Val(loc));
+            arg.extra = Extra::Imm(Expr::Atom(Atom::Val(loc)));
         }
         *curr_addr += WORD_SIZE;
     }
@@ -206,7 +219,7 @@ impl Assembler {
 
     const MAX_ITER: i32 = 2;
 
-    fn resolve_symbols(&mut self, prog: &mut [Stmt]) {
+    fn resolve_and_eval(&mut self, prog: &mut [Stmt]) {
         for iter in 1..=Self::MAX_ITER {
             let mut addr: u16 = 0;
             for stmt in prog.iter_mut() {
@@ -242,7 +255,7 @@ impl Assembler {
                     Cmd::Bytes(exprs) => {
                         for e in exprs {
                             if let Some(val) = self.eval_expr(e, iter) {
-                                *e = Expr::Val(val);
+                                *e = Expr::Atom(Atom::Val(val));
                             }
                         }
                         addr += stmt.size(); 
@@ -250,7 +263,7 @@ impl Assembler {
                     Cmd::Words(exprs) => {
                         for e in exprs {
                             if let Some(val) = self.eval_expr(e, iter) {
-                                *e = Expr::Val(val);
+                                *e = Expr::Atom(Atom::Val(val));
                             }
                         }
                         addr += stmt.size(); 
@@ -274,7 +287,7 @@ impl Assembler {
             .filter(|x| !x.is_empty())
             .collect();
 
-        self.resolve_symbols(&mut prog);
+        self.resolve_and_eval(&mut prog);
 
         for stmt in prog {
             self.emit_stmt(&stmt);
@@ -504,6 +517,85 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o777);
+    }
+
+    #[test]
+    fn expr_word() {
+        let prog = r#"
+            .word 2 + 1
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o3);
+
+        let prog = r#"
+            .word 1 + 1 ! 2
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o2);
+
+        let prog = r#"
+            .word 1 ! 2 + 1
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o4);
+    }
+
+    #[test]
+    fn expr_byte() {
+        let prog = r#"
+            .byte 2 + 1
+        "#;
+        let bin = &assemble(prog);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o3);
+
+        let prog = r#"
+            .byte 1 + 1 ! 2
+        "#;
+        let bin = &assemble(prog);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o2);
+
+        let prog = r#"
+            .byte 1 ! 2 + 1
+        "#;
+        let bin = &assemble(prog);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o4);
+    }
+
+
+    #[test]
+    #[should_panic] // The manual says to truncate, I've chosen not to.
+    fn expr_byte_overflow() {
+        let prog = r#"
+            .byte 377 + 1
+        "#;
+        let bin = &assemble(prog);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o0);
+    }
+
+    #[test]
+    fn expr_index() {
+        let prog = r#"
+            FIELD_A = 2 + 2
+            mov FIELD_A(r0), r1
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[1], 0o4);
+
+        let prog = r#"
+            FIELD_A = 4
+            mov FIELD_A + 2(r0), r1
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[1], 0o6);
     }
 }
 

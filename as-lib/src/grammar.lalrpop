@@ -38,9 +38,18 @@ Symbol: String = {
     <r#"[a-zA-Z_][a-zA-Z0-9_]*"#> => <>.to_string(),
 };
 
+Atom: Atom = {
+    <Imm> => Atom::Val(<>),
+    <Symbol> => Atom::SymbolRef(<>),
+}
+
+// Evaluated left-to-right, no precedence or parentheses
 Expr: Expr = {
-    <Imm> => Expr::Val(<>),
-    <Symbol> => Expr::SymbolRef(<>),
+    <Atom> => Expr::Atom(<>),
+    <e:Expr> "+" <a:Atom> => Expr::Op(Box::new(e), Op::Add, a),
+    <e:Expr> "-" <a:Atom> => Expr::Op(Box::new(e), Op::Sub, a),
+    <e:Expr> "&" <a:Atom> => Expr::Op(Box::new(e), Op::And, a),
+    <e:Expr> "!" <a:Atom> => Expr::Op(Box::new(e), Op::Or, a),
 }
 
  

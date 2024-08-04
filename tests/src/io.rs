@@ -10,7 +10,7 @@ fn hello() {
     let bin = assemble(r#"
         STACK_TOP = 150000 
         TPS = 177564
-        TPB = 177566
+        TPB = TPS + 2
         TPS_READY_MASK = 177
 
         mov #STACK_TOP, sp
