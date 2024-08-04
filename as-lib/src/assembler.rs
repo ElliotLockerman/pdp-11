@@ -113,7 +113,11 @@ impl Assembler {
         if let Some(cmd) = &stmt.cmd {
             match cmd {
                 Cmd::Bytes(b) => self.buf.extend(b),
-                Cmd::Words(words) => self.buf.extend(unsafe { as_byte_slice(words.as_slice()) }),
+                Cmd::Words(words) => {
+                    let is_le = || u16::from_ne_bytes([1, 0]) == 1;
+                    assert!(is_le(), "Only little-endian hosts supported");
+                    self.buf.extend(as_byte_slice(words.as_slice()));
+                },
                 Cmd::Ascii(a) => self.buf.extend(a),
                 Cmd::Ins(ins) => self.emit_ins(ins),
                 Cmd::SymbolDef(_, _) => (),

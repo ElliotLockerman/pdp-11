@@ -689,7 +689,7 @@ mod tests {
         let bin = &[
             0, // halt
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
@@ -703,7 +703,7 @@ mod tests {
             0o10001, // mov r0, r1
             0, // halt
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let val = 0xabcd;
         let mut emu = Emulator::new();
@@ -721,7 +721,7 @@ mod tests {
             0o12700, val, // mov #0xabcd, r0
             0,            // halt
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
@@ -737,7 +737,7 @@ mod tests {
             0x65c0, 1, // add #1, r0
             0x0000     // halt
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
@@ -759,7 +759,7 @@ mod tests {
         // arr:
             0o1, 0o2, 0o3   // .word 1 2 3
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
@@ -784,7 +784,7 @@ mod tests {
 
             0               // halt
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
@@ -812,7 +812,7 @@ mod tests {
             0o4737, DATA_START + 0o16,   // jsr pc, fun
             0o0                          // halt
         ];
-        let bin = unsafe { as_byte_slice(bin) };
+        let bin = as_byte_slice(bin);
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);

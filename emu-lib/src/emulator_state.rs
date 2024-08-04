@@ -169,7 +169,7 @@ impl EmulatorState {
             panic!("PC 0o{pc:o} not aligned");
         }
         let mem = &self.mem.as_slice()[pc..pc+6];
-        unsafe { as_word_slice(mem) }
+        as_word_slice(mem)
     }
 
     pub fn get_status(&self) -> &Status {

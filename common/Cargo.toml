@@ -5,6 +5,7 @@ authors = ["Elliot Lockerman <elliot@lockerman.info>"]
 edition = "2021"
 
 [dependencies]
+bytemuck = "1.16.3"
 derive_more = "0.99.18"
 num-derive = "0.4.2"
 num-traits = "0.2.14"
