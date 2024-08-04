@@ -38,12 +38,12 @@ impl Size {
         }
     }
 
-    fn smallest(self) -> u32 {
+    fn smallest_signed(self) -> u32 {
         0x1 << (self.bits() - 1)
     }
 
-    fn largest(self) -> u32 {
-        self.smallest().wrapping_sub(1)
+    fn largest_signed(self) -> u32 {
+        self.smallest_signed().wrapping_sub(1)
     }
 
     fn sign_bit(self, val: u32) -> u32 {
@@ -521,7 +521,7 @@ impl Emulator {
                 self.state.status.set_zero(res & size.mask() == 0);
                 self.state.status.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
-                self.state.status.set_overflow(val == size.smallest());
+                self.state.status.set_overflow(val == size.smallest_signed());
             },
             Neg | NegB => {
                 let val = self.read_resolved_widen(dst, size);
@@ -531,7 +531,7 @@ impl Emulator {
                 self.state.status.set_zero(res & size.mask() == 0);
                 self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(res & size.mask() != 0);
-                self.state.status.set_overflow(val == size.smallest());
+                self.state.status.set_overflow(val == size.smallest_signed());
             },
             Tst | TstB => {
                 let val = self.read_resolved_widen(dst, size);
@@ -561,7 +561,7 @@ impl Emulator {
                 self.state.status.set_zero(res & size.mask() == 0);
                 self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(val == size.mask() && carry);
-                self.state.status.set_overflow(val == size.largest() && carry);
+                self.state.status.set_overflow(val == size.largest_signed() && carry);
             },
             Sbc | SbcB => {
                 let carry = self.state.status.get_carry();
@@ -572,7 +572,7 @@ impl Emulator {
                 self.state.status.set_zero(res & size.mask() == 0);
                 self.state.status.set_negative(size.sign_bit(res) != 0);
                 self.state.status.set_carry(!((res & size.mask()) == 0 && carry));
-                self.state.status.set_overflow(res == size.smallest());
+                self.state.status.set_overflow(res == size.smallest_signed());
             },
             Ror | RorB => {
                 let val = self.read_resolved_widen(dst, size);
