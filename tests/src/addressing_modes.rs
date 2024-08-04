@@ -5,7 +5,7 @@ use common::asm::Reg;
 use common::constants::{DATA_START, WORD_SIZE};
 
 #[test]
-fn test_literal_read() {
+fn literal_read() {
     let bin = assemble(r#"
         mov #1, r0
         halt
@@ -28,7 +28,7 @@ fn test_literal_read() {
 }
 
 #[test]
-fn test_neg_literal_read() {
+fn neg_literal_read() {
     let bin = assemble(r#"
         mov #-1, r0
         halt
@@ -51,7 +51,7 @@ fn test_neg_literal_read() {
 }
 
 #[test]
-fn test_literal_read_byte() {
+fn literal_read_byte() {
     let bin = assemble(r#"
         movb #1, r0
         halt
@@ -64,7 +64,7 @@ fn test_literal_read_byte() {
 }
 
 #[test]
-fn test_char_literal_read() {
+fn char_literal_read() {
     let bin = assemble(r#"
         mov #177777, r0
         mov #'a, r0
@@ -78,7 +78,7 @@ fn test_char_literal_read() {
 }
 
 #[test]
-fn test_char_literal_read_byte() {
+fn char_literal_read_byte() {
     let bin = assemble(r#"
         mov     #177777, r0
         movb    #'a, r0
@@ -93,7 +93,7 @@ fn test_char_literal_read_byte() {
 
 #[test]
 #[should_panic]
-fn test_literal_write() {
+fn literal_write() {
     let bin = assemble(r#"
         mov r0, #1
         halt
@@ -106,7 +106,7 @@ fn test_literal_write() {
 }
 
 #[test]
-fn test_absolute_read() {
+fn absolute_read() {
     let bin = assemble(r#"
         mov @#20, r0
         halt
@@ -121,7 +121,7 @@ fn test_absolute_read() {
 
 #[test]
 #[should_panic]
-fn test_large_literal() {
+fn large_literal() {
     assemble(r#"
         mov #10000000000, r0
     "#);
@@ -129,7 +129,7 @@ fn test_large_literal() {
 
 
 #[test]
-fn test_indirect_read() {
+fn indirect_read() {
     let bin = assemble(r#"
         mov #100, r0
         mov @r0, r1
@@ -182,7 +182,7 @@ fn test_indirect_read() {
 }
 
 #[test]
-fn test_indirect_write() {
+fn indirect_write() {
     let bin = assemble(r#"
         mov #100, r0
         mov #20, @r0
@@ -224,7 +224,7 @@ fn test_indirect_write() {
 
 #[test]
 #[should_panic]
-fn test_unaligned() {
+fn unaligned() {
     let bin = assemble(r#"
         mov #101, r0
         mov @r0, r1
@@ -249,7 +249,7 @@ fn test_unaligned() {
 
 
 #[test]
-fn test_autoinc_read() {
+fn autoinc_read() {
     let bin = assemble(r#"
         mov #100, r0
         mov (r0)+, r1
@@ -292,7 +292,7 @@ fn test_autoinc_read() {
 
 
 #[test]
-fn test_autoinc_write() {
+fn autoinc_write() {
     let bin = assemble(r#"
         mov #100, r0
         mov #20, (r0)+
@@ -324,7 +324,7 @@ fn test_autoinc_write() {
 
 
 #[test]
-fn test_autodec_read() {
+fn autodec_read() {
     let bin = assemble(r#"
         mov #102, r0
         mov -(r0), r1
@@ -355,7 +355,7 @@ fn test_autodec_read() {
 
 
 #[test]
-fn test_autodec_write() {
+fn autodec_write() {
     let bin = assemble(r#"
         mov #102, r0
         mov #20, -(r0)
@@ -386,7 +386,7 @@ fn test_autodec_write() {
 
 
 #[test]
-fn test_autoinc_def_read() {
+fn autoinc_def_read() {
     let bin = assemble(r#"
         mov #100, r0
         mov @(r0)+, r1
@@ -419,7 +419,7 @@ fn test_autoinc_def_read() {
 
 
 #[test]
-fn test_autoinc_def_write() {
+fn autoinc_def_write() {
     let bin = assemble(r#"
         mov #100, r0
         mov #7720, @(r0)+
@@ -452,7 +452,7 @@ fn test_autoinc_def_write() {
 
 
 #[test]
-fn test_autodec_def_read() {
+fn autodec_def_read() {
     let bin = assemble(r#"
         mov #102, r0
         mov @-(r0), r1
@@ -484,7 +484,7 @@ fn test_autodec_def_read() {
 
 
 #[test]
-fn test_autodec_def_write() {
+fn autodec_def_write() {
     let bin = assemble(r#"
         mov #102, r0
         mov #7720, @-(r0)
@@ -516,7 +516,7 @@ fn test_autodec_def_write() {
 }
 
 #[test]
-fn test_index_read() {
+fn index_read() {
     let bin = assemble(r#"
         mov #100, r0
         mov 2(r0), r1
@@ -570,7 +570,7 @@ fn test_index_read() {
 }
 
 #[test]
-    fn test_neg_index_read() {
+    fn neg_index_read() {
     let bin = assemble(r#"
         mov #106, r0
         mov -4(r0), r1
@@ -624,7 +624,7 @@ fn test_index_read() {
 }
 
 #[test]
-fn test_index_write() {
+fn index_write() {
     let bin = assemble(r#"
         mov #100, r0
         mov #1, 2(r0)
@@ -661,7 +661,7 @@ fn test_index_write() {
 
 
 #[test]
-fn test_index_def_read() {
+fn index_def_read() {
     let bin = assemble(r#"
         mov #100, r0
         mov @2(r0), r1
@@ -694,7 +694,7 @@ fn test_index_def_read() {
 
 
 #[test]
-fn test_index_def_write() {
+fn index_def_write() {
     let bin = assemble(r#"
         mov #100, r0
         mov #11, @2(r0)
@@ -727,7 +727,7 @@ fn test_index_def_write() {
 
 
 #[test]
-fn test_relative_label_read() {
+fn relative_label_read() {
     let bin = assemble(r#"
     label:
         .word 012
@@ -768,7 +768,7 @@ fn test_relative_label_read() {
 }
 
 #[test]
-fn test_relative_label_write() {
+fn relative_label_write() {
     let bin = assemble(r#"
     label:
         .word 07777
@@ -812,7 +812,7 @@ fn test_relative_label_write() {
 }
 
 #[test]
-fn test_immediate_label_read() {
+fn immediate_label_read() {
     let bin = assemble(r#"
         mov #label, r0
         halt
@@ -827,7 +827,7 @@ fn test_immediate_label_read() {
 }
 
 #[test]
-fn test_relative_def_label_read() {
+fn relative_def_label_read() {
     let bin = assemble(r#"
     label:
         .word 0410
@@ -857,7 +857,7 @@ fn test_relative_def_label_read() {
 
 
 #[test]
-fn test_relative_def_label_write() {
+fn relative_def_label_write() {
     let bin = assemble(r#"
     label:
         .word 0410
@@ -889,7 +889,7 @@ fn test_relative_def_label_write() {
 }
 
 #[test]
-fn test_relative_read() {
+fn relative_read() {
     let bin = assemble(r#"
         mov 06, r0
         halt
@@ -914,7 +914,7 @@ fn test_relative_read() {
 }
 
 #[test]
-fn test_relative_write() {
+fn relative_write() {
     let bin = assemble(r#"
         mov #11, r0
         mov r0, 012
@@ -941,7 +941,7 @@ fn test_relative_write() {
 }
 
 #[test]
-fn test_relative_def_read() {
+fn relative_def_read() {
     let bin = assemble(r#"
         .word 0410
         mov @00, r0
@@ -969,7 +969,7 @@ fn test_relative_def_read() {
 }
 
 #[test]
-fn test_relative_def_write() {
+fn relative_def_write() {
     let bin = assemble(r#"
         .word 0410
         mov #33, r0

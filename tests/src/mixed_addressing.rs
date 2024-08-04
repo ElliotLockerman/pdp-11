@@ -5,7 +5,7 @@ use common::asm::Reg;
 use common::constants::DATA_START;
 
 #[test]
-fn test_literal_to_abs() {
+fn literal_to_abs() {
     let bin = assemble(r#"
         mov #0753, @#020
         halt
@@ -18,7 +18,7 @@ fn test_literal_to_abs() {
 }
 
 #[test]
-fn test_double_autoinc() {
+fn double_autoinc() {
     let bin = assemble(r#"
         mov #arr_a, r0
         mov #arr_b, r1
@@ -44,7 +44,7 @@ fn test_double_autoinc() {
 }
 
 #[test]
-fn test_index_autoinc() {
+fn index_autoinc() {
     let bin = assemble(r#"
         mov #arr_a, r0
         mov #arr_b, r1

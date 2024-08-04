@@ -33,7 +33,7 @@ fn run(
 }
 
 #[test]
-fn test_clr() {
+fn clr() {
     run("clr", 0o0, 0, Flags{z:T, n:F, c:F, v:F});
     run("clr", 0o4, 0, Flags{z:T, n:F, c:F, v:F});
     run("clr", 0o377, 0, Flags{z:T, n:F, c:F, v:F});
@@ -42,7 +42,7 @@ fn test_clr() {
 }
 
 #[test]
-fn test_inc() {
+fn inc() {
     run("inc", 0o0, 0o1, Flags{z:F, n:F, c:F, v:F});
     run("inc", 0o7, 0o10, Flags{z:F, n:F, c:F, v:F});
     run("inc", 0o177777, 0o0, Flags{z:T, n:F, c:F, v:F});
@@ -51,7 +51,7 @@ fn test_inc() {
 }
 
 #[test]
-fn test_dec() {
+fn dec() {
     run("dec", 0o1, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("dec", 0o7, 0o6, Flags{z:F, n:F, c:F, v:F});
     run("dec", 0o0, 0o177777, Flags{z:F, n:T, c:F, v:F});
@@ -61,7 +61,7 @@ fn test_dec() {
 }
 
 #[test]
-fn test_neg() {
+fn neg() {
     run("neg", 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("neg", 0o1, 0o177777, Flags{z:F, n:T, c:T, v:F});
     run("neg", 0o177777, 0o1, Flags{z:F, n:F, c:T, v:F});
@@ -71,7 +71,7 @@ fn test_neg() {
 }
 
 #[test]
-fn test_tst() {
+fn tst() {
     run("tst", 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("tst", 0o1, 0o1, Flags{z:F, n:T, c:F, v:F});
     run("tst", 0o100, 0o100, Flags{z:F, n:T, c:F, v:F});
@@ -82,7 +82,7 @@ fn test_tst() {
 
 
 #[test]
-fn test_com() {
+fn com() {
     run("com", 0o0, 0o177777, Flags{z:F, n:T, c:T, v:F});
     run("com", 0o177777, 0o0, Flags{z:T, n:F, c:T, v:F});
     run("com", 0o133333, 0o044444, Flags{z:F, n:F, c:T, v:F});
@@ -91,7 +91,7 @@ fn test_com() {
 
 
 #[test]
-fn test_swab() {
+fn swab() {
     run("swab", 0x0, 0x0, flags().z());
     run("swab", 0x00ff, 0xff00, flags().z());
     run("swab", 0xff00, 0x00ff, flags().n());
@@ -99,7 +99,7 @@ fn test_swab() {
 }
 
 #[test]
-fn test_asr() {
+fn asr() {
     run("asr", 0o0, 0o0, flags().z());
     run("asr", 0o1, 0o0, flags().z().c().v());
     run("asr", 0o2, 0o1, flags());
@@ -110,7 +110,7 @@ fn test_asr() {
 }
 
 #[test]
-fn test_asl() {
+fn asl() {
     run("asl", 0o0, 0o0, flags().z());
     run("asl", 0o1, 0o2, flags());
     run("asl", 0o50, 0o120, flags());
@@ -119,7 +119,7 @@ fn test_asl() {
 }
 
 #[test]
-fn test_clrb() {
+fn clrb() {
     run("clrb", 0o0, 0, flags().z());
     run("clrb", 0o4, 0, flags().z());
     run("clrb", 0o377, 0, flags().z());
@@ -128,7 +128,7 @@ fn test_clrb() {
 }
 
 #[test]
-fn test_incb() {
+fn incb() {
     run("incb", 0o0, 0o1, flags());
     run("incb", 0o7, 0o10, flags());
     run("incb", 0xffff, 0xff00, flags().z());
@@ -137,7 +137,7 @@ fn test_incb() {
 }
 
 #[test]
-fn test_decb() {
+fn decb() {
     run("decb", 0o1, 0o0, flags().z());
     run("decb", 0o7, 0o6, flags());
     run("decb", 0x0, 0xff, flags().n());
@@ -148,7 +148,7 @@ fn test_decb() {
 }
 
 #[test]
-fn test_negb() {
+fn negb() {
     run("negb", 0x0, 0x0, flags().z());
     run("negb", 0x1, 0xff, flags().n().c());
     run("negb", 0xffff, 0xff01, flags().c());
@@ -158,7 +158,7 @@ fn test_negb() {
 }
 
 #[test]
-fn test_tstb() {
+fn tstb() {
     run("tstb", 0x0, 0x0, flags().z());
     run("tstb", 0x1, 0x1, flags().n());
     run("tstb", 0x5, 0x5, flags().n());
@@ -168,14 +168,14 @@ fn test_tstb() {
 }
 
 #[test]
-fn test_comb() {
+fn comb() {
     run("comb", 0x0, 0xff, flags().c().n());
     run("comb", 0xffff, 0xff00, flags().c().z());
     run("comb", 0xff38, 0xffc7, flags().c().n());
 }
 
 #[test]
-fn test_asrb() {
+fn asrb() {
     run("asrb", 0x0, 0x0, flags().z());
     run("asrb", 0x1, 0x0, flags().z().c().v());
     run("asrb", 0x2, 0x1, flags());
@@ -186,7 +186,7 @@ fn test_asrb() {
 }
 
 #[test]
-fn test_aslb() {
+fn aslb() {
     run("aslb", 0x0, 0x0, flags().z());
     run("aslb", 0x1, 0x2, flags());
     run("aslb", 0xaa30, 0xaa60, flags());
@@ -224,7 +224,7 @@ fn run_mp(
 }
 
 #[test]
-fn test_adc() {
+fn adc() {
     run_mp("adc", 0o0, 0o0, flags(), flags().z());
     run_mp("adc", 0o0, 0o1, flags().c(), flags());
     run_mp("adc", 0o7, 0o10, flags().c(), flags());
@@ -237,7 +237,7 @@ fn test_adc() {
 }
 
 #[test]
-fn test_sbc() {
+fn sbc() {
     run_mp("sbc", 0o0, 0o0, flags(), flags().c().z());
     run_mp("sbc", 0o1, 0o0, flags().c(), flags().z());
     run_mp("sbc", 0o0, 0o177777, flags().c(), flags().c().n());
@@ -250,7 +250,7 @@ fn test_sbc() {
 }
 
 #[test]
-fn test_ror() {
+fn ror() {
     run_mp("ror", 0o0, 0o0, flags(), flags().z());
     run_mp("ror", 0o1, 0o0, flags(), flags().c().v().z());
     run_mp("ror", 0o2, 0o1, flags(), flags());
@@ -265,7 +265,7 @@ fn test_ror() {
 
 
 #[test]
-fn test_rol() {
+fn rol() {
     run_mp("rol", 0o0, 0o0, flags(), flags().z());
     run_mp("rol", 0o1, 0o2, flags(), flags());
     run_mp("rol", 0o50, 0o120, flags(), flags());
@@ -280,7 +280,7 @@ fn test_rol() {
 }
 
 #[test]
-fn test_adcb() {
+fn adcb() {
     run_mp("adcb", 0x0, 0x0, flags(), flags().z());
     run_mp("adcb", 0x0, 0x1, flags().c(), flags());
     run_mp("adcb", 0x7, 0x7, flags(), flags());
@@ -296,7 +296,7 @@ fn test_adcb() {
 }
 
 #[test]
-fn test_sbcb() {
+fn sbcb() {
     run_mp("sbcb", 0x0, 0x0, flags(), flags().c().z());
     run_mp("sbcb", 0x1, 0x0, flags().c(), flags().z());
     run_mp("sbcb", 0xaa00, 0xaaff, flags().c(), flags().c().n());
@@ -309,7 +309,7 @@ fn test_sbcb() {
 }
 
 #[test]
-fn test_rorb() {
+fn rorb() {
     run_mp("rorb", 0xaa00, 0xaa00, flags(), flags().z());
     run_mp("rorb", 0xaa01, 0xaa00, flags(), flags().c().v().z());
     run_mp("rorb", 0xaa02, 0xaa01, flags(), flags());
@@ -323,7 +323,7 @@ fn test_rorb() {
 }
 
 #[test]
-fn test_rolb() {
+fn rolb() {
     run_mp("rolb", 0xaa00, 0xaa00, flags(), flags().z());
     run_mp("rolb", 0xaa01, 0xaa02, flags(), flags());
     run_mp("rolb", 0xaa30, 0xaa60, flags(), flags());

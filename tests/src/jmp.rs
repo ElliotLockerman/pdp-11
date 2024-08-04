@@ -14,7 +14,7 @@ fn run(asm: &str) {
 }
 
 #[test]
-fn test_label() {
+fn label() {
     run(r#"
         jmp taken
 
@@ -29,7 +29,7 @@ fn test_label() {
 }
 
 #[test]
-fn test_relative() {
+fn relative() {
     run(r#"
         jmp 12
 
@@ -55,7 +55,7 @@ fn test_relative() {
 }
 
 #[test]
-fn test_abs() {
+fn abs() {
     run(r#"
         jmp @#412
 
@@ -69,7 +69,7 @@ fn test_abs() {
 
 
 #[test]
-fn test_def() {
+fn def() {
     run(r#"
         mov #414, r1
         jmp (r1)

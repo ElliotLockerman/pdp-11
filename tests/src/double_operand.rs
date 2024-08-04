@@ -39,14 +39,14 @@ fn run(
 
 
 #[test]
-fn test_mov() {
+fn mov() {
     run("mov", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
     run("mov", 1, 0, 1, Flags{z:F, n:F, c:F, v:F});
     run("mov", 0o177777, 0, 0o177777, Flags{z:F, n:T, c:F, v:F});
 }
 
 #[test]
-fn test_add() {
+fn add() {
     run("add", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
     run("add", 0, 1, 1, Flags{z:F, n:F, c:F, v:F});
     run("add", 1, 0, 1, Flags{z:F, n:F, c:F, v:F});
@@ -57,7 +57,7 @@ fn test_add() {
 }
 
 #[test]
-fn test_sub() {
+fn sub() {
     run("sub", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
     run("sub", 1, 1, 0, Flags{z:T, n:F, c:F, v:F});
     run("sub", 1, 0o100000, 0o077777, Flags{z:F, n:F, c:F, v:T});
@@ -66,7 +66,7 @@ fn test_sub() {
 }
 
 #[test]
-fn test_cmp() {
+fn cmp() {
     run("cmp", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
     run("cmp", 1, 1, 1, Flags{z:T, n:F, c:F, v:F});
     run("cmp", 0o100000, 1, 1, Flags{z:F, n:F, c:F, v:T});
@@ -75,7 +75,7 @@ fn test_cmp() {
 }
 
 #[test]
-fn test_bis() {
+fn bis() {
     run("bis", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bis", 0o1, 0o1, 0o1, Flags{z:F, n:F, c:F, v:F});
     run("bis", 0o1, 0o2, 0o3, Flags{z:F, n:F, c:F, v:F});
@@ -83,7 +83,7 @@ fn test_bis() {
 }
 
 #[test]
-fn test_bic() {
+fn bic() {
     run("bic", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bic", 0o7, 0o7, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bic", 0o2, 0o7, 0o5, Flags{z:F, n:F, c:F, v:F});
@@ -92,7 +92,7 @@ fn test_bic() {
 }
 
 #[test]
-fn test_bit() {
+fn bit() {
     run("bit", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bit", 0o1, 0o1, 0o1, Flags{z:F, n:F, c:F, v:F});
     run("bit", 0o1, 0o2, 0o2, Flags{z:T, n:F, c:F, v:F});
@@ -100,7 +100,7 @@ fn test_bit() {
 }
 
 #[test]
-fn test_movb() {
+fn movb() {
     run("movb", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
     run("movb", 1, 0, 1, Flags{z:F, n:F, c:F, v:F});
     run("movb", 0o377, 0, 0o177777, Flags{z:F, n:T, c:F, v:F});
@@ -108,7 +108,7 @@ fn test_movb() {
 }
 
 #[test]
-fn test_cmpb() {
+fn cmpb() {
     run("cmpb", 0, 0, 0, Flags{z:T, n:F, c:F, v:F});
     run("cmpb", 1, 1, 1, Flags{z:T, n:F, c:F, v:F});
     run("cmpb", 0o200, 1, 1, Flags{z:F, n:F, c:F, v:T});
@@ -123,7 +123,7 @@ fn test_cmpb() {
 }
 
 #[test]
-fn test_bisb() {
+fn bisb() {
     run("bisb", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bisb", 0o1, 0o1, 0o1, Flags{z:F, n:F, c:F, v:F});
     run("bisb", 0o1, 0o2, 0o3, Flags{z:F, n:F, c:F, v:F});
@@ -133,7 +133,7 @@ fn test_bisb() {
 }
 
 #[test]
-fn test_bicb() {
+fn bicb() {
     run("bicb", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bicb", 0o7, 0o7, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bicb", 0o2, 0o7, 0o5, Flags{z:F, n:F, c:F, v:F});
@@ -144,7 +144,7 @@ fn test_bicb() {
 }
 
 #[test]
-fn test_bitb() {
+fn bitb() {
     run("bitb", 0o0, 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
     run("bitb", 0o1, 0o1, 0o1, Flags{z:F, n:F, c:F, v:F});
     run("bitb", 0o1, 0o2, 0o2, Flags{z:T, n:F, c:F, v:F});

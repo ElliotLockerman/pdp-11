@@ -27,62 +27,62 @@ fn run(
 }
 
 #[test]
-fn test_nop() {
+fn nop() {
     run("nop", flags(), flags());
     run("nop", flags().n().c().v().z(), flags().n().c().v().z());
 }
 
 #[test]
-fn test_clc() {
+fn clc() {
     run("clc", flags(), flags());
     run("clc", flags().n().v().z().c(), flags().n().v().z());
     run("clc", flags().n().v().z(), flags().n().v().z());
 }
 
 #[test]
-fn test_clv() {
+fn clv() {
     run("clv", flags(), flags());
     run("clv", flags().n().v().z().c(), flags().n().c().z());
     run("clv", flags().n().c().z(), flags().n().c().z());
 }
 
 #[test]
-fn test_clz() {
+fn clz() {
     run("clz", flags(), flags());
     run("clz", flags().n().v().z().c(), flags().n().c().v());
     run("clz", flags().n().c().v(), flags().n().c().v());
 }
 
 #[test]
-fn test_cln() {
+fn cln() {
     run("cln", flags(), flags());
     run("cln", flags().n().v().z().c(), flags().z().c().v());
     run("cln", flags().z().c().v(), flags().z().c().v());
 }
 
 #[test]
-fn test_sec() {
+fn sec() {
     run("sec", flags(), flags().c());
     run("sec", flags().n().v().z(), flags().n().v().z().c());
     run("sec", flags().n().v().z().c(), flags().n().v().z().c());
 }
 
 #[test]
-fn test_sev() {
+fn sev() {
     run("sev", flags(), flags().v());
     run("sev", flags().n().c().z(), flags().n().v().z().c());
     run("sev", flags().n().v().z().c(), flags().n().v().z().c());
 }
 
 #[test]
-fn test_sez() {
+fn sez() {
     run("sez", flags(), flags().z());
     run("sez", flags().n().c().v(), flags().n().v().z().c());
     run("sez", flags().n().v().z().c(), flags().n().v().z().c());
 }
 
 #[test]
-fn test_sen() {
+fn sen() {
     run("sen", flags(), flags().n());
     run("sen", flags().z().c().v(), flags().n().v().z().c());
     run("sen", flags().n().v().z().c(), flags().n().v().z().c());

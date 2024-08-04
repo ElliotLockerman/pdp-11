@@ -16,7 +16,7 @@ fn run(asm: &str) {
 }
 
 #[test]
-fn test_call_label() {
+fn call_label() {
     run(r#"
         jsr pc, taken
 
@@ -31,7 +31,7 @@ fn test_call_label() {
 }
 
 #[test]
-fn test_call_relative() {
+fn call_relative() {
     run(r#"
         jsr pc, 12
 
@@ -57,7 +57,7 @@ fn test_call_relative() {
 }
 
 #[test]
-fn test_call_abs() {
+fn call_abs() {
     run(r#"
         jsr pc, @#412
 
@@ -71,7 +71,7 @@ fn test_call_abs() {
 
 
 #[test]
-fn test_call_def() {
+fn call_def() {
     run(r#"
         mov #414, r1
         jsr pc, (r1)
@@ -86,7 +86,7 @@ fn test_call_def() {
 
 
 #[test]
-fn test_call_ret() {
+fn call_ret() {
     run(r#"
         mov #1, r0
         jsr pc, fun
@@ -103,7 +103,7 @@ fn test_call_ret() {
 }
 
 #[test]
-fn test_call_link_arg() {
+fn call_link_arg() {
     run(r#"
         mov #1, r0
         jsr r1, fun
@@ -120,7 +120,7 @@ fn test_call_link_arg() {
 }
 
 #[test]
-fn test_call_stack_arg() {
+fn call_stack_arg() {
     run(r#"
         mov #1, r0
         mov #3, -(sp)

@@ -5,7 +5,7 @@ use common::asm::Reg;
 use common::constants::DATA_START;
 
 #[test]
-fn test_loop() {
+fn looop() {
     let bin = assemble(r#"
         clr r0
     loop:
@@ -23,7 +23,7 @@ fn test_loop() {
 }
 
 #[test]
-fn test_strcpy() {
+fn strcpy() {
     let bin = assemble(r#"
         br start
     out:
@@ -61,7 +61,7 @@ fn test_strcpy() {
 
 
 #[test]
-fn test_fib() {
+fn fib() {
     let bin = assemble(r#"
     br start
 

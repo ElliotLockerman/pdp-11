@@ -32,7 +32,7 @@ fn run(ins: &str, flags: Flags, should_take: bool) {
 }
 
 #[test]
-fn test_br() {
+fn br() {
     run("br", flags(), true);
     run("br", flags().n(), true);
     run("br", flags().z(), true);
@@ -40,7 +40,7 @@ fn test_br() {
 }
 
 #[test]
-fn test_beq() {
+fn beq() {
     run("beq", flags(), false);
     run("beq", flags().n(), false);
     run("beq", flags().z(), true);
@@ -48,7 +48,7 @@ fn test_beq() {
 }
 
 #[test]
-fn test_bne() {
+fn bne() {
     run("bne", flags(), true);
     run("bne", flags().n(), true);
     run("bne", flags().z(), false);
@@ -56,7 +56,7 @@ fn test_bne() {
 }
 
 #[test]
-fn test_bni() {
+fn bni() {
     run("bmi", flags(), false);
     run("bmi", flags().n(), true);
     run("bmi", flags().z(), false);
@@ -64,7 +64,7 @@ fn test_bni() {
 }
 
 #[test]
-fn test_bpl() {
+fn bpl() {
     run("bpl", flags(), true);
     run("bpl", flags().n(), false);
     run("bpl", flags().z(), true);
@@ -72,7 +72,7 @@ fn test_bpl() {
 }
 
 #[test]
-fn test_bcs() {
+fn bcs() {
     run("bcs", flags(), false);
     run("bcs", flags().n(), false);
     run("bcs", flags().c(), true);
@@ -80,7 +80,7 @@ fn test_bcs() {
 }
 
 #[test]
-fn test_bcc() {
+fn bcc() {
     run("bcc", flags(), true);
     run("bcc", flags().n(), true);
     run("bcc", flags().c(), false);
@@ -88,7 +88,7 @@ fn test_bcc() {
 }
 
 #[test]
-fn test_bvs() {
+fn bvs() {
     run("bvs", flags(), false);
     run("bvs", flags().n(), false);
     run("bvs", flags().v(), true);
@@ -96,7 +96,7 @@ fn test_bvs() {
 }
 
 #[test]
-fn test_bvc() {
+fn bvc() {
     run("bvc", flags(), true);
     run("bvc", flags().n(), true);
     run("bvc", flags().v(), false);
@@ -104,7 +104,7 @@ fn test_bvc() {
 }
 
 #[test]
-fn test_blt() {
+fn blt() {
     run("blt", flags(), false);
     run("blt", flags().n().v(), false);
     run("blt", flags().n().z().v().c(), false);
@@ -115,7 +115,7 @@ fn test_blt() {
 }
 
 #[test]
-fn test_bge() {
+fn bge() {
     run("bge", flags(), true);
     run("bge", flags().n().v(), true);
     run("bge", flags().n().z().v().c(), true);
@@ -126,7 +126,7 @@ fn test_bge() {
 }
 
 #[test]
-fn test_ble() {
+fn ble() {
     run("ble", flags(), false);
     run("ble", flags().z(), true);
     run("ble", flags().n().v(), false);
@@ -139,7 +139,7 @@ fn test_ble() {
 }
 
 #[test]
-fn test_bgt() {
+fn bgt() {
     run("bgt", flags(), true);
     run("bgt", flags().z(), false);
     run("bgt", flags().n().v(), true);
@@ -152,7 +152,7 @@ fn test_bgt() {
 }
 
 #[test]
-fn test_bhi() {
+fn bhi() {
     run("bhi", flags(), true);
     run("bhi", flags().n().v(), true);
     run("bhi", flags().c(), false);
@@ -161,7 +161,7 @@ fn test_bhi() {
 }
 
 #[test]
-fn test_blos() {
+fn blos() {
     run("blos", flags(), false);
     run("blos", flags().n().v(), false);
     run("blos", flags().c(), true);
@@ -170,7 +170,7 @@ fn test_blos() {
 }
 
 #[test]
-fn test_bhis() {
+fn bhis() {
     run("bhis", flags(), true);
     run("bhis", flags().n(), true);
     run("bhis", flags().c(), false);
@@ -178,7 +178,7 @@ fn test_bhis() {
 }
 
 #[test]
-fn test_blo() {
+fn blo() {
     run("blo", flags(), false);
     run("blo", flags().n(), false);
     run("blo", flags().c(), true);
