@@ -135,6 +135,150 @@ fn array_len() {
     assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o14);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
+}
+
+#[test]
+fn relocation() {
+    let asm = r#"
+        br start
+
+    val:
+        .word 34
+
+    start:
+        mov #66, val 
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o2), 0o66);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+    let asm = r#"
+        br start
+
+    val:
+        .word 34
+
+    start:
+        mov #66, val 
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, 0);
+    emu.run();
+    assert_eq!(emu.get_state().mem_read_word(0o2), 0o66);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+
+    let asm = r#"
+        . = 400
+
+        br start
+
+    val:
+        .word 34
+
+    start:
+        mov #66, val 
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, 0);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o2), 0o66);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+}
+
+#[test]
+fn period_unchanged() {
+    let asm = r#"
+        . = 400
+
+        br start
+
+    val:
+        .word 34
+
+        . = .
+
+    start:
+        mov #66, val 
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, 0);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o2), 0o66);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+}
+
+// Setting the location to a lower value may very well be allowed, but I've chosen to not support
+// it.
+#[test]
+#[should_panic]
+fn decreasing() {
+    let asm = r#"
+        . = 1
+        . = 0
+    "#;
+    assemble(&asm);
+}
 
 
+#[test]
+fn reloc_label_reads() {
+    let asm = r#"
+        . = 400
+        loc = 100
+        mov loc, r0
+        mov #loc, r1
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, 0);
+    emu.get_state_mut().mem_write_word(0o100, 0o123);
+    emu.get_state_mut().mem_write_word(DATA_START + 0o100, 0o333);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o123);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+
+    let asm = r#"
+        loc = 100
+        mov loc, r0
+        mov #loc, r1
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.get_state_mut().mem_write_word(0o100, 0o123);
+    emu.get_state_mut().mem_write_word(DATA_START + 0o100, 0o333);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o333);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+
+    let asm = r#"
+        loc = 100
+        mov @#loc, r0
+        mov #loc, r1
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.get_state_mut().mem_write_word(0o100, 0o123);
+    emu.get_state_mut().mem_write_word(DATA_START + 0o100, 0o333);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o123);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
