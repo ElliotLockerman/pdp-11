@@ -50,6 +50,7 @@ pub enum Op {
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
 pub enum Atom {
+    Loc,
     Val(u16),
     SymbolRef(String),
 }

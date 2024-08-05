@@ -13,6 +13,7 @@ pub enum Cmd {
 
     Ins(Ins),
     SymbolDef(String, Expr),
+    LocDef(Expr),
 }
 
 
@@ -42,6 +43,7 @@ impl Stmt {
             Cmd::Ascii(v) => v.len().try_into().unwrap(),
             Cmd::Ins(ins) => ins.size(),
             Cmd::SymbolDef(_, _) => 0,
+            Cmd::LocDef(_) => 0, // Must be handled manually!
         }
     }
 }

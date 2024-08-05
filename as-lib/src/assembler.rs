@@ -125,6 +125,7 @@ impl Assembler {
                 Cmd::Ascii(a) => self.buf.extend(a),
                 Cmd::Ins(ins) => self.emit_ins(ins),
                 Cmd::SymbolDef(_, _) => (),
+                Cmd::LocDef(addr) => todo!(),
             }
         }
     }
@@ -136,8 +137,9 @@ impl Assembler {
         self.buf.push(upper);
     }
 
-    fn eval_atom(&self, atom: &Atom, iter: i32) -> Option<u16> {
+    fn eval_atom(&self, atom: &Atom, loc: u16, iter: i32) -> Option<u16> {
         match atom {
+            Atom::Loc => Some(loc),
             Atom::Val(val) => Some(*val),
             Atom::SymbolRef(symbol) => {
                 let val = self.symbols.get(symbol).cloned();
@@ -152,12 +154,12 @@ impl Assembler {
         }
     }
 
-    fn eval_expr(&self, expr: &Expr, iter: i32) -> Option<u16> {
+    fn eval_expr(&self, expr: &Expr, loc: u16, iter: i32) -> Option<u16> {
         match expr {
-            Expr::Atom(atom) => self.eval_atom(atom, iter),
+            Expr::Atom(atom) => self.eval_atom(atom, loc, iter),
             Expr::Op(lhs, op, rhs) => {
-                let lhs = self.eval_expr(lhs, iter);
-                let rhs = self.eval_atom(rhs, iter);
+                let lhs = self.eval_expr(lhs, loc, iter);
+                let rhs = self.eval_atom(rhs, loc, iter);
                 let (Some(lhs), Some(rhs)) = (lhs, rhs) else {
                     return None;
                 };
@@ -172,30 +174,30 @@ impl Assembler {
         }
     }
 
-    fn resolve_operand(&self, arg: &mut Operand, curr_addr: &mut u16, iter: i32) {
-        let loc = match &arg.extra {
+    fn resolve_operand(&self, arg: &mut Operand, curr_addr: &mut u16, loc: u16, iter: i32) {
+        let val = match &arg.extra {
             Extra::None => return,
             Extra::Imm(expr) => {
-                let loc = self.eval_expr(expr, iter);
-                if let (Expr::Atom(Atom::SymbolRef(symbol)), Some(loc)) = (expr, loc) {
-                    trace!("Resolving symbol \"{symbol}\" (imm) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}");
+                let val = self.eval_expr(expr, loc, iter);
+                if let (Expr::Atom(Atom::SymbolRef(symbol)), Some(val)) = (expr, val) {
+                    trace!("Resolving symbol \"{symbol}\" (imm) to val 0o{val:o}, curr_addr: 0o{curr_addr:o}");
                 }
-                loc
+                val
             },
             Extra::Rel(expr) => {
-                self.eval_expr(expr, iter).map(|val| {
-                    let loc = (val as i32 - *curr_addr as i32 - 2) as u16;
+                self.eval_expr(expr, loc, iter).map(|val| {
+                    let off = (val as i32 - *curr_addr as i32 - 2) as u16;
 
                     if let Expr::Atom(Atom::SymbolRef(symbol)) = expr {
-                        trace!("Resolving symbol \"{symbol}\" (rel) to loc 0o{loc:o}, curr_addr: 0o{curr_addr:o}, final: 0o{val:o}");
+                        trace!("Resolving symbol \"{symbol}\" (rel) to offset 0o{off:o}, curr_addr: 0o{curr_addr:o}, final: 0o{val:o}");
                     }
-                    loc
+                    off
                 })
             }
         };
 
-        if let Some(loc) = loc {
-            arg.extra = Extra::Imm(Expr::Atom(Atom::Val(loc)));
+        if let Some(val) = val {
+            arg.extra = Extra::Imm(Expr::Atom(Atom::Val(val)));
         }
         *curr_addr += WORD_SIZE;
     }
@@ -232,9 +234,10 @@ impl Assembler {
                     continue;
                 }
 
+                let loc = addr;
                 match stmt.cmd.as_mut().unwrap() {
                     Cmd::SymbolDef(symbol, expr) => {
-                        if let Some(val) = self.eval_expr(expr, iter) {
+                        if let Some(val) = self.eval_expr(expr, loc, iter) {
                             self.symbols.insert(symbol.clone(), val);
                         }
                     },
@@ -242,32 +245,33 @@ impl Assembler {
                         match ins {
                             Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr, iter),
                             Ins::DoubleOperand(ins) => {
-                                self.resolve_operand(&mut ins.src, &mut addr, iter);
-                                self.resolve_operand(&mut ins.dst, &mut addr, iter);
+                                self.resolve_operand(&mut ins.src, &mut addr, loc, iter);
+                                self.resolve_operand(&mut ins.dst, &mut addr, loc, iter);
                             },
-                            Ins::Jmp(ins) => self.resolve_operand(&mut ins.dst, &mut addr, iter),
-                            Ins::Jsr(ins) => self.resolve_operand(&mut ins.dst, &mut addr, iter),
-                            Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, iter),
+                            Ins::Jmp(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
+                            Ins::Jsr(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
+                            Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
                             _ => (),
                         }
                         addr += WORD_SIZE;
                     }
                     Cmd::Bytes(exprs) => {
                         for e in exprs {
-                            if let Some(val) = self.eval_expr(e, iter) {
+                            if let Some(val) = self.eval_expr(e, addr, iter) {
                                 *e = Expr::Atom(Atom::Val(val));
                             }
+                            addr += 1;
                         }
-                        addr += stmt.size(); 
                     }
                     Cmd::Words(exprs) => {
                         for e in exprs {
-                            if let Some(val) = self.eval_expr(e, iter) {
+                            if let Some(val) = self.eval_expr(e, addr, iter) {
                                 *e = Expr::Atom(Atom::Val(val));
                             }
+                            addr += WORD_SIZE;
                         }
-                        addr += stmt.size(); 
                     },
+                    Cmd::LocDef(addr) => todo!(),
                     _ => { addr += stmt.size(); },
                 }
             }
@@ -596,6 +600,50 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[1], 0o6);
+    }
+
+    #[test]
+    fn period_expr() {
+        let prog = r#"
+            .word .
+        "#;
+        let bin = &assemble(prog);
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[0], 0o0);
+
+        let prog = r#"
+            .word ., .
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[0], 0o0);
+        assert_eq!(bin[1], 0o2);
+
+        let prog = r#"
+            clr r0
+            mov #., r0
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 3);
+        assert_eq!(bin[2], 0o2);
+
+        let prog = r#"
+            .word 0, 0
+            loc = .
+            .word loc
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 3);
+        assert_eq!(bin[2], 0o4);
+
+        let prog = r#"
+            .word 0, 0
+            .word loc
+            loc = .
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 3);
+        assert_eq!(bin[2], 0o6);
     }
 }
 

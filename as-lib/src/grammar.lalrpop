@@ -39,6 +39,7 @@ Symbol: String = {
 };
 
 Atom: Atom = {
+    "." => Atom::Loc,
     <Imm> => Atom::Val(<>),
     <Symbol> => Atom::SymbolRef(<>),
 }
@@ -192,6 +193,7 @@ pub Cmd: Cmd = {
     <I> => Cmd::Ins(<>),
 
     <s:Symbol> "=" <e:Expr> => Cmd::SymbolDef(s, e),
+    "." "=" <Expr> => Cmd::LocDef(<>),
 };
 
 pub Stmt: Stmt = {
