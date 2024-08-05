@@ -10,6 +10,7 @@ pub enum Cmd {
     Bytes(Vec<Expr>),
     Words(Vec<Expr>),
     Ascii(Vec<u8>),
+    Even,
 
     Ins(Ins),
     SymbolDef(String, Expr),
@@ -31,20 +32,23 @@ impl Stmt {
         self.label_def.is_none() && self.cmd.is_none()
     }
 
-    // Size, in bytes, of assembled statement
-    pub fn size(&self) -> u16 {
+    // Size, in bytes, of assembled statement, if known.
+    pub fn size(&self) -> Option<u16> {
         let Some(cmd) = &self.cmd else {
-            return 0;
+            return Some(0);
         };
 
-        match cmd {
+        let val = match cmd {
             Cmd::Bytes(v) => v.len().try_into().unwrap(),
             Cmd::Words(v) => (v.len() * 2).try_into().unwrap(),
             Cmd::Ascii(v) => v.len().try_into().unwrap(),
             Cmd::Ins(ins) => ins.size(),
             Cmd::SymbolDef(_, _) => 0,
-            Cmd::LocDef(_) => 0, // Must be handled manually!
-        }
+
+            // Must be handled manually!
+            Cmd::LocDef(_) | Cmd::Even => return None,
+        };
+        Some(val)
     }
 }
 

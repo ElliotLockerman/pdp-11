@@ -31,6 +31,7 @@ fn strcpy() {
     in:
         .asciz "hello, world!"
 
+        .even
     start:
         mov #in, r0
         mov #out, r1
@@ -68,6 +69,8 @@ fn fib() {
     out:
     .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     out_end = .
+
+        .even
 
     ; Arg and return in r0, rest callee save
     fib:

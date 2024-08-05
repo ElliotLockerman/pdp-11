@@ -131,6 +131,11 @@ impl Assembler {
                     self.buf.resize(addr as usize, 0);
                     
                 },
+                Cmd::Even => {
+                    if self.buf.len() & 0x1 == 1 {
+                        self.buf.push(0);
+                    }
+                }
             }
         }
     }
@@ -283,7 +288,12 @@ impl Assembler {
                             *expr = Expr::Atom(Atom::Val(addr))
                         }
                     },
-                    _ => { addr += stmt.size(); },
+                    Cmd::Even => {
+                        if addr & 0x1 == 1 {
+                            addr += 1;
+                        }
+                    },
+                    _ => { addr += stmt.size().unwrap(); },
                 }
             }
         }
@@ -673,6 +683,35 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[2], 2);
+    }
+
+    #[test]
+    fn even() {
+        let prog = r#"
+            .byte 0
+        "#;
+        let bin = assemble(prog);
+        assert_eq!(bin.len(), 1);
+
+        let prog = r#"
+            .byte 0
+            .even
+        "#;
+        let bin = assemble(prog);
+        assert_eq!(bin.len(), 2);
+
+        let prog = r#"
+            . = 11
+        "#;
+        let bin = assemble(prog);
+        assert_eq!(bin.len(), 9);
+
+        let prog = r#"
+            . = 11
+            .even
+        "#;
+        let bin = assemble(prog);
+        assert_eq!(bin.len(), 10);
     }
 }
 

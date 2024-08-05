@@ -190,6 +190,9 @@ pub Cmd: Cmd = {
 
         Cmd::Ascii(v)
     },
+
+    ".even" => Cmd::Even,
+
     <I> => Cmd::Ins(<>),
 
     <s:Symbol> "=" <e:Expr> => Cmd::SymbolDef(s, e),
