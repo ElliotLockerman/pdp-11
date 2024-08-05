@@ -1,59 +1,20 @@
 
 use std::sync::Arc;
 
-use as_lib::assemble;
+use as_lib::assemble_with_symbols;
 use emu_lib::Emulator;
 use emu_lib::io;
 
 #[test]
 fn hello() {
-    let bin = assemble(r#"
-        STACK_TOP = 150000 
-        TPS = 177564
-        TPB = TPS + 2
-        TPS_READY_MASK = 177
-
-        mov #STACK_TOP, sp
-        mov #msg, r1
-
-    msg_loop:
-        movb (r1)+, r0
-        beq msg_loop_done
-        jsr pc, print
-        br msg_loop
-
-    msg_loop_done:
-        movb #012, r0 ; '\n'
-        jsr pc, print
-
-        halt
-
-
-    ; char to print in r0, others callee save
-    print:
-        mov r1, -(sp)
-
-    print_loop:
-        movb @#TPS, r1
-        bicb #TPS_READY_MASK, r1
-        beq print_loop
-
-        movb r0, @#TPB
-        mov (sp)+, r1
-        rts pc  
-
-
-    msg:
-    .asciz "hello, world!"
-    "#);
-
+    let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/hello.s"));
 
     let printer = Arc::new(io::PipePrinter::default());
     let teleprinter = io::Teleprinter::new(printer.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler([io::Teleprinter::TPS, io::Teleprinter::TPB], teleprinter);
     emu.load_image(&bin, 0);
-    emu.run();
+    emu.run_at(*symbols.get("_start").unwrap());
 
     let mut buf = printer.take();
     buf.make_contiguous();
