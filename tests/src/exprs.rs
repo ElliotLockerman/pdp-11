@@ -144,9 +144,16 @@ fn malformed() {
         catch_unwind(|| assemble(asm)).unwrap_err();
     }
 
+    // Most of these are allowed in PAL-11, with missing operators being replaced with + and
+    // missing operands being replaced 0. I've chosen to reject them.
     fail(r"SYM = +");
     fail(r"SYM = 1 +");
     fail(r"SYM = + 1");
+    fail(r"SYM = 1 1");
+    fail(r"SYM = + !");
+    fail(r"mov 1 1(r0), r1");
+    fail(r"mov !(r0), r1");
+    fail(r"mov 1!(r0), r1");
 }
 
 #[test]
