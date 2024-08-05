@@ -27,7 +27,7 @@ fn strcpy() {
     let bin = assemble(r#"
         br start
     out:
-        .ascii "              "
+        . = . + 16
     in:
         .asciz "hello, world!"
 
@@ -67,6 +67,7 @@ fn fib() {
 
     out:
     .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    out_end = .
 
     ; Arg and return in r0, rest callee save
     fib:
@@ -105,7 +106,7 @@ fn fib() {
         mov #out, r3
 
     loop:
-        cmp #12, r1
+        cmp #out_end, r3
         beq done2
 
         mov r1, r0

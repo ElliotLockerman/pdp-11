@@ -125,7 +125,12 @@ impl Assembler {
                 Cmd::Ascii(a) => self.buf.extend(a),
                 Cmd::Ins(ins) => self.emit_ins(ins),
                 Cmd::SymbolDef(_, _) => (),
-                Cmd::LocDef(addr) => todo!(),
+                Cmd::LocDef(addr) => {
+                    let addr = addr.unwrap_val();
+                    assert!(addr as usize >= self.buf.len());
+                    self.buf.resize(addr as usize, 0);
+                    
+                },
             }
         }
     }
@@ -271,7 +276,13 @@ impl Assembler {
                             addr += WORD_SIZE;
                         }
                     },
-                    Cmd::LocDef(addr) => todo!(),
+                    Cmd::LocDef(expr) => {
+                        if let Some(val) = self.eval_expr(expr, addr, iter) {
+                            assert!(val >= addr);
+                            addr = val;
+                            *expr = Expr::Atom(Atom::Val(addr))
+                        }
+                    },
                     _ => { addr += stmt.size(); },
                 }
             }
@@ -644,6 +655,24 @@ mod tests {
         let bin = to_u16(&assemble(prog));
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[2], 0o6);
+    }
+
+
+    #[test]
+    fn period_assign() {
+        let prog = r#"
+            . = 12
+        "#;
+        let bin = &assemble(prog);
+        assert_eq!(bin.len(), 10);
+
+        let prog = r#"
+            . = 2
+            mov #., r0
+        "#;
+        let bin = to_u16(&assemble(prog));
+        assert_eq!(bin.len(), 3);
+        assert_eq!(bin[2], 2);
     }
 }
 
