@@ -28,6 +28,43 @@ fn literal_read() {
 }
 
 #[test]
+fn regs() {
+    let bin = assemble(r#"
+        clr r0
+
+        mov r0, r1
+        inc r1
+
+        mov r1, r2
+        inc r2
+
+        mov r2, r3
+        inc r3
+
+        mov r3, r4
+        inc r4
+
+        mov r4, r5
+        inc r5
+
+        mov r5, r6
+        inc r6
+
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o0);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o1);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R2), 0o2);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R3), 0o3);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R4), 0o4);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R5), 0o5);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+}
+
+#[test]
 fn neg_literal_read() {
     let bin = assemble(r#"
         mov #-1, r0
