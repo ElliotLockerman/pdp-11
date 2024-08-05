@@ -3,11 +3,10 @@ use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
 
-fn _eval(expr: &str, r0_exp: u16, word: bool) {
-    let ch = if word { ' ' } else { 'b' };
+fn eval_word(expr: &str, r0_exp: u16) {
     let asm = format!(r#"
         SYM = {expr}
-        mov{ch} #SYM, r0
+        mov #SYM, r0
         halt
     "#);
     let bin = assemble(&asm);
@@ -18,23 +17,59 @@ fn _eval(expr: &str, r0_exp: u16, word: bool) {
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
-fn eval_word(expr: &str, r0_exp: u16) {
-    _eval(expr, r0_exp, true);
+fn eval_byte(expr: &str, exp: u8) {
+    // Go through memory to avoid sign-extension for movb to reg
+    let asm = format!(r#"
+        SYM = {expr}
+        movb    #SYM, data
+        movb    data, r0
+        mov     data, r1
+        halt
+    data:
+        .byte 0, 0
+    "#);
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), exp as i8 as i16 as u16);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), exp as u16);
+    assert_eq!(emu.get_state().mem_read_byte(DATA_START + bin.len() as u16 - 2), exp);
+    assert_eq!(emu.get_state().mem_read_word(DATA_START + bin.len() as u16 - 2), exp as u16);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
 }
-
-fn eval_byte(expr: &str, r0_exp: u16) {
-    _eval(expr, r0_exp, false);
-}
-
 
 #[test]
 fn literal() {
     eval_word(r"1", 0o1);
     eval_word(r"177777", 0o177777);
+    eval_word(r"-1", 0o177777);
+    eval_word(r"-2", 0o177776);
 
     eval_byte(r"1", 0o1);
     eval_byte(r"177", 0o177);
-    eval_byte(r"377", 0o177777);
+    eval_byte(r"377", 0o377);
+
+    let asm = format!(r#"
+        SYM = -1
+        ; Go through memory to avoid sign-extension for movb to reg
+        movb    #SYM, data
+        movb    data, r0
+        mov     data, r1
+        halt
+    data:
+        .word 0
+    "#);
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o177777);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o377);
+    assert_eq!(emu.get_state().mem_read_word(DATA_START + bin.len() as u16 - 2), 0o377);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+
+
 }
 
 #[test]
@@ -46,15 +81,18 @@ fn literal_large() {
 #[test]
 #[should_panic]
 fn literal_large_byte() {
-    eval_byte(r"477", 0o477);
+    eval_byte(r"477", 0o0);
 }
 
 #[test]
 fn add() {
     eval_word(r"2 + 3", 0o5);
+    eval_word(r"-2 + 3", 0o1);
+    eval_word(r"-5 + 2", 0o177775);
     eval_word(r"177777 + 1", 0);
 
     eval_byte(r"2 + 3", 0o5);
+    eval_byte(r"-5 + 3", 0o376);
     eval_byte(r"377 + 3", 0o2);
 }
 
@@ -68,12 +106,15 @@ fn sub() {
 fn and() {
     eval_word(r"3 & 6", 0o2);
     eval_word(r"4 & 2", 0o0);
+    eval_word(r"4 & 0", 0o0);
+    eval_word(r"4 & -1", 0o4);
 
     eval_word(r"17003 & 6", 0o2);
     eval_word(r"17004 & 2", 0o0);
 
     eval_byte(r"17003 & 17006", 0o2);
     eval_byte(r"17004 & 17002", 0o0);
+    eval_byte(r"270 & 207", 0o200);
 }
 
 #[test]
@@ -93,6 +134,19 @@ fn compound() {
     eval_word(r"1 ! 2 + 1", 0o4);
     eval_word(r"1 + 1 & 2", 0o2);
     eval_word(r"1 & 2 + 1", 0o1);
+}
+
+
+#[test]
+fn malformed() {
+    use std::panic::catch_unwind;
+    fn fail(asm: &str) {
+        catch_unwind(|| assemble(asm)).unwrap_err();
+    }
+
+    fail(r"SYM = +");
+    fail(r"SYM = 1 +");
+    fail(r"SYM = + 1");
 }
 
 #[test]
