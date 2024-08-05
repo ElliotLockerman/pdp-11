@@ -336,3 +336,62 @@ fn reloc_label_reads() {
     assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
+
+#[test]
+fn update_symbol() {
+    let asm = r#"
+        sym = 100
+        mov #sym, r0
+        sym = 100 + 1
+        mov #sym, r1
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o100);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o101);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+}
+
+#[test]
+fn forward() {
+    let asm = r#"
+        br start
+
+        elem = arr + 4
+        arr:
+            .word 0, 0, 27, 0
+
+    start:
+        mov elem, r0
+        halt
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o27);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+}
+
+#[test]
+#[should_panic]
+fn double_forward() {
+    let asm = r#"
+        mov elem, r0
+        halt
+
+        elem = arr + 4
+        arr:
+            .word 0, 0, 27, 0
+
+    "#;
+    let bin = assemble(&asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o27);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+}
