@@ -10,6 +10,10 @@ use clap::Parser;
 struct Args {
     /// Binary to execute
     bin: String,
+
+    /// Address at which to start executing.
+    #[arg(long, default_value_t=0)]
+    start: u16,
 }
 
 
@@ -26,7 +30,7 @@ fn main() {
     let buf = std::fs::read(opt.bin).unwrap();
     emu.load_image(buf.as_slice(), 0);
 
-    emu.run();
+    emu.run_at(opt.start);
 }
 
 

@@ -1,4 +1,4 @@
-use as_lib::assemble;
+use as_lib::{assemble, assemble_with_symbols};
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
@@ -159,22 +159,21 @@ fn malformed() {
 #[test]
 fn array_len() {
     let asm = r#"
-        br start
-
+        . = 400
     arr:
         .word 1, 2, 3, 4, 5, 6
         len = . - arr
 
-    start:
+    _start:
         mov #len, r0
         halt
     "#;
-    let bin = assemble(&asm);
+    let (bin, symbols) = assemble_with_symbols(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
-    emu.run_at(DATA_START);
+    emu.load_image(&bin, 0);
+    emu.run_at(*symbols.get("_start").unwrap());
     assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o14);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
 
 
     let asm = r#"

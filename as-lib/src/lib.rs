@@ -8,5 +8,6 @@ pub mod helpers;
 lalrpop_mod!(grammar, "/grammar.rs");
 
 pub use assembler::assemble;
+pub use assembler::assemble_with_symbols;
 
 

@@ -11,6 +11,10 @@ use num_traits::ToPrimitive;
 use log::trace;
 
 pub fn assemble(prog: &str) -> Vec<u8> {
+    Assembler::new().assemble(prog).0
+}
+
+pub fn assemble_with_symbols(prog: &str) -> (Vec<u8>, HashMap<String, u16>) {
     Assembler::new().assemble(prog)
 }
 
@@ -299,7 +303,7 @@ impl Assembler {
         }
     }
 
-    fn assemble(mut self, prog: &str) -> Vec<u8> {
+    fn assemble(mut self, prog: &str) -> (Vec<u8>, HashMap<String, u16>) {
 
         let lines = prog.split('\n');
         let parser = StmtParser::new();
@@ -317,7 +321,7 @@ impl Assembler {
         for stmt in prog {
             self.emit_stmt(&stmt);
         }
-        self.buf
+        (self.buf, self.symbols)
     }
 }
 
