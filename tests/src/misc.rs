@@ -42,6 +42,22 @@ fn even() {
     let bin = assemble(r#"
         jmp start
 
+        . = 10
+
+        .even
+    start:
+        mov #1, r0
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+
+    let bin = assemble(r#"
+        jmp start
+
         . = 11
 
         .even
@@ -55,6 +71,21 @@ fn even() {
     assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
+    let bin = assemble(r#"
+        jmp start
+
+        .word 0
+
+        .even
+    start:
+        mov #1, r0
+        halt
+    "#);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
     let bin = assemble(r#"
         jmp start
