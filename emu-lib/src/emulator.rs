@@ -99,6 +99,11 @@ impl Emulator {
         }
     }
 
+    // Continue after halt.
+    pub fn cont(&mut self) {
+        self.run();
+    }
+
     fn decode(&self) -> Ins {
         decode(self.state.next_ins())
     }
