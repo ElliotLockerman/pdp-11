@@ -106,7 +106,7 @@ impl Status {
 
 // This is separate so a mutable borrow can be passed to the MMIO handlers.
 pub struct EmulatorState {
-    curr_cycle: usize,
+    num_ins: usize,
     mem: Vec<u8>,
     regs: [u16; NUM_REGS],
     pub status: Status,
@@ -115,15 +115,15 @@ pub struct EmulatorState {
 impl EmulatorState {
     pub fn new() -> Self {
         EmulatorState {
-            curr_cycle: 0usize,
+            num_ins: 0usize,
             mem: vec![0; (u16::MAX as usize) + 1],
             regs: [0; NUM_REGS],
             status: Status::new(),
         }
     }
 
-    pub fn inc_cycle(&mut self) {
-        self.curr_cycle += 1;
+    pub fn inc_ins(&mut self) {
+        self.num_ins += 1;
     }
 
     pub fn mem_read_byte(&self, addr: u16) -> u8 {

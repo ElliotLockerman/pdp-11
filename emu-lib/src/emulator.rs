@@ -84,10 +84,16 @@ impl Emulator {
     }
     pub fn run(&mut self) {
         loop {
-            // TODO: track actual time instead of assuming 1 cycle / ins
-            self.state.inc_cycle();
-            for handler in self.mmio_handlers.values_mut() { 
-                handler.borrow_mut().cycle(&mut self.state); 
+            // TODO: better timing model
+            self.state.inc_ins();
+
+            let interrupt = self.mmio_handlers.values_mut()
+                .flat_map(|x| x.borrow_mut().tick(&mut self.state))
+                .max_by_key(|x| x.prio);
+            if let Some(interrupt) = interrupt {
+                if interrupt.prio > self.get_state().get_status().get_prio() {
+                    self.interrupt(interrupt.vector);
+                }
             }
             
             let ins = self.decode();
@@ -660,18 +666,21 @@ impl Emulator {
         }
     }
 
-    fn exec_trap_ins(&mut self, ins: &TrapIns) {
+    fn interrupt(&mut self, vector: u16) {
         self.push_word(self.get_state().get_status().to_raw());
         self.push_word(self.state.pc());
-        let (pcvec, psvec) = match ins.op {
-            TrapOpcode::Emt => (0o30, 0o32),
-            TrapOpcode::Trap => (0o34, 0o36),
-        };
 
-        let new_pc = self.mem_read_word(pcvec);
-        let new_ps = Status::from_raw(self.mem_read_word(psvec));
+        let new_pc = self.mem_read_word(vector);
+        let new_ps = Status::from_raw(self.mem_read_word(vector + 2));
         self.get_state_mut().reg_write_word(Reg::PC, new_pc);
         self.get_state_mut().set_status(new_ps);
+    }
+
+    fn exec_trap_ins(&mut self, ins: &TrapIns) {
+        match ins.op {
+            TrapOpcode::Emt => self.interrupt(0o30),
+            TrapOpcode::Trap => self.interrupt(0o34),
+        }
     }
 
     fn exec_rti_ins(&mut self) {

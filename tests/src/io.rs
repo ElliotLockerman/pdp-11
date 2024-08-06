@@ -3,16 +3,16 @@ use std::sync::Arc;
 
 use as_lib::assemble_with_symbols;
 use emu_lib::Emulator;
-use emu_lib::io;
+use emu_lib::io::teleprinter::*;
 
 #[test]
 fn hello() {
     let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/hello.s"));
 
-    let printer = Arc::new(io::PipePrinter::default());
-    let teleprinter = io::Teleprinter::new(printer.clone());
+    let printer = Arc::new(PipePrinter::default());
+    let teleprinter = Teleprinter::new(printer.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([io::Teleprinter::TPS, io::Teleprinter::TPB], teleprinter);
+    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
