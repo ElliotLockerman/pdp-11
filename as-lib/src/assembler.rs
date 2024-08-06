@@ -94,7 +94,9 @@ impl Assembler {
     }
 
     fn emit_trap_ins(&mut self, ins: &TrapIns) {
-        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | (ins.data as u16));
+        let data = ins.data.unwrap_val();
+        assert_eq!(data & !0xff, 0);
+        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | (data as u16));
     }
 
     fn emit_ins(&mut self, ins: &Ins) {
@@ -264,6 +266,12 @@ impl Assembler {
                             Ins::Jmp(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
                             Ins::Jsr(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
                             Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
+                            Ins::Trap(ins) => {
+                                if let Some(val) = self.eval_expr(&ins.data, loc, iter) {
+                                    assert_eq!(val & !0xff, 0);
+                                    ins.data = Expr::Atom(Atom::Val(val)); 
+                                }
+                            },
                             _ => (),
                         }
                         addr += WORD_SIZE;

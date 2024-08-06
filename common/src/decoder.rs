@@ -68,8 +68,8 @@ fn decode_misc_ins(input: &[u16]) -> Option<Ins> {
 
 fn decode_trap_ins(input: &[u16]) -> Option<Ins> {
     let op = TrapIns::decode_opcode(input[0])?;
-    let data = (input[0] & TrapIns::HANDLER_MASK) as u8;
-    Some(Ins::Trap(TrapIns{op, data}))
+    let data = input[0] & TrapIns::HANDLER_MASK;
+    Some(Ins::Trap(TrapIns{op, data: Expr::Atom(Atom::Val(data))}))
 }
 
 type Decoder = fn(&[u16]) -> Option<Ins>;

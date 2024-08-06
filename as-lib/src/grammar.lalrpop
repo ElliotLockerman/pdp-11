@@ -161,8 +161,10 @@ I: Ins = {
     "sez" => make_cc_ins!(Sez),
     "sen" => make_cc_ins!(Sen),
 
-    "emt" "#" <Imm> => make_trap_ins!(Emt, TryInto::<u8>::try_into(<>).unwrap()),
-    "trap" "#" <Imm> => make_trap_ins!(Trap, TryInto::<u8>::try_into(<>).unwrap()),
+    "emt" <Expr> => make_trap_ins!(Emt, <>),
+    "emt"  => make_trap_ins!(Emt, Expr::Atom(Atom::Val(0))),
+    "trap" <Expr> => make_trap_ins!(Trap, <>),
+    "trap"  => make_trap_ins!(Trap, Expr::Atom(Atom::Val(0))),
 };
 
 

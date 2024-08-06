@@ -508,7 +508,7 @@ pub enum TrapOpcode {
 #[derive(Debug, Clone)]
 pub struct TrapIns {
     pub op: TrapOpcode,
-    pub data: u8,
+    pub data: Expr,
 }
 
 impl TrapIns {

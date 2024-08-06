@@ -25,7 +25,7 @@ fn emt() {
 
     _start:
         mov #STACK_TOP, sp
-        emt #0
+        emt
         halt
 
     handler:
@@ -46,7 +46,7 @@ fn emt() {
 
     _start:
         mov #STACK_TOP, sp
-        emt #4
+        emt 4
         halt
 
     handler:
@@ -74,7 +74,7 @@ fn trap() {
 
     _start:
         mov #STACK_TOP, sp
-        trap #0
+        trap
         halt
 
     handler:
@@ -95,7 +95,7 @@ fn trap() {
 
     _start:
         mov #STACK_TOP, sp
-        trap #4
+        trap 2 + 2
         halt
 
     handler:
