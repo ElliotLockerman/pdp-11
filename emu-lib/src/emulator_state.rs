@@ -139,6 +139,10 @@ impl EmulatorState {
 
     pub fn reg_write_word(&mut self, reg: Reg, val: u16) {
         trace!("Reg: writing {val} to {reg:?} (word)");
+        if reg == Reg::SP && val < 0o400 {
+            // Should really trap.
+            panic!("Stack overflow");
+        }
         self.regs[reg.to_usize().unwrap()] = val;
     }
 

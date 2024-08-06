@@ -47,8 +47,7 @@ fn regs() {
         mov r4, r5
         inc r5
 
-        mov r5, r6
-        inc r6
+        mov #1000, r6
 
         halt
     "#);
@@ -61,6 +60,7 @@ fn regs() {
     assert_eq!(emu.get_state().reg_read_word(Reg::R3), 0o3);
     assert_eq!(emu.get_state().reg_read_word(Reg::R4), 0o4);
     assert_eq!(emu.get_state().reg_read_word(Reg::R5), 0o5);
+    assert_eq!(emu.get_state().reg_read_word(Reg::SP), 0o1000);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
