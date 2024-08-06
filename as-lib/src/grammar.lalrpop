@@ -11,7 +11,7 @@ use common::{
     make_misc_ins,
     make_cc_ins,
     make_single_operand_ins,
-    make_trap_ins
+    make_trap_ins,
 };
 
 grammar;
@@ -84,6 +84,7 @@ Operand: Operand = {
 
 I: Ins = {
     "halt" => make_misc_ins!(Halt),
+    "rti" => make_misc_ins!(Rti),
 
     "mov" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Mov, src, dst),
     "cmp" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Cmp, src, dst),
@@ -162,9 +163,9 @@ I: Ins = {
     "sen" => make_cc_ins!(Sen),
 
     "emt" <Expr> => make_trap_ins!(Emt, <>),
-    "emt"  => make_trap_ins!(Emt, Expr::Atom(Atom::Val(0))),
+    "emt" => make_trap_ins!(Emt, Expr::Atom(Atom::Val(0))),
     "trap" <Expr> => make_trap_ins!(Trap, <>),
-    "trap"  => make_trap_ins!(Trap, Expr::Atom(Atom::Val(0))),
+    "trap" => make_trap_ins!(Trap, Expr::Atom(Atom::Val(0))),
 };
 
 

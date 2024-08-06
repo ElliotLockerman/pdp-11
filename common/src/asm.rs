@@ -512,7 +512,7 @@ pub struct TrapIns {
 }
 
 impl TrapIns {
-    pub const HANDLER_MASK: u16 = (1u16 << Self::OPCODE_BITS) - 1;
+    pub const DATA_MASK: u16 = (1u16 << Self::OPCODE_BITS) - 1;
 
     pub fn num_imm(&self) -> u16 {
         0
@@ -523,6 +523,7 @@ impl InstrVariant<TrapOpcode> for TrapIns {
     const OPCODE_BITS: usize = 8;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -560,5 +561,4 @@ impl Ins {
     }
 
 }
-
 

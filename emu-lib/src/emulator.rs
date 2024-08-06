@@ -388,13 +388,15 @@ impl Emulator {
 
     fn exec_misc_ins(&mut self, ins: &MiscIns) -> ExecRet {
         match ins.op {
-            MiscOpcode::Halt => ExecRet::Halt,
+            MiscOpcode::Halt => { return ExecRet::Halt; },
+            MiscOpcode::Rti => self.exec_rti_ins(),
             _ => panic!(
                 "Instruction {ins:?} (0o{:o}) at pc 0o{:o} not yet implemented",
                 ins.op as u16,
                 self.state.reg_read_word(Reg::PC)
             ),
         }
+        ExecRet::Ok
     }
 
     fn exec_branch_ins(&mut self, ins: &BranchIns) {
@@ -672,6 +674,13 @@ impl Emulator {
         self.get_state_mut().set_status(new_ps);
     }
 
+    fn exec_rti_ins(&mut self) {
+        let new_pc = self.pop_word();
+        let new_ps = self.pop_word();
+        self.get_state_mut().reg_write_word(Reg::PC, new_pc);
+        self.get_state_mut().set_status(Status::from_raw(new_ps));
+    }
+
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
             Ins::DoubleOperand(ins) =>  self.exec_double_operand_ins(ins),
@@ -840,6 +849,7 @@ mod tests {
         assert_eq!(emu.state.reg_read_word(Reg::R1), 1);
         assert_eq!(emu.state.reg_read_word(Reg::R2), 0);
     }
+
 }
 
 fn not_and(src: u32, dst: u32) -> u32 {
