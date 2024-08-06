@@ -4,6 +4,7 @@ use common::decoder::decode;
 use common::constants::*;
 use crate::MMIOHandler;
 use crate::EmulatorState;
+use crate::Status;
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -396,7 +397,7 @@ impl Emulator {
         }
     }
 
-    fn exec_branch_ins(&mut self, ins: &BranchIns) -> ExecRet {
+    fn exec_branch_ins(&mut self, ins: &BranchIns) {
         let (z, n, c, v) = self.state.status.flags();
         let taken = match ins.op {
             BranchOpcode::Br => true,
@@ -422,10 +423,7 @@ impl Emulator {
             let pc = self.state.pc();
             let pc = pc.wrapping_add(off as i16 as u16);
             self.state.reg_write_word(Reg::PC,  pc);
-            return ExecRet::Ok;
         }
-
-        ExecRet::Ok
     }
 
 
@@ -660,18 +658,34 @@ impl Emulator {
         }
     }
 
+    fn exec_trap_ins(&mut self, ins: &TrapIns) {
+        self.push_word(self.get_state().get_status().to_raw());
+        self.push_word(self.state.pc());
+        let (pcvec, psvec) = match ins.op {
+            TrapOpcode::Emt => (0o30, 0o32),
+            TrapOpcode::Trap => (0o34, 0o36),
+        };
+
+        let new_pc = self.mem_read_word(pcvec);
+        let new_ps = Status::from_raw(self.mem_read_word(psvec));
+        self.get_state_mut().reg_write_word(Reg::PC, new_pc);
+        self.get_state_mut().set_status(new_ps);
+    }
+
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
-            Ins::DoubleOperand(ins) => { self.exec_double_operand_ins(ins); ExecRet::Ok },
+            Ins::DoubleOperand(ins) =>  self.exec_double_operand_ins(ins),
             Ins::Branch(ins) => self.exec_branch_ins(ins),
-            Ins::Jmp(ins) => { self.exec_jmp_ins(ins); ExecRet::Ok },
-            Ins::Jsr(ins) => { self.exec_jsr_ins(ins); ExecRet::Ok },
-            Ins::Rts(ins) => { self.exec_rts_ins(ins); ExecRet::Ok },
-            Ins::SingleOperand(ins) => { self.exec_single_operand_ins(ins); ExecRet::Ok },
-            Ins::CC(ins) => { self.exec_cc_ins(ins); ExecRet::Ok },
-            Ins::Misc(ins) => self.exec_misc_ins(ins),
-            _ => todo!(),
+            Ins::Jmp(ins) =>  self.exec_jmp_ins(ins),
+            Ins::Jsr(ins) =>  self.exec_jsr_ins(ins),
+            Ins::Rts(ins) =>  self.exec_rts_ins(ins),
+            Ins::SingleOperand(ins) =>  self.exec_single_operand_ins(ins),
+            Ins::CC(ins) =>  self.exec_cc_ins(ins),
+            Ins::Misc(ins) => { return self.exec_misc_ins(ins); },
+            Ins::Trap(ins) =>  self.exec_trap_ins(ins),
         }
+
+        ExecRet::Ok
     }
 }
 

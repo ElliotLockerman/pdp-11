@@ -22,6 +22,16 @@ impl Status {
     pub fn new() -> Status {
         Default::default()
     }
+
+    pub fn from_raw(raw: u16) -> Self {
+        Status(raw)
+    }
+
+    pub fn to_raw(&self) -> u16 {
+        self.0
+    }
+
+
     pub fn flags(&self) -> (bool, bool, bool, bool) {
         (self.get_zero(), self.get_negative(), self.get_carry(), self.get_overflow())
     }
@@ -174,6 +184,10 @@ impl EmulatorState {
         }
         let mem = &self.mem.as_slice()[pc..pc+6];
         as_word_slice(mem)
+    }
+
+    pub fn set_status(&mut self, status: Status) {
+        self.status = status;
     }
 
     pub fn get_status(&self) -> &Status {

@@ -496,7 +496,7 @@ impl InstrVariant<MiscOpcode> for MiscIns {
 
 #[macro_export]
 macro_rules! make_trap_ins {
-    ($op:ident, $handler:expr) => { TrapIns{op: MiscOpcode::$op, handler:$handler } };
+    ($op:ident, $data:expr) => { Ins::Trap(TrapIns{op: TrapOpcode::$op, data:$data }) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum TrapOpcode {
@@ -508,7 +508,7 @@ pub enum TrapOpcode {
 #[derive(Debug, Clone)]
 pub struct TrapIns {
     pub op: TrapOpcode,
-    pub handler: Target,
+    pub data: u8,
 }
 
 impl TrapIns {

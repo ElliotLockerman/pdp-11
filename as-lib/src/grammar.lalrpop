@@ -2,7 +2,17 @@
 use common::asm::*;
 use crate::ir::{Cmd, Stmt};
 use crate::helpers::parse_int;
-use common::{make_double_operand_ins, make_branch_ins, make_jmp_ins, make_jsr_ins, make_rts_ins, make_misc_ins, make_cc_ins, make_single_operand_ins};
+use common::{
+    make_double_operand_ins,
+    make_branch_ins,
+    make_jmp_ins,
+    make_jsr_ins,
+    make_rts_ins,
+    make_misc_ins,
+    make_cc_ins,
+    make_single_operand_ins,
+    make_trap_ins
+};
 
 grammar;
 
@@ -150,6 +160,9 @@ I: Ins = {
     "sev" => make_cc_ins!(Sev),
     "sez" => make_cc_ins!(Sez),
     "sen" => make_cc_ins!(Sen),
+
+    "emt" "#" <Imm> => make_trap_ins!(Emt, TryInto::<u8>::try_into(<>).unwrap()),
+    "trap" "#" <Imm> => make_trap_ins!(Trap, TryInto::<u8>::try_into(<>).unwrap()),
 };
 
 

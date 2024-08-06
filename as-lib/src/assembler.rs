@@ -94,8 +94,7 @@ impl Assembler {
     }
 
     fn emit_trap_ins(&mut self, ins: &TrapIns) {
-        let offset = ins.handler.unwrap_offset();
-        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | (offset as u16));
+        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | (ins.data as u16));
     }
 
     fn emit_ins(&mut self, ins: &Ins) {
