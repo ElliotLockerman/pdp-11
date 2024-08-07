@@ -1,6 +1,11 @@
+; timer_ticks.s
+; Prints digits 0 - 9 (one every 2^8 ticks), followed by a newline, then halts.
+
     STACK_TOP = 150000 
+
     LKS = 177546
     LKS_INT_ENB = 100
+
     TPS = 177564
     TPB = TPS + 2
     TPS_READY_MASK = 177
@@ -11,19 +16,23 @@
 
     . = 400
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; fn _start()
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 _start:
     mov #STACK_TOP, sp
-    mov #LKS_INT_ENB, @#LKS
+    mov #LKS_INT_ENB, @#LKS ; Enable clock interrupts.
 
+    ; Just spin; the rest of the program happens in clock() in response to interrupts.
 loop:
     br loop
 
-ticks:
-    .word 0
 
-count:
-    .word 0
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; fn clock()
+; Handles clock interrupt. Every 2^8 ticks, prints count and increments it.
+; After 9, prints \n and halts.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 clock:
     mov r0, -(sp)
     mov r1, -(sp)
@@ -32,19 +41,22 @@ clock:
     mov r4, -(sp)
     mov r5, -(sp)
 
-
+    ; Increment tick counter; if it hasn't rolled over, just return.
     incb ticks
     bne done
 
+    ; Increment counter and print it.
     inc count
     mov count, r0
-    add #60, r0
+    add #'0, r0
     jsr pc, print
 
+    ; If we haven't reached 9 yet, just return.
     cmp #9., count
     bgt done
 
-    mov #12, r0
+    ; If we have just printed 9, print \n and halt.
+    mov #12, r0 ; '\n'
     jsr pc, print
     halt
 
@@ -58,16 +70,26 @@ done:
     rti
     
 
+    ; Total number of timer ticks, wrapping.
+ticks:
+    .word 0
 
-; char to print in r0, others callee save
+    ; Counter to print.
+count:
+    .word 0
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; print(char: r0)
+; char is the ascii char to print.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 print:
-    mov r1, -(sp)
-
-print_loop:
-    movb @#TPS, r1
-    bicb #TPS_READY_MASK, r1
-    beq print_loop
+    ; Loop until the teleprinter is ready to accept another character.
+    bicb #TPS_READY_MASK, @#TPS
+    beq print
 
     movb r0, @#TPB
-    mov (sp)+, r1
     rts pc  
+
