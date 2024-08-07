@@ -12,5 +12,8 @@ sp.check_call(["cargo", "build", "--bin", "interpreter"])
 os.chdir(prev_cwd)
 
 bin_path = script_dir / "target/debug/interpreter"
-sp.check_call([bin_path, *sys.argv[1:]])
+try:
+    sp.check_call([bin_path, *sys.argv[1:]])
+except KeyboardInterrupt:
+    pass
 
