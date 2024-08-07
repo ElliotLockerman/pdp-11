@@ -168,7 +168,7 @@ impl Emulator {
     }
 
     pub fn mem_read_word(&mut self, addr: u16) -> u16 {
-        assert!(addr & 1 == 0);
+        assert!(addr & 1 == 0, "Word read of 0o{addr:o} not aligned");
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
                 return handler.borrow_mut().read_word(&mut self.state, addr);
@@ -180,7 +180,7 @@ impl Emulator {
     }
 
     pub fn mem_write_word(&mut self, addr: u16, val: u16) {
-        assert!(addr & 1 == 0);
+        assert!(addr & 1 == 0, "Word write of 0o{addr:o} not aligned");
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
                 handler.borrow_mut().write_word(&mut self.state, addr, val);
