@@ -684,6 +684,7 @@ impl Emulator {
     fn interrupt(&mut self, vector: u16) {
         self.push_word(self.get_state().get_status().to_raw());
         self.push_word(self.state.pc());
+        trace!("Interrupt saving pc 0o{:o}", self.state.pc());
 
         let new_pc = self.mem_read_word(vector);
         let new_ps = Status::from_raw(self.mem_read_word(vector + 2));
@@ -700,6 +701,7 @@ impl Emulator {
 
     fn exec_rti_ins(&mut self) {
         let new_pc = self.pop_word();
+        trace!("RTI to pc 0o{new_pc:o}");
         let new_ps = self.pop_word();
         self.get_state_mut().reg_write_word(Reg::PC, new_pc);
         self.get_state_mut().set_status(Status::from_raw(new_ps));
