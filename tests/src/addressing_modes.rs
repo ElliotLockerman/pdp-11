@@ -1,5 +1,5 @@
 
-use as_lib::assemble;
+use as_lib::{assemble, assemble_with_symbols};
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::{DATA_START, WORD_SIZE};
@@ -1050,3 +1050,44 @@ fn relative_def_write() {
     assert_eq!(emu.get_state().mem_read_word(0o414), 0o7400);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - WORD_SIZE);
 }
+
+#[test]
+fn cmp_literal_index() {
+    let asm = r#"
+        . = 400
+
+    count:
+        .word 0
+
+    _start:
+        cmp count, #9.
+        halt
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, 0);
+    emu.run_at(*symbols.get("_start").unwrap());
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+
+
+    let asm = r#"
+        . = 400
+
+    count:
+        .word 0
+
+    _start:
+        cmp #9., count
+        halt
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+    let mut emu = Emulator::new();
+    emu.load_image(&bin, 0);
+    emu.run_at(*symbols.get("_start").unwrap());
+    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+}
+
+
+

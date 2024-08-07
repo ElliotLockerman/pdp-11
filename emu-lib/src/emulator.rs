@@ -315,7 +315,7 @@ impl Emulator {
 
     // TODO: combine these?
     fn do_bitwise(&mut self, src: &Operand, op: fn(u32, u32) -> u32, dst: &Operand, size: Size, discard: bool) {
-        let src = self.resolve(src, Size::Word);
+        let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
         let dst = self.resolve(dst, size);
         let dst_val = self.read_resolved_widen(dst, size);
@@ -350,8 +350,7 @@ impl Emulator {
         self.write_resolved_narrow(dst, res, size);
     }
 
-    // NB: src and dst are flipped for cmp
-    fn do_sub(&mut self, src: &Operand, dst: &Operand, size: Size, discard: bool) {
+    fn do_sub(&mut self, src: &Operand, dst: &Operand, size: Size) {
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
         let src_sign = size.sign_bit(src_val);
@@ -366,16 +365,32 @@ impl Emulator {
         self.state.status.set_carry(dst_val < src_val);
         self.state.status.set_overflow(src_sign != dst_sign && src_sign == res_sign);
 
-        if !discard {
-            self.write_resolved_narrow(dst, res, size);
-        }
+        self.write_resolved_narrow(dst, res, size);
+    }
+
+
+    // NB: args are swapped compared to sub!
+    fn do_cmp(&mut self, src: &Operand, dst: &Operand, size: Size) {
+        let src = self.resolve(src, size);
+        let src_val = self.read_resolved_widen(src, size);
+        let src_sign = size.sign_bit(src_val);
+        let dst = self.resolve(dst, size);
+        let dst_val = self.read_resolved_widen(dst, size);
+        let dst_sign = size.sign_bit(dst_val);
+        let res = src_val.wrapping_add((!dst_val).wrapping_add(1) & size.mask());
+        let res_sign = size.sign_bit(res);
+
+        self.state.status.set_zero((res & size.mask()) == 0);
+        self.state.status.set_negative(res_sign != 0);
+        self.state.status.set_carry(src_val < dst_val);
+        self.state.status.set_overflow(src_sign != dst_sign && dst_sign == res_sign);
     }
 
     fn exec_double_operand_ins(&mut self, ins: &DoubleOperandIns) {
         use DoubleOperandOpcode::*;
         match ins.op {
             Mov => self.do_mov(&ins.src, &ins.dst, Size::Word),
-            Cmp => self.do_sub(&ins.dst, &ins.src, Size::Word, true),
+            Cmp => self.do_cmp(&ins.src, &ins.dst, Size::Word),
             Bis => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Word, false),
             Bic => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Word, false),
             Bit => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Word, true),
@@ -383,12 +398,12 @@ impl Emulator {
             Add => self.do_add(&ins.src, &ins.dst, Size::Word) ,
 
             MovB => self.do_mov(&ins.src, &ins.dst, Size::Byte),
-            CmpB => self.do_sub(&ins.dst,  &ins.src, Size::Byte, true),
+            CmpB => self.do_cmp(&ins.src,  &ins.dst, Size::Byte),
             BisB => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Byte, false),
             BicB => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Byte, false),
             BitB => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Byte, true),
 
-            Sub => self.do_sub(&ins.src, &ins.dst, Size::Word, false) ,
+            Sub => self.do_sub(&ins.src, &ins.dst, Size::Word) ,
         }
     }
 

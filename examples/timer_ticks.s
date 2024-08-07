@@ -41,8 +41,7 @@ clock:
     add #60, r0
     jsr pc, print
 
-    mov count, r0
-    cmp #9., r0
+    cmp #9., count
     bgt done
 
     mov #12, r0
