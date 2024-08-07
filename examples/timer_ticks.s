@@ -33,7 +33,7 @@ clock:
     mov r5, -(sp)
 
 
-    inc ticks
+    incb ticks
     bne done
 
     inc count
