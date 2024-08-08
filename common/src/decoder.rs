@@ -3,24 +3,23 @@ use num_traits::FromPrimitive;
 
 use super::asm::*;
 
-fn decode_reg_arg(arg: u16, input: &[u16], imm_idx: usize) -> Operand {
+fn decode_operand(arg: u16, input: &[u16], imm_idx: usize) -> Operand {
     let reg = Reg::from_u16(arg & Reg::MASK).unwrap();
     let mode = AddrMode::from_u16((arg >> Reg::NUM_BITS) & AddrMode::MASK).unwrap();
 
-    let mut arg = Operand{mode, reg, extra: Extra::None};
-
-    if arg.has_imm() {
-        arg.extra = Extra::Imm(Expr::Atom(Atom::Val(input[imm_idx])));
+    let mut op = Operand{mode, reg, extra: Extra::None};
+    if op.needs_extra() {
+        op.add_extra(input[imm_idx]);
     }
-    arg
+    op
 }
 
 
 fn decode_double_operand_ins(input: &[u16]) -> Option<Ins> {
     let op = DoubleOperandIns::decode_opcode(input[0])?;
 
-    let src = decode_reg_arg(input[0] >> Operand::NUM_BITS, input, 1);
-    let dst = decode_reg_arg(input[0], input, (src.num_imm() + 1) as usize);
+    let src = decode_operand(input[0] >> Operand::NUM_BITS, input, 1);
+    let dst = decode_operand(input[0], input, (src.num_extra() + 1) as usize);
 
     Some(Ins::DoubleOperand(DoubleOperandIns{op, src, dst}))
 }
@@ -33,13 +32,13 @@ fn decode_branch_ins(input: &[u16]) -> Option<Ins> {
 
 fn decode_jmp_ins(input: &[u16]) -> Option<Ins> {
     let op = JmpIns::decode_opcode(input[0])?;
-    let dst = decode_reg_arg(input[0], input, 1);
+    let dst = decode_operand(input[0], input, 1);
     Some(Ins::Jmp(JmpIns{op, dst}))
 }
 
 fn decode_jsr_ins(input: &[u16]) -> Option<Ins> {
     let op = JsrIns::decode_opcode(input[0])?;
-    let dst = decode_reg_arg(input[0], input, 1);
+    let dst = decode_operand(input[0], input, 1);
     let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
     Some(Ins::Jsr(JsrIns{op, reg, dst}))
 }
@@ -52,7 +51,7 @@ fn decode_rts_ins(input: &[u16]) -> Option<Ins> {
 
 fn decode_single_operand_ins(input: &[u16]) -> Option<Ins> {
     let op = SingleOperandIns::decode_opcode(input[0])?;
-    let dst = decode_reg_arg(input[0], input, 1);
+    let dst = decode_operand(input[0], input, 1);
     Some(Ins::SingleOperand(SingleOperandIns{op, dst}))
 }
 
@@ -87,13 +86,14 @@ const DECODERS: &[Decoder] = &[
 ]; 
 
 
-pub fn decode(input: &[u16]) -> Ins {
+pub fn decode(input: &[u16]) -> Option<Ins> {
     for decoder in DECODERS {
-        if let Some(ins) = decoder(input) {
+        let ins = decoder(input);
+        if ins.is_some() {
             return ins;
         }
     }
 
-    panic!("Invalid instruction 0{:o}", input[0]);
+    None
 }
 

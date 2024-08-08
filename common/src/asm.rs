@@ -126,25 +126,37 @@ impl Operand {
 
     pub fn new(mode: AddrMode, reg: Reg, extra: Extra) -> Operand {
         let ret = Operand{mode, reg, extra};
-        assert!(!ret.needs_imm() || !ret.extra.is_none());
+        assert!(!ret.needs_extra() || !ret.extra.is_none());
         ret
     }
 
-    fn needs_imm(&self) -> bool {
+    pub fn needs_extra(&self) -> bool {
         use AddrMode::*;
-        match self.mode {
-            AutoInc | AutoIncDef => self.reg == Reg::PC,
-            Index | IndexDef => true,
-            _ => false,
+        matches!{
+            (self.mode, self.reg),
+            (AutoInc | AutoIncDef, Reg::PC)
+                | (Index | IndexDef, Reg::PC)
+                | (Index | IndexDef, _)
         }
     }
 
-    pub fn has_imm(&self) -> bool {
+    pub fn add_extra(&mut self, val: u16) {
+        use AddrMode::*;
+        let val = Expr::Atom(Atom::Val(val));
+        match (self.mode, self.reg) {
+            (AutoInc | AutoIncDef, Reg::PC) => self.extra = Extra::Imm(val),
+            (Index | IndexDef, Reg::PC) => self.extra = Extra::Rel(val),
+            (Index | IndexDef, _) => self.extra = Extra::Imm(val),
+            _ => panic!("Operand with mode {:?} and reg {:?} doesn't need extra", self.mode, self.reg),
+        }
+    }
+
+    pub fn has_extra(&self) -> bool {
         !self.extra.is_none()
     }
 
-    pub fn num_imm(&self) -> u16 {
-        self.has_imm() as u16
+    pub fn num_extra(&self) -> u16 {
+        self.has_extra() as u16
     }
 
 
@@ -212,8 +224,8 @@ impl InstrVariant<DoubleOperandOpcode> for DoubleOperandIns {
 }
 
 impl DoubleOperandIns {
-    pub fn num_imm(&self) -> u16 {
-        self.src.num_imm() + self.dst.num_imm()
+    pub fn num_extra(&self) -> u16 {
+        self.src.num_extra() + self.dst.num_extra()
     }
 }
 
@@ -257,7 +269,7 @@ impl BranchIns {
     pub const OFFSET_NUM_BITS: usize = 8;
     pub const OFFSET_MASK: u16 = (1u16 << Self::OFFSET_NUM_BITS) - 1;
 
-    pub fn num_imm(&self) -> u16 {
+    pub fn num_extra(&self) -> u16 {
         0
     }
 }
@@ -287,8 +299,8 @@ pub struct JmpIns {
 }
 
 impl JmpIns {
-    pub fn num_imm(&self) -> u16 {
-        self.dst.num_imm()
+    pub fn num_extra(&self) -> u16 {
+        self.dst.num_extra()
     }
 }
 
@@ -317,8 +329,8 @@ pub struct JsrIns {
 }
 
 impl JsrIns {
-    pub fn num_imm(&self) -> u16 {
-        self.dst.num_imm()
+    pub fn num_extra(&self) -> u16 {
+        self.dst.num_extra()
     }
 }
 impl InstrVariant<JsrOpcode> for JsrIns {
@@ -343,7 +355,7 @@ pub struct RtsIns {
 }
 
 impl RtsIns {
-    pub fn num_imm(&self) -> u16 {
+    pub fn num_extra(&self) -> u16 {
         0
     }
 }
@@ -400,8 +412,8 @@ pub struct SingleOperandIns {
 }
 
 impl SingleOperandIns {
-    pub fn num_imm(&self) -> u16 {
-        self.dst.num_imm()
+    pub fn num_extra(&self) -> u16 {
+        self.dst.num_extra()
     }
 
     pub fn is_byte(&self) -> bool {
@@ -442,7 +454,7 @@ pub struct CCIns {
 }
 
 impl CCIns {
-    pub fn num_imm(&self) -> u16 {
+    pub fn num_extra(&self) -> u16 {
         0
     }
 }
@@ -482,7 +494,7 @@ pub struct MiscIns {
 }
 
 impl MiscIns {
-    pub fn num_imm(&self) -> u16 {
+    pub fn num_extra(&self) -> u16 {
         0
     }
 }
@@ -514,7 +526,7 @@ pub struct TrapIns {
 impl TrapIns {
     pub const DATA_MASK: u16 = (1u16 << Self::OPCODE_BITS) - 1;
 
-    pub fn num_imm(&self) -> u16 {
+    pub fn num_extra(&self) -> u16 {
         0
     }
 }
@@ -542,22 +554,22 @@ pub enum Ins {
 }
 
 impl Ins {
-    pub fn num_imm(&self) -> u16 {
+    pub fn num_extra(&self) -> u16 {
         match self {
-            Ins::DoubleOperand(x) => x.num_imm(),
-            Ins::Branch(x) => x.num_imm(),
-            Ins::Jmp(x) => x.num_imm(),
-            Ins::Jsr(x) => x.num_imm(),
-            Ins::Rts(x) => x.num_imm(),
-            Ins::SingleOperand(x) => x.num_imm(),
-            Ins::CC(x) => x.num_imm(),
-            Ins::Misc(x) => x.num_imm(),
-            Ins::Trap(x) => x.num_imm(),
+            Ins::DoubleOperand(x) => x.num_extra(),
+            Ins::Branch(x) => x.num_extra(),
+            Ins::Jmp(x) => x.num_extra(),
+            Ins::Jsr(x) => x.num_extra(),
+            Ins::Rts(x) => x.num_extra(),
+            Ins::SingleOperand(x) => x.num_extra(),
+            Ins::CC(x) => x.num_extra(),
+            Ins::Misc(x) => x.num_extra(),
+            Ins::Trap(x) => x.num_extra(),
         }
     }
 
     pub fn size(&self) -> u16 {
-        WORD_SIZE + WORD_SIZE * self.num_imm()
+        WORD_SIZE + WORD_SIZE * self.num_extra()
     }
 
 }

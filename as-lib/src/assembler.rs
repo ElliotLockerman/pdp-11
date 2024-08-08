@@ -40,11 +40,11 @@ impl Assembler {
             | ins.dst.format();
         self.emit(bin);
 
-        if ins.src.has_imm() {
+        if ins.src.has_extra() {
             self.emit(ins.src.extra.unwrap_val());
         }
 
-        if ins.dst.has_imm() {
+        if ins.dst.has_extra() {
             self.emit(ins.dst.extra.unwrap_val());
         }
     }
@@ -58,7 +58,7 @@ impl Assembler {
     fn emit_jmp_ins(&mut self, ins: &JmpIns) {
         let bin = (ins.op.to_u16().unwrap() << JmpIns::LOWER_BITS) | ins.dst.format();
         self.emit(bin);
-        if ins.dst.has_imm() {
+        if ins.dst.has_extra() {
             self.emit(ins.dst.extra.unwrap_val());
         }
     }
@@ -68,7 +68,7 @@ impl Assembler {
             | (ins.reg.to_u16().unwrap() << Operand::NUM_BITS)
             | ins.dst.format();
         self.emit(bin);
-        if ins.dst.has_imm() {
+        if ins.dst.has_extra() {
             self.emit(ins.dst.extra.unwrap_val());
         }
     }
@@ -81,7 +81,7 @@ impl Assembler {
     fn emit_single_operand_ins(&mut self, ins: &SingleOperandIns) {
         let bin = (ins.op.to_u16().unwrap() << SingleOperandIns::LOWER_BITS) | ins.dst.format();
         self.emit(bin);
-        if ins.dst.has_imm() {
+        if ins.dst.has_extra() {
             self.emit(ins.dst.extra.unwrap_val());
         }
 
@@ -96,7 +96,7 @@ impl Assembler {
     fn emit_trap_ins(&mut self, ins: &TrapIns) {
         let data = ins.data.unwrap_val();
         assert_eq!(data & !0xff, 0);
-        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | (data as u16));
+        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | data);
     }
 
     fn emit_ins(&mut self, ins: &Ins) {

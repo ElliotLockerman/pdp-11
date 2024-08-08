@@ -6,6 +6,7 @@ members = [
     "emu-cli",
     "emu-lib",
     "interpreter",
+    "disassembler",
     "tests",
 ]
 resolver = "2"

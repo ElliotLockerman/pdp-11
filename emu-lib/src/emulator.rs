@@ -112,7 +112,11 @@ impl Emulator {
     }
 
     fn decode(&self) -> Ins {
-        decode(self.state.next_ins())
+        let next_ins = self.state.next_ins();
+        let Some(ins) = decode(next_ins) else {
+            panic!("Invalid instruction 0{:o}", next_ins[0]);
+        };
+        ins
     }
 
     pub fn run_at(&mut self, pc: u16) {
@@ -261,34 +265,70 @@ impl Emulator {
         ret
     }
 
+    #[inline]
+    fn debug_check_extra_val(arg: &Operand, val: u16) {
+        if arg.needs_extra() {
+            debug_assert_eq!(arg.extra.unwrap_val(), val);
+        }
+    }
 
+    #[inline]
+    fn debug_check_extra_addr(&self, arg: &Operand, addr: u16) {
+        if arg.needs_extra() {
+            debug_assert_eq!(arg.extra.unwrap_val(), self.get_state().mem_read_word(addr));
+        }
+    }
+
+    // Convert an operand to a register or a memory location that can be read
+    // or written. This is a separate function from read and write, because some
+    // regs/addrs may get both a read and write in one instruction, but resolving
+    // the operand is side-effecting.
+    // There's a little bit of overlap in functionality between this function
+    // and the decoding done by common::decode::decoder. The emulator version
+    // is more similar to the "proper" model, what with it both having and relying
+    // on side effects on the emulator state, but this is not convenient for other
+    // tools, e.g., disassembers. the debug_check_extra_* functions make sure
+    // they are equivalent (in debug mode).
     fn resolve(&mut self, arg: &Operand, size: Size) -> ResolvedOperand {
         let loc = match arg.mode {
             AddrMode::Gen => return ResolvedOperand::Reg(arg.reg),
             AddrMode::Def => self.state.reg_read_word(arg.reg),
-            AddrMode::AutoInc => self.exec_auto(arg.reg, true, size),
+            AddrMode::AutoInc => {
+                let addr = self.exec_auto(arg.reg, true, size);
+                self.debug_check_extra_addr(arg, addr);
+                addr
+            }
             AddrMode::AutoIncDef => {
                 let addr = self.exec_auto(arg.reg, true, Size::Word);
+                self.debug_check_extra_addr(arg, addr);
                 self.mem_read_word(addr)
             },
-            AddrMode::AutoDec => self.exec_auto(arg.reg, false, size),
+            AddrMode::AutoDec => {
+                let addr = self.exec_auto(arg.reg, false, size);
+                self.debug_check_extra_addr(arg, addr);
+                addr
+            }
             AddrMode::AutoDecDef => {
                 let addr = self.exec_auto(arg.reg, false, Size::Word);
+                self.debug_check_extra_addr(arg, addr);
                 self.mem_read_word(addr)
             },
             AddrMode::Index => {
                 let reg_val = self.state.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
+                Self::debug_check_extra_val(arg, imm);
                 reg_val.wrapping_add(imm)
             },
             AddrMode::IndexDef => {
                 let reg_val = self.state.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
+                Self::debug_check_extra_val(arg, imm);
                 self.mem_read_word(reg_val.wrapping_add(imm))
             },
         };
+
 
         ResolvedOperand::Mem(loc)
     }
