@@ -1,12 +1,47 @@
 
 use common::mem::as_word_slice;
 use common::decoder::decode;
-use common::constants::WORD_SIZE;
+use common::constants::{WORD_SIZE, MAX_INS_WORDS};
+use common::asm::Ins;
+
+use std::fmt;
+
+
+fn write_oct_words(f: &mut fmt::Formatter, vals: &[u16]) -> fmt::Result {
+    for i in 0..MAX_INS_WORDS {
+        if (i as usize) < vals.len() {
+            write!(f, "{:#08o}", vals[i as usize])?;
+        } else {
+            write!(f, "        ")?;
+        }
+
+        if i != MAX_INS_WORDS {
+            write!(f, " ")?;
+        }
+    }
+    Ok(())
+}
+
+
 
 pub struct Disassembled {
     pub addr: u16,
     pub repr: Vec<u16>,
-    pub interp: Option<String>,
+    pub ins: Option<Ins>,
+}
+
+impl fmt::Display for Disassembled {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:#08o}", self.addr)?;
+        write!(f, "\t")?;
+        write_oct_words(f, &self.repr)?;
+        write!(f, "\t")?;
+
+        if let Some(interp) = &self.ins {
+            write!(f, "{}", interp)?;
+        }
+        Ok(())
+    }
 }
 
 pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
@@ -16,21 +51,13 @@ pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
     while addr < bin.len() {
         let upper = usize::min(addr + 3 * WORD_SIZE as usize, bin.len());
         let ins = decode(as_word_slice(&bin[addr..upper]));
-        if let Some(ins) = ins {
-            out.push(Disassembled{
-                addr: addr as u16,
-                repr: as_word_slice(&bin[addr..addr + ins.size() as usize]).into(),
-                interp: Some(format!("{:?}", ins)),
-            });
-            addr += ins.size() as usize;
-        } else {
-            out.push(Disassembled{
-                addr: addr as u16,
-                repr: as_word_slice(&bin[addr..addr + WORD_SIZE as usize]).into(),
-                interp: None,
-            });
-            addr += WORD_SIZE as usize;
-        }
+        let size = ins.as_ref().map(|x| x.size()).unwrap_or(WORD_SIZE) as usize;
+        out.push(Disassembled{
+            addr: addr as u16,
+            repr: as_word_slice(&bin[addr..addr + size]).into(),
+            ins,
+        });
+        addr += size;
     }
 
     out

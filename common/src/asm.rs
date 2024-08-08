@@ -1,6 +1,8 @@
 
 use crate::constants::WORD_SIZE;
 
+use std::fmt;
+
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
 use derive_more::{IsVariant, Unwrap};
@@ -104,6 +106,12 @@ pub enum Reg {
     PC,
 }
 
+impl fmt::Display for Reg {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 pub const NUM_REGS: usize = 8;
 
 impl Reg {
@@ -165,6 +173,27 @@ impl Operand {
     }
 }
 
+impl fmt::Display for Operand {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use AddrMode::*;
+        match (self.mode, self.reg) {
+            (Index, Reg::PC) => write!(f, "{:#o}", self.extra.unwrap_val()),
+            (IndexDef, Reg::PC) => write!(f, "@{:#o}", self.extra.unwrap_val()),
+            (AutoInc, Reg::PC) => write!(f, "#{:#o}", self.extra.unwrap_val()),
+            (AutoIncDef, Reg::PC) => write!(f, "@#{:#o}", self.extra.unwrap_val()),
+
+            (Gen, _) => write!(f, "{}", self.reg),
+            (Def, _) => write!(f, "({})", self.reg),
+            (AutoInc, _) => write!(f, "({})+", self.reg),
+            (AutoIncDef, _) => write!(f, "@({})+", self.reg),
+            (AutoDec, _) => write!(f, "-({})", self.reg),
+            (AutoDecDef, _) => write!(f, "@-({})", self.reg),
+            (Index, _) => write!(f, "{:#o}({})", self.extra.unwrap_val(), self.reg),
+            (IndexDef, _) => write!(f, "@{:#o}({})", self.extra.unwrap_val(), self.reg),
+        }
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub enum Target {
@@ -177,6 +206,15 @@ impl Target {
         match self {
             Target::Label(_) => panic!("Target::unwrap_reolved() no resolved"),
             Target::Offset(val) => *val,
+        }
+    }
+}
+impl fmt::Display for Target {
+    // TODO: resolve actual destination.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Target::Label(lbl) => write!(f, "{}", lbl),
+            Target::Offset(off) => write!(f, ". + {:#o}", 2u16.wrapping_add(((*off as i8 as i16) * 2) as u16))
         }
     }
 }
@@ -208,6 +246,12 @@ pub enum DoubleOperandOpcode {
     Sub,
 }
 
+impl fmt::Display for DoubleOperandOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 
 
 #[derive(Debug, Clone)]
@@ -229,6 +273,11 @@ impl DoubleOperandIns {
     }
 }
 
+impl fmt::Display for DoubleOperandIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}, {}", self.op, self.src, self.dst)
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -259,6 +308,12 @@ pub enum BranchOpcode {
     Bcs
 }
 
+impl fmt::Display for BranchOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BranchIns {
     pub op: BranchOpcode,
@@ -277,8 +332,12 @@ impl BranchIns {
 impl InstrVariant<BranchOpcode> for BranchIns {
     const OPCODE_BITS: usize = 8;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
+}
 
-
+impl fmt::Display for BranchIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}", self.op, self.target)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,6 +349,12 @@ macro_rules! make_jmp_ins {
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum JmpOpcode {
     Jmp = 1,
+}
+
+impl fmt::Display for JmpOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -309,6 +374,12 @@ impl InstrVariant<JmpOpcode> for JmpIns {
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
+impl fmt::Display for JmpIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}", self.op, self.dst)
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -319,6 +390,12 @@ macro_rules! make_jsr_ins {
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum JsrOpcode {
     Jsr = 4,
+}
+
+impl fmt::Display for JsrOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -338,6 +415,12 @@ impl InstrVariant<JsrOpcode> for JsrIns {
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
+impl fmt::Display for JsrIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}, {}", self.op, self.reg, self.dst)
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
@@ -348,6 +431,13 @@ macro_rules! make_rts_ins {
 pub enum RtsOpcode {
     Rts = 16,
 }
+
+impl fmt::Display for RtsOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RtsIns {
     pub op: RtsOpcode,
@@ -363,6 +453,12 @@ impl RtsIns {
 impl InstrVariant<RtsOpcode> for RtsIns {
     const OPCODE_BITS: usize = 13;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
+}
+
+impl fmt::Display for RtsIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}", self.op, self.reg)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,6 +501,12 @@ pub enum SingleOperandOpcode {
     AslB,
 }
 
+impl fmt::Display for SingleOperandOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SingleOperandIns {
     pub op: SingleOperandOpcode,
@@ -424,6 +526,12 @@ impl SingleOperandIns {
 impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
     const OPCODE_BITS: usize = 10;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
+}
+
+impl fmt::Display for SingleOperandIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}", self.op, self.dst)
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -447,6 +555,11 @@ pub enum CCOpcode {
     Sen = 0o270,
 }
 
+impl fmt::Display for CCOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CCIns {
@@ -462,7 +575,12 @@ impl CCIns {
 impl InstrVariant<CCOpcode> for CCIns {
     const OPCODE_BITS: usize = 16;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
+}
 
+impl fmt::Display for CCIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.op)
+    }
 }
 
 
@@ -487,6 +605,12 @@ pub enum MiscOpcode {
 
 }
 
+impl fmt::Display for MiscOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub struct MiscIns {
@@ -504,6 +628,12 @@ impl InstrVariant<MiscOpcode> for MiscIns {
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
+impl fmt::Display for MiscIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.op)
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
@@ -516,6 +646,11 @@ pub enum TrapOpcode {
     Trap,
 }
 
+impl fmt::Display for TrapOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TrapIns {
@@ -536,6 +671,11 @@ impl InstrVariant<TrapOpcode> for TrapIns {
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
+impl fmt::Display for TrapIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{:#o}", self.op, self.data.unwrap_val())
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -574,3 +714,18 @@ impl Ins {
 
 }
 
+impl fmt::Display for Ins {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Ins::DoubleOperand(ins) => write!(f, "{ins}"),
+            Ins::Branch(ins) => write!(f, "{ins}"),
+            Ins::Jmp(ins) => write!(f, "{ins}"),
+            Ins::Jsr(ins) => write!(f, "{ins}"),
+            Ins::Rts(ins) => write!(f, "{ins}"),
+            Ins::SingleOperand(ins) => write!(f, "{ins}"),
+            Ins::CC(ins) => write!(f, "{ins}"),
+            Ins::Misc(ins) => write!(f, "{ins}"),
+            Ins::Trap(ins) => write!(f, "{ins}"),
+        }
+    }
+}
