@@ -30,6 +30,7 @@ pub struct Disassembled {
     pub ins: Option<Ins>,
 }
 
+
 impl fmt::Display for Disassembled {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:#08o}", self.addr)?;
@@ -37,12 +38,15 @@ impl fmt::Display for Disassembled {
         write_oct_words(f, &self.repr)?;
         write!(f, "\t")?;
 
-        if let Some(interp) = &self.ins {
-            write!(f, "{}", interp)?;
+        match &self.ins {
+            Some(Ins::Branch(br)) => br.display_with_pc(f, self.addr)?,
+            Some(ins) => write!(f, "{}", ins)?,
+            None => (),
         }
         Ok(())
     }
 }
+
 
 pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
     assert!(bin.len() <= (u16::MAX as usize) + 1);

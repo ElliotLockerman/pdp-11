@@ -208,13 +208,27 @@ impl Target {
             Target::Offset(val) => *val,
         }
     }
+
+    pub fn display_with_pc(&self, f: &mut fmt::Formatter, mut pc: u16) -> fmt::Result {
+        pc = pc.wrapping_add(2);
+        match self {
+            Target::Label(lbl) => { write!(f, "{}", lbl)?; },
+            Target::Offset(off) => {
+                write!(f, "{}", self)?;
+                write!(f, " ; {:#o}", pc.wrapping_add(((*off as i8 as i16) * 2) as u16))?;
+            }
+        }
+
+        Ok(())
+    }
 }
+
 impl fmt::Display for Target {
     // TODO: resolve actual destination.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Target::Label(lbl) => write!(f, "{}", lbl),
-            Target::Offset(off) => write!(f, ". + {:#o}", 2u16.wrapping_add(((*off as i8 as i16) * 2) as u16))
+            Target::Offset(off) => write!(f, "{:#o}", 2u16.wrapping_add(((*off as i8 as i16) * 2) as u16))
         }
     }
 }
@@ -326,6 +340,11 @@ impl BranchIns {
 
     pub fn num_extra(&self) -> u16 {
         0
+    }
+
+    pub fn display_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        write!(f, "{}\t", self.op)?;
+        self.target.display_with_pc(f, pc)
     }
 }
 
