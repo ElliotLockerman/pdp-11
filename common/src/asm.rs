@@ -171,14 +171,24 @@ impl Operand {
     pub fn format(&self) -> u16 {
         self.reg.to_u16().unwrap() | (self.mode.to_u16().unwrap() << Reg::NUM_BITS)
     }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, mut pc: u16) -> fmt::Result {
+        pc = pc.wrapping_add(2);
+        use AddrMode::*;
+        match (self.mode, self.reg) {
+            (Index, Reg::PC) => write!(f, "{:#o}", pc.wrapping_add(self.extra.unwrap_val())),
+            (IndexDef, Reg::PC) => write!(f, "@ {:#o}", pc.wrapping_add(self.extra.unwrap_val())),
+            (_, _) => fmt::Display::fmt(self, f),
+        }
+    }
 }
 
 impl fmt::Display for Operand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use AddrMode::*;
         match (self.mode, self.reg) {
-            (Index, Reg::PC) => write!(f, "{:#o}", self.extra.unwrap_val()),
-            (IndexDef, Reg::PC) => write!(f, "@{:#o}", self.extra.unwrap_val()),
+            (Index, Reg::PC) => write!(f, ". + {:#o}", 2u16.wrapping_add(self.extra.unwrap_val())),
+            (IndexDef, Reg::PC) => write!(f, "@ . + {:#o}", 2u16.wrapping_add(self.extra.unwrap_val())),
             (AutoInc, Reg::PC) => write!(f, "#{:#o}", self.extra.unwrap_val()),
             (AutoIncDef, Reg::PC) => write!(f, "@#{:#o}", self.extra.unwrap_val()),
 
@@ -209,17 +219,13 @@ impl Target {
         }
     }
 
-    pub fn display_with_pc(&self, f: &mut fmt::Formatter, mut pc: u16) -> fmt::Result {
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, mut pc: u16) -> fmt::Result {
         pc = pc.wrapping_add(2);
         match self {
-            Target::Label(lbl) => { write!(f, "{}", lbl)?; },
-            Target::Offset(off) => {
-                write!(f, "{}", self)?;
-                write!(f, " ; {:#o}", pc.wrapping_add(((*off as i8 as i16) * 2) as u16))?;
-            }
+            Target::Label(lbl) => write!(f, "{}", lbl),
+            Target::Offset(off) => write!(f, "{:#o}", pc.wrapping_add(((*off as i8 as i16) * 2) as u16)),
+            
         }
-
-        Ok(())
     }
 }
 
@@ -228,7 +234,7 @@ impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Target::Label(lbl) => write!(f, "{}", lbl),
-            Target::Offset(off) => write!(f, "{:#o}", 2u16.wrapping_add(((*off as i8 as i16) * 2) as u16))
+            Target::Offset(off) => write!(f, ". + {:#o}", 2u16.wrapping_add(((*off as i8 as i16) * 2) as u16))
         }
     }
 }
@@ -284,6 +290,13 @@ impl InstrVariant<DoubleOperandOpcode> for DoubleOperandIns {
 impl DoubleOperandIns {
     pub fn num_extra(&self) -> u16 {
         self.src.num_extra() + self.dst.num_extra()
+    }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        write!(f, "{}\t", self.op)?;
+        self.src.fmt_with_pc(f, pc)?;
+        write!(f, ", ")?;
+        self.dst.fmt_with_pc(f, pc)
     }
 }
 
@@ -342,9 +355,9 @@ impl BranchIns {
         0
     }
 
-    pub fn display_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
         write!(f, "{}\t", self.op)?;
-        self.target.display_with_pc(f, pc)
+        self.target.fmt_with_pc(f, pc)
     }
 }
 
@@ -385,6 +398,11 @@ pub struct JmpIns {
 impl JmpIns {
     pub fn num_extra(&self) -> u16 {
         self.dst.num_extra()
+    }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        write!(f, "{}\t", self.op)?;
+        self.dst.fmt_with_pc(f, pc)
     }
 }
 
@@ -428,7 +446,13 @@ impl JsrIns {
     pub fn num_extra(&self) -> u16 {
         self.dst.num_extra()
     }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        write!(f, "{}\t{},", self.op, self.reg)?;
+        self.dst.fmt_with_pc(f, pc)
+    }
 }
+
 impl InstrVariant<JsrOpcode> for JsrIns {
     const OPCODE_BITS: usize = 7;
     const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
@@ -466,6 +490,10 @@ pub struct RtsIns {
 impl RtsIns {
     pub fn num_extra(&self) -> u16 {
         0
+    }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -540,6 +568,11 @@ impl SingleOperandIns {
     pub fn is_byte(&self) -> bool {
         (self.op as u32) >= (SingleOperandOpcode::ClrB as u32)
     }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        write!(f, "{}\t", self.op)?;
+        self.dst.fmt_with_pc(f, pc)
+    }
 }
 
 impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
@@ -588,6 +621,10 @@ pub struct CCIns {
 impl CCIns {
     pub fn num_extra(&self) -> u16 {
         0
+    }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -640,6 +677,10 @@ impl MiscIns {
     pub fn num_extra(&self) -> u16 {
         0
     }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl InstrVariant<MiscOpcode> for MiscIns {
@@ -682,6 +723,10 @@ impl TrapIns {
 
     pub fn num_extra(&self) -> u16 {
         0
+    }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
@@ -731,6 +776,23 @@ impl Ins {
         WORD_SIZE + WORD_SIZE * self.num_extra()
     }
 
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        match self {
+            Ins::DoubleOperand(x) => x.fmt_with_pc(f, pc),
+            Ins::Branch(x) => x.fmt_with_pc(f, pc),
+            Ins::Jmp(x) => x.fmt_with_pc(f, pc),
+            Ins::Jsr(x) => x.fmt_with_pc(f, pc),
+            Ins::Rts(x) => x.fmt_with_pc(f, pc),
+            Ins::SingleOperand(x) => x.fmt_with_pc(f, pc),
+            Ins::CC(x) => x.fmt_with_pc(f, pc),
+            Ins::Misc(x) => x.fmt_with_pc(f, pc),
+            Ins::Trap(x) => x.fmt_with_pc(f, pc),
+        }
+    }
+
+    pub fn display_with_pc(&self, pc: u16) -> InsWithPc {
+        InsWithPc(self, pc)
+    }
 }
 
 impl fmt::Display for Ins {
@@ -748,3 +810,13 @@ impl fmt::Display for Ins {
         }
     }
 }
+
+// Just for formatting, like Path::Display()
+pub struct InsWithPc<'a>(&'a Ins, u16);
+
+impl<'a> fmt::Display for InsWithPc<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt_with_pc(f, self.1)
+    }
+}
+

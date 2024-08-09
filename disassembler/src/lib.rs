@@ -38,10 +38,8 @@ impl fmt::Display for Disassembled {
         write_oct_words(f, &self.repr)?;
         write!(f, "\t")?;
 
-        match &self.ins {
-            Some(Ins::Branch(br)) => br.display_with_pc(f, self.addr)?,
-            Some(ins) => write!(f, "{}", ins)?,
-            None => (),
+        if let Some(ins) = &self.ins {
+            write!(f, "{}", ins.display_with_pc(self.addr))?;
         }
         Ok(())
     }
