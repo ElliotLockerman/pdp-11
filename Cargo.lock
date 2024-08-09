@@ -61,34 +61,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "as-cli"
-version = "0.1.0"
-dependencies = [
- "as-lib",
- "clap",
- "env_logger",
- "serde_json",
-]
-
-[[package]]
-name = "as-lib"
-version = "0.1.0"
-dependencies = [
- "common",
- "lalrpop",
- "lalrpop-util",
- "log",
- "num-derive",
- "num-traits",
-]
-
-[[package]]
 name = "ascii-canvas"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8824ecca2e851cec16968d54a01dd372ef8f95b244fb84b84e70128be347c3c6"
 dependencies = [
  "term",
+]
+
+[[package]]
+name = "assembler"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "common",
+ "env_logger",
+ "lalrpop",
+ "lalrpop-util",
+ "log",
+ "num-derive",
+ "num-traits",
+ "serde_json",
 ]
 
 [[package]]
@@ -249,19 +242,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 
 [[package]]
-name = "emu-cli"
+name = "emulator"
 version = "0.1.0"
 dependencies = [
  "clap",
- "emu-lib",
- "env_logger",
-]
-
-[[package]]
-name = "emu-lib"
-version = "0.1.0"
-dependencies = [
  "common",
+ "env_logger",
  "log",
  "num-derive",
  "num-traits",
@@ -354,9 +340,9 @@ dependencies = [
 name = "interpreter"
 version = "0.1.0"
 dependencies = [
- "as-lib",
+ "assembler",
  "clap",
- "emu-lib",
+ "emulator",
  "env_logger",
 ]
 
@@ -734,9 +720,9 @@ dependencies = [
 name = "tests"
 version = "0.1.0"
 dependencies = [
- "as-lib",
+ "assembler",
  "common",
- "emu-lib",
+ "emulator",
 ]
 
 [[package]]

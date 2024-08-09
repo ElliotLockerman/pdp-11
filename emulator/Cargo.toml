@@ -1,10 +1,20 @@
 [package]
-name = "emu-cli"
+name = "emulator"
 version = "0.1.0"
 authors = ["Elliot Lockerman <elliot@lockerman.info>"]
 edition = "2021"
 
+[lib]
+name = "emu_lib"
+
+[[bin]]
+name = "emu_cli"
+
 [dependencies]
-emu-lib = { path = "../emu-lib" }
+common = { path = "../common" }
+log = "0.4.22"
+num-derive = "0.4.2"
+num-traits = "0.2.14"
 clap = { version = "4.5.8", features = ["derive"] }
 env_logger = "0.11.4"
+

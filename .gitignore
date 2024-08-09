@@ -8,4 +8,5 @@ target/
 **/*.rs.bk
 
 src/assembler/grammar.rs
+a.out
 

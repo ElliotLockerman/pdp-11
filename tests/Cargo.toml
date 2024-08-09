@@ -6,8 +6,8 @@ edition = "2021"
 publish = false
 
 [dev-dependencies]
-as-lib = { path = "../as-lib" }
-emu-lib = { path = "../emu-lib" }
+assembler = { path = "../assembler" }
+emulator = { path = "../emulator" }
 common = { path = "../common" }
 
 [[test]]
