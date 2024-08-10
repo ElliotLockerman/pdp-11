@@ -25,6 +25,7 @@ _start:
 
     ; Just spin; the rest of the program happens in clock() in response to interrupts.
 loop:
+    wait
     br loop
 
 
@@ -41,9 +42,7 @@ clock:
     mov r4, -(sp)
     mov r5, -(sp)
 
-    ; Increment tick counter; if it hasn't rolled over, just return.
-    incb ticks
-    bne done
+    mov LKS, r0 ; clear clock bit
 
     ; Increment counter and print it.
     inc count
@@ -69,10 +68,6 @@ done:
     mov (sp)+, r0
     rti
     
-
-    ; Total number of timer ticks, wrapping.
-ticks:
-    .word 0
 
     ; Counter to print.
 count:

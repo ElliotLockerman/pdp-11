@@ -84,6 +84,7 @@ Operand: Operand = {
 
 I: Ins = {
     "halt" => make_misc_ins!(Halt),
+    "wait" => make_misc_ins!(Wait),
     "rti" => make_misc_ins!(Rti),
 
     "mov" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Mov, src, dst),

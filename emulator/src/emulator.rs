@@ -83,6 +83,7 @@ impl Emulator {
         }
     }
     pub fn run(&mut self) {
+        let mut waiting = false;
         loop {
             // TODO: better timing model
             self.state.inc_ins();
@@ -92,17 +93,29 @@ impl Emulator {
                 .max_by_key(|x| x.prio);
             if let Some(interrupt) = interrupt {
                 if interrupt.prio > self.get_state().get_status().get_prio() {
+                    waiting = false;
                     self.interrupt(interrupt.vector);
                 }
             }
             
+            if waiting {
+                continue;
+            }
+
             let ins = self.decode();
-            debug!("PC: 0o{:o}: {:?}", self.state.pc(), ins);
+            debug!("PC: 0o{:o}: {}", self.state.pc(), ins.display_with_pc(self.state.pc()));
             self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
+
+            if matches!(ins, Ins::Misc(MiscIns{op: MiscOpcode::Wait})) {
+                waiting = true;
+                continue;
+            }
+
             match self.exec(&ins) {
                 ExecRet::Ok => (),
                 ExecRet::Halt => return,
             }
+            
         }
     }
 
@@ -722,14 +735,16 @@ impl Emulator {
     }
 
     fn interrupt(&mut self, vector: u16) {
-        self.push_word(self.get_state().get_status().to_raw());
-        self.push_word(self.state.pc());
-        trace!("Interrupt saving pc 0o{:o}", self.state.pc());
+        let old_ps = self.get_state().get_status().to_raw();
+        let old_pc = self.state.pc();
+        self.push_word(old_ps);
+        self.push_word(old_pc);
 
         let new_pc = self.mem_read_word(vector);
-        let new_ps = Status::from_raw(self.mem_read_word(vector + 2));
+        let new_ps = self.mem_read_word(vector + 2);
+        debug!("Interrupt; saving pc {old_pc:#o} and ps {old_ps:#o}; loading pc {new_pc:#o}, ps {new_ps:#o}");
         self.get_state_mut().reg_write_word(Reg::PC, new_pc);
-        self.get_state_mut().set_status(new_ps);
+        self.get_state_mut().set_status(Status::from_raw(new_ps));
     }
 
     fn exec_trap_ins(&mut self, ins: &TrapIns) {
@@ -741,8 +756,8 @@ impl Emulator {
 
     fn exec_rti_ins(&mut self) {
         let new_pc = self.pop_word();
-        trace!("RTI to pc 0o{new_pc:o}");
         let new_ps = self.pop_word();
+        debug!("RTI to pc {new_pc:#o}, ps {new_ps:#o}");
         self.get_state_mut().reg_write_word(Reg::PC, new_pc);
         self.get_state_mut().set_status(Status::from_raw(new_ps));
     }
