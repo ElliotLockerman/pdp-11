@@ -10,7 +10,7 @@ pub struct Interrupt {
     pub vector: u16,
 }
 
-pub trait MMIOHandler {
+pub trait MMIOHandler: Send {
     fn reset(&mut self, _emu: &mut EmulatorState) {}
     fn tick(&mut self, _emu: &mut EmulatorState) -> Option<Interrupt> { None }
 

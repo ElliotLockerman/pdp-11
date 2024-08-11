@@ -8,7 +8,7 @@ use crate::io::{Interrupt, MMIOHandler};
 
 use log::error;
 
-pub trait Printer {
+pub trait Printer: Send + Sync {
     fn write(&self, val: u8);
 }
 
@@ -40,6 +40,14 @@ impl Printer for PipePrinter {
 impl PipePrinter {
     pub fn take(&self) -> VecDeque<u8> {
         std::mem::take(&mut self.buf.lock().unwrap())
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.buf.lock().unwrap().is_empty()
+    }
+
+    pub fn pop_front(&self) -> Option<u8> {
+        self.buf.lock().unwrap().pop_front()
     }
 }
 
