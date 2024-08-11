@@ -28,6 +28,7 @@ impl Clock {
     pub const ADDRS: &[u16] = &[Self::LKS];
 
     const INT_ENB_SHIFT: u8 = 6;
+    const INT_ENB_MASK: u8 = (0x1 << Self::INT_ENB_SHIFT);
     const CLOCK_SHIFT: u8 = 7;
     const PRIO: u8 = 0o6;
     const VECTOR: u16 = 0o100;
@@ -42,9 +43,7 @@ impl Clock {
     }
 
     fn lks_write(&mut self, val: u8) {
-        if (val >> Self::INT_ENB_SHIFT) & 0x1 != 0 {
-            self.interrupt_enable = true;
-        }
+        self.interrupt_enable = (val & Self::INT_ENB_MASK) != 0;
     }
 
     fn lks_read(&mut self) -> u8 {
@@ -152,9 +151,7 @@ impl FakeClock {
     }
 
     fn lks_write(&mut self, val: u8) {
-        if (val >> Clock::INT_ENB_SHIFT) & 0x1 != 0 {
-            self.interrupt_enable = true;
-        }
+        self.interrupt_enable = (val & Clock::INT_ENB_MASK) != 0;
     }
 
     fn lks_read(&mut self) -> u8 {

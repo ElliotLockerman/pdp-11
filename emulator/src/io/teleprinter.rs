@@ -104,13 +104,8 @@ impl Teleprinter {
     }
 
     fn tps_write(&mut self, val: u8) {
-        if val & Self::MAINT_MASK != 0 {
-            self.maintenance_control = true;
-        }
-
-        if val & Self::INT_ENB_MASK != 0 {
-            todo!()
-        }
+        self.maintenance_control = (val & Self::MAINT_MASK) != 0;
+        self.interrupt_enabled = (val & Self::INT_ENB_MASK) != 0;
 
         // Ignore writes to ready
     }
