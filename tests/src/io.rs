@@ -26,6 +26,66 @@ fn hello() {
 }
 
 #[test]
+fn hello_spin() {
+    let asm = r#"
+        . = 400
+
+        STACK_TOP = 150000 
+
+        TPS = 177564
+        TPB = TPS + 2
+        TPS_READY_MASK = 177
+
+    _start:
+        mov #STACK_TOP, sp
+        mov #msg, r1
+
+        ; Get first char (we know there's at least one).
+        movb (r1)+, r0
+
+        ; loop over msg, printing each character
+    msg_loop:
+        jsr pc, print
+
+        ; Load next character, stopping when we reach \0.
+        movb (r1)+, r0
+        bne msg_loop
+
+        ; Print the terminating newline
+        movb #12, r0 ; '\n'
+        jsr pc, print
+
+        halt
+
+    msg:
+    .asciz "hello, world!"
+        .even
+
+    print:
+        ; Loop until the teleprinter is ready to accept another character.
+        bicb #TPS_READY_MASK, @#TPS
+        beq print
+
+        movb r0, @#TPB
+        rts pc  
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+
+    let printer = Arc::new(PipePrinter::default());
+    let teleprinter = Teleprinter::new(printer.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
+    emu.load_image(&bin, 0);
+    emu.run_at(*symbols.get("_start").unwrap());
+
+    let mut buf = printer.take();
+    buf.make_contiguous();
+    let out = String::from_utf8_lossy(buf.as_slices().0);
+    assert_eq!(out, "hello, world!\n");
+}
+
+#[test]
 fn clock() {
     let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/timer_ticks.s"));
 

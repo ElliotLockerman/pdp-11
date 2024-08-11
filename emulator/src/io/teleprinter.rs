@@ -56,7 +56,8 @@ impl PipePrinter {
 pub struct Teleprinter {
     device: Arc<dyn Printer>,
     maintenance_control: bool, // Not used.
-    interrupt_enabled: bool, // Not yet used.
+    interrupt_enabled: bool,
+    interrupted: bool,
     ready: bool,
     ticks_until_ready: usize,
 }
@@ -81,6 +82,9 @@ impl Teleprinter {
     const INT_ENB_SHIFT: u8 = 6;
     const INT_ENB_MASK: u8 = 0x1 << Self::INT_ENB_SHIFT;
     const READY_SHIFT: u8 = 7;
+    const PRIO: u8 = 0o4;
+    const VECTOR: u16 = 0o64;
+
 
     #[allow(unused)]
     const READY_MASK: u8 = 0x1 << Self::READY_SHIFT;
@@ -98,6 +102,7 @@ impl Teleprinter {
             device: printer,
             maintenance_control: false,
             interrupt_enabled: false,
+            interrupted: false,
             ready: true,
             ticks_until_ready: 0,
         }
@@ -135,12 +140,20 @@ impl MMIOHandler for Teleprinter {
         }
 
         if self.ticks_until_ready == 0 {
+            assert!(self.ready);
+            if self.interrupt_enabled && !self.interrupted {
+                return Some(Interrupt{prio: Self::PRIO, vector: Self::VECTOR});
+            }
             return None;
         }
 
         self.ticks_until_ready -= 1;
         if self.ticks_until_ready == 0 {
             self.ready = true;
+            self.interrupted = false;
+            if self.interrupt_enabled {
+                return Some(Interrupt{prio: Self::PRIO, vector: Self::VECTOR});
+            }
         }
 
         None
@@ -169,5 +182,9 @@ impl MMIOHandler for Teleprinter {
 
     fn write_word(&mut self,  emu: &mut EmulatorState, addr: u16, val: u16) {
        self.write_byte(emu, addr, val as u8);
+    }
+
+    fn interrupt_accepted(&mut self) {
+        self.interrupted = true;
     }
 }

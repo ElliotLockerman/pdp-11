@@ -3,6 +3,7 @@ use common::asm::*;
 use common::decoder::decode;
 use common::constants::*;
 use crate::MMIOHandler;
+use crate::io::Interrupt;
 use crate::EmulatorState;
 use crate::Status;
 
@@ -87,13 +88,11 @@ impl Emulator {
             // TODO: better timing model
             self.state.inc_ins();
 
-            let interrupt = self.mmio_handlers.values_mut()
-                .flat_map(|x| x.lock().unwrap().tick(&mut self.state))
-                .max_by_key(|x| x.prio);
-            if let Some(interrupt) = interrupt {
-                if interrupt.prio > self.get_state().get_status().get_prio() {
+            if let Some((dev, inter)) = self.tick_devices() {
+                if inter.prio > self.get_state().get_status().get_prio() {
                     waiting = false;
-                    self.interrupt(interrupt.vector);
+                    dev.lock().unwrap().interrupt_accepted();
+                    self.interrupt(inter.vector);
                 }
             }
             
@@ -121,6 +120,22 @@ impl Emulator {
     // Continue after halt.
     pub fn cont(&mut self) {
         self.run();
+    }
+
+    fn tick_devices(&mut self) -> Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)> {
+        let mut interrupt: Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)>  = None;
+        for dev in self.mmio_handlers.values_mut() {
+            if let Some(inter) = dev.lock().unwrap().tick(&mut self.state) {
+                if let Some(max) = &interrupt {
+                    if inter.prio > max.1.prio {
+                        interrupt = Some((dev.clone(), inter))
+                    }
+                } else {
+                    interrupt = Some((dev.clone(), inter))
+                }
+            }
+        }
+        interrupt
     }
 
     fn decode(&self) -> Ins {
