@@ -5,7 +5,6 @@ use common::constants::DATA_START;
 use crate::flags::{Flags, flags};
 
 fn run(ins: &str, flags: Flags, should_take: bool) {
-
     let asm = format!(r#"
         {ins} taken
 
@@ -185,3 +184,19 @@ fn blo() {
     run("blo", flags().n().z().v().c(), true);
 }
 
+#[test]
+#[should_panic]
+fn far_br() {
+    let asm = r#"
+        . = 400
+
+        br label
+
+        . = . + 10000
+
+        label:
+            halt
+    "#;
+
+    assemble(&asm);
+}
