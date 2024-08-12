@@ -1,6 +1,6 @@
 
 use as_lib::assemble_with_symbols;
-use emu_lib::Emulator;
+use emu_lib::{Emulator, ExecRet};
 use emu_lib::io::teleprinter::*;
 use emu_lib::io::clock::{Clock, FakeClock};
 use common::asm::Reg;
@@ -205,3 +205,29 @@ fn fake_clock() {
     thread.join().unwrap();
     assert!(printer.is_empty());
 }
+
+#[test]
+fn threads() {
+    let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/threads.s"));
+
+    let printer = Arc::new(PipePrinter::default());
+    let teleprinter = Teleprinter::new(printer.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(Clock::default());
+    emu.load_image(&bin, 0);
+    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+
+    for _ in 0..2_000_000 {
+        let ret = emu.run_ins();
+        if ret == ExecRet::Halt {
+            break;
+        }
+    }
+
+    let mut buf = printer.take();
+    buf.make_contiguous();
+    let out = String::from_utf8_lossy(buf.as_slices().0);
+    assert_eq!(out, "000011110");
+}
+    

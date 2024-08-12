@@ -63,16 +63,18 @@ enum ResolvedOperand {
 
 
 
-#[derive(Debug, Clone, Copy)]
-enum ExecRet {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecRet {
     Ok,
     Halt,
+    Wait,
 }
 
 
 pub struct Emulator {
     state: EmulatorState,
     mmio_handlers: HashMap<u16, Arc<Mutex<dyn MMIOHandler>>>,
+    waiting: bool,
 }
 
 impl Emulator {
@@ -80,41 +82,43 @@ impl Emulator {
         Emulator {
             state: EmulatorState::new(),
             mmio_handlers: HashMap::new(),
+            waiting: false,
         }
     }
+
+    // Run until a halt.
     pub fn run(&mut self) {
-        let mut waiting = false;
-        loop {
-            // TODO: better timing model
-            self.state.inc_ins();
+        while self.run_ins() != ExecRet::Halt {}
+    }
 
-            if let Some((dev, inter)) = self.tick_devices() {
-                if inter.prio > self.get_state().get_status().get_prio() {
-                    waiting = false;
-                    dev.lock().unwrap().interrupt_accepted();
-                    self.interrupt(inter.vector);
-                }
-            }
-            
-            if waiting {
-                continue;
-            }
+    // Run a single instruction, letting each device get a time slice and potentially
+    // generating an interrupt.
+    pub fn run_ins(&mut self) -> ExecRet {
+        // TODO: better timing model
+        self.state.inc_ins();
 
-            let ins = self.decode();
-            debug!("PC: 0o{:o}: {}", self.state.pc(), ins.display_with_pc(self.state.pc()));
-            self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
-
-            if matches!(ins, Ins::Misc(MiscIns{op: MiscOpcode::Wait})) {
-                waiting = true;
-                continue;
+        if let Some((dev, inter)) = self.tick_devices() {
+            if inter.prio > self.get_state().get_status().get_prio() {
+                self.waiting = false;
+                dev.lock().unwrap().interrupt_accepted();
+                self.interrupt(inter.vector);
             }
-
-            match self.exec(&ins) {
-                ExecRet::Ok => (),
-                ExecRet::Halt => return,
-            }
-            
         }
+        
+        if self.waiting {
+            return ExecRet::Wait;
+        }
+
+        let ins = self.decode();
+        debug!("PC: 0o{:o}: {}", self.state.pc(), ins.display_with_pc(self.state.pc()));
+        self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
+
+        if matches!(ins, Ins::Misc(MiscIns{op: MiscOpcode::Wait})) {
+            self.waiting = true;
+            return ExecRet::Wait;
+        }
+
+        self.exec(&ins)
     }
 
     // Continue after halt.
