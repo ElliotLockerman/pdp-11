@@ -2,10 +2,7 @@ use as_lib::assemble;
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{flags, Flags};
-
-const T: bool = true;
-const F: bool = false;
+use crate::flags::{Flags, flags};
 
 // Because each test is run on a fresh emulator, unaffected flags will be false
 fn run(
@@ -34,59 +31,59 @@ fn run(
 
 #[test]
 fn clr() {
-    run("clr", 0o0, 0, Flags{z:T, n:F, c:F, v:F});
-    run("clr", 0o4, 0, Flags{z:T, n:F, c:F, v:F});
-    run("clr", 0o377, 0, Flags{z:T, n:F, c:F, v:F});
-    run("clr", 0o177777, 0, Flags{z:T, n:F, c:F, v:F});
-    run("clr", 0o1777, 0, Flags{z:T, n:F, c:F, v:F});
+    run("clr", 0o0, 0, flags().z());
+    run("clr", 0o4, 0, flags().z());
+    run("clr", 0o377, 0, flags().z());
+    run("clr", 0o177777, 0, flags().z());
+    run("clr", 0o1777, 0, flags().z());
 }
 
 #[test]
 fn inc() {
-    run("inc", 0o0, 0o1, Flags{z:F, n:F, c:F, v:F});
-    run("inc", 0o7, 0o10, Flags{z:F, n:F, c:F, v:F});
-    run("inc", 0o177777, 0o0, Flags{z:T, n:F, c:F, v:F});
-    run("inc", 0o177677, 0o177700, Flags{z:F, n:T, c:F, v:F});
-    run("inc", 0o077777, 0o100000, Flags{z:F, n:T, c:F, v:T});
+    run("inc", 0o0, 0o1, flags());
+    run("inc", 0o7, 0o10, flags());
+    run("inc", 0o177777, 0o0, flags().z());
+    run("inc", 0o177677, 0o177700, flags().n());
+    run("inc", 0o077777, 0o100000, flags().n().v());
 }
 
 #[test]
 fn dec() {
-    run("dec", 0o1, 0o0, Flags{z:T, n:F, c:F, v:F});
-    run("dec", 0o7, 0o6, Flags{z:F, n:F, c:F, v:F});
-    run("dec", 0o0, 0o177777, Flags{z:F, n:T, c:F, v:F});
-    run("dec", 0o100000, 0o077777, Flags{z:F, n:F, c:F, v:T});
-    run("dec", 0o177777, 0o177776, Flags{z:F, n:T, c:F, v:F});
-    run("dec", 0o177000, 0o176777, Flags{z:F, n:T, c:F, v:F});
+    run("dec", 0o1, 0o0, flags().z());
+    run("dec", 0o7, 0o6, flags());
+    run("dec", 0o0, 0o177777, flags().n());
+    run("dec", 0o100000, 0o077777, flags().v());
+    run("dec", 0o177777, 0o177776, flags().n());
+    run("dec", 0o177000, 0o176777, flags().n());
 }
 
 #[test]
 fn neg() {
-    run("neg", 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
-    run("neg", 0o1, 0o177777, Flags{z:F, n:T, c:T, v:F});
-    run("neg", 0o177777, 0o1, Flags{z:F, n:F, c:T, v:F});
-    run("neg", 0o077777, 0o100001, Flags{z:F, n:T, c:T, v:F});
-    run("neg", 0o100000, 0o100000, Flags{z:F, n:T, c:T, v:T});
-    run("neg", 0o6, 0o177772, Flags{z:F, n:T, c:T, v:F});
+    run("neg", 0o0, 0o0, flags().z());
+    run("neg", 0o1, 0o177777, flags().n().c());
+    run("neg", 0o177777, 0o1, flags().c());
+    run("neg", 0o077777, 0o100001, flags().n().c());
+    run("neg", 0o100000, 0o100000, flags().n().c().v());
+    run("neg", 0o6, 0o177772, flags().n().c());
 }
 
 #[test]
 fn tst() {
-    run("tst", 0o0, 0o0, Flags{z:T, n:F, c:F, v:F});
-    run("tst", 0o1, 0o1, Flags{z:F, n:T, c:F, v:F});
-    run("tst", 0o100, 0o100, Flags{z:F, n:T, c:F, v:F});
-    run("tst", 0o100000, 0o100000, Flags{z:F, n:T, c:F, v:F});
-    run("tst", 0o100001, 0o100001, Flags{z:F, n:F, c:F, v:F});
-    run("tst", 0o107001, 0o107001, Flags{z:F, n:F, c:F, v:F});
+    run("tst", 0o0, 0o0, flags().z());
+    run("tst", 0o1, 0o1, flags().n());
+    run("tst", 0o100, 0o100, flags().n());
+    run("tst", 0o100000, 0o100000, flags().n());
+    run("tst", 0o100001, 0o100001, flags());
+    run("tst", 0o107001, 0o107001, flags());
 }
 
 
 #[test]
 fn com() {
-    run("com", 0o0, 0o177777, Flags{z:F, n:T, c:T, v:F});
-    run("com", 0o177777, 0o0, Flags{z:T, n:F, c:T, v:F});
-    run("com", 0o133333, 0o044444, Flags{z:F, n:F, c:T, v:F});
-    run("com", 0o134343, 0o043434, Flags{z:F, n:F, c:T, v:F});
+    run("com", 0o0, 0o177777, flags().n().c());
+    run("com", 0o177777, 0o0, flags().z().c());
+    run("com", 0o133333, 0o044444, flags().c());
+    run("com", 0o134343, 0o043434, flags().c());
 }
 
 
