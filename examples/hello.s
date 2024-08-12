@@ -26,7 +26,7 @@ loop:
 
 msg:
 .ascii "hello, world!"
-.byte 12, 0 ; \n, \0
+.byte '\n, '\0
     .even
 
 next:

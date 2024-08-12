@@ -42,6 +42,13 @@ Imm: u16 = {
         chars.next().unwrap();
         chars.next().unwrap() as u8 as u16
     },
+    "'\\n" => b'\n' as u16,
+    "'\\r" => b'\r' as u16,
+    "'\\0" => b'\0' as u16,
+    "'\\t" => b'\t' as u16,
+    "'\\\"" => b'"' as u16,
+    "'\\'" => b'\'' as u16,
+    "'\\\\" => b'\\' as u16,
 };
 
 Symbol: String = r#"[a-zA-Z_][a-zA-Z0-9_]*"# => <>.to_string();
