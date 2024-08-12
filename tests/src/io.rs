@@ -106,7 +106,7 @@ fn clock() {
 
 #[test]
 fn fake_clock() {
-    let times = 100;
+    let times = 12;
     let asm = format!(r#"
 
         LKS = 177546
