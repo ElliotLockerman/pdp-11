@@ -244,7 +244,7 @@ impl fmt::Display for Target {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_double_operand_ins {
+macro_rules! double_operand_ins {
     ($op:ident, $src:expr, $dst:expr) => { Ins::DoubleOperand(DoubleOperandIns{op: DoubleOperandOpcode::$op, src: $src, dst: $dst}) };
 }
 
@@ -309,7 +309,7 @@ impl fmt::Display for DoubleOperandIns {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_branch_ins {
+macro_rules! branch_ins {
     ($op:ident, $offset:expr) => { 
         Ins::Branch(BranchIns{op: BranchOpcode::$op, target: Target::Label($offset)}) 
     };
@@ -375,7 +375,7 @@ impl fmt::Display for BranchIns {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_jmp_ins {
+macro_rules! jmp_ins {
     ($dst:expr) => { Ins::Jmp(JmpIns{op: JmpOpcode::Jmp, dst: $dst}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -421,7 +421,7 @@ impl fmt::Display for JmpIns {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_jsr_ins {
+macro_rules! jsr_ins {
     ($reg:expr, $dst:expr) => { Ins::Jsr(JsrIns{op: JsrOpcode::Jsr, reg: $reg, dst: $dst}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -467,7 +467,7 @@ impl fmt::Display for JsrIns {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_rts_ins {
+macro_rules! rts_ins {
     ($reg:expr) => { Ins::Rts(RtsIns{op: RtsOpcode::Rts, reg: $reg}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -513,7 +513,7 @@ impl fmt::Display for RtsIns {
 
 
 #[macro_export]
-macro_rules! make_single_operand_ins {
+macro_rules! single_operand_ins {
     ($op:ident,  $dst:expr) => { Ins::SingleOperand(SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst}) };
 }
 // Also rotates, single operand byte inpub structions
@@ -590,7 +590,7 @@ impl fmt::Display for SingleOperandIns {
 
 
 #[macro_export]
-macro_rules! make_cc_ins {
+macro_rules! cc_ins {
     ($op:ident) => { Ins::CC(CCIns{op: CCOpcode::$op}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -643,7 +643,7 @@ impl fmt::Display for CCIns {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_misc_ins {
+macro_rules! misc_ins {
     ($op:ident) => { Ins::Misc(MiscIns{op: MiscOpcode::$op}) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -697,7 +697,7 @@ impl fmt::Display for MiscIns {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
-macro_rules! make_trap_ins {
+macro_rules! trap_ins {
     ($op:ident, $data:expr) => { Ins::Trap(TrapIns{op: TrapOpcode::$op, data:$data }) };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]

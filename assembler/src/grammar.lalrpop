@@ -3,15 +3,15 @@ use common::asm::*;
 use crate::ir::{Cmd, Stmt};
 use crate::helpers::parse_int;
 use common::{
-    make_double_operand_ins,
-    make_branch_ins,
-    make_jmp_ins,
-    make_jsr_ins,
-    make_rts_ins,
-    make_misc_ins,
-    make_cc_ins,
-    make_single_operand_ins,
-    make_trap_ins,
+    double_operand_ins,
+    branch_ins,
+    jmp_ins,
+    jsr_ins,
+    rts_ins,
+    misc_ins,
+    cc_ins,
+    single_operand_ins,
+    trap_ins,
 };
 
 grammar;
@@ -31,12 +31,12 @@ R: Reg = {
 };
 
 Imm: u16 = {
-    <r#"-?\d*\."#> => {
+    r#"-?\d*\."# => {
         let s = <>;
         parse_int(&s[..s.len() - 1], 10)
     },
-    <r#"-?[0-7]+"#> => parse_int(<>, 8),
-    <r#"'[!-~]"#> => {
+    r#"-?[0-7]+"# => parse_int(<>, 8),
+    r#"'[!-~]"# => {
         let s = <>;
         let mut chars = s.chars();
         chars.next().unwrap();
@@ -44,14 +44,12 @@ Imm: u16 = {
     },
 };
 
-Symbol: String = {
-    <r#"[a-zA-Z_][a-zA-Z0-9_]*"#> => <>.to_string(),
-};
+Symbol: String = r#"[a-zA-Z_][a-zA-Z0-9_]*"# => <>.to_string();
 
 Atom: Atom = {
     "." => Atom::Loc,
-    <Imm> => Atom::Val(<>),
-    <Symbol> => Atom::SymbolRef(<>),
+    Imm => Atom::Val(<>),
+    Symbol => Atom::SymbolRef(<>),
 }
 
 // Evaluated left-to-right, no precedence or parentheses
@@ -83,90 +81,90 @@ Operand: Operand = {
 
 
 I: Ins = {
-    "halt" => make_misc_ins!(Halt),
-    "wait" => make_misc_ins!(Wait),
-    "rti" => make_misc_ins!(Rti),
+    "halt" => misc_ins!(Halt),
+    "wait" => misc_ins!(Wait),
+    "rti" => misc_ins!(Rti),
 
-    "mov" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Mov, src, dst),
-    "cmp" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Cmp, src, dst),
-    "bit" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Bit, src, dst),
-    "bic" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Bic, src, dst),
-    "bis" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Bis, src, dst),
-    "add" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Add, src, dst),
+    "mov" <Operand> "," <Operand> => double_operand_ins!(Mov, <>),
+    "cmp" <Operand> "," <Operand> => double_operand_ins!(Cmp, <>),
+    "bit" <Operand> "," <Operand> => double_operand_ins!(Bit, <>),
+    "bic" <Operand> "," <Operand> => double_operand_ins!(Bic, <>),
+    "bis" <Operand> "," <Operand> => double_operand_ins!(Bis, <>),
+    "add" <Operand> "," <Operand> => double_operand_ins!(Add, <>),
 
-    "movb" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(MovB, src, dst),
-    "cmpb" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(CmpB, src, dst),
-    "bitb" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(BitB, src, dst),
-    "bicb" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(BicB, src, dst),
-    "bisb" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(BisB, src, dst),
-    "sub" <src:Operand> "," <dst:Operand> => make_double_operand_ins!(Sub, src, dst),
+    "movb" <Operand> "," <Operand> => double_operand_ins!(MovB, <>),
+    "cmpb" <Operand> "," <Operand> => double_operand_ins!(CmpB, <>),
+    "bitb" <Operand> "," <Operand> => double_operand_ins!(BitB, <>),
+    "bicb" <Operand> "," <Operand> => double_operand_ins!(BicB, <>),
+    "bisb" <Operand> "," <Operand> => double_operand_ins!(BisB, <>),
+    "sub" <Operand> "," <Operand> => double_operand_ins!(Sub, <>),
 
-    "br" <Symbol> => make_branch_ins!(Br, <>),
-    "bne" <Symbol> => make_branch_ins!(Bne, <>),
-    "beq" <Symbol> => make_branch_ins!(Beq, <>),
-    "bge" <Symbol> => make_branch_ins!(Bge, <>),
-    "blt" <Symbol> => make_branch_ins!(Blt, <>),
-    "bgt" <Symbol> => make_branch_ins!(Bgt, <>),
-    "ble" <Symbol> => make_branch_ins!(Ble, <>),
+    "br" <Symbol> => branch_ins!(Br, <>),
+    "bne" <Symbol> => branch_ins!(Bne, <>),
+    "beq" <Symbol> => branch_ins!(Beq, <>),
+    "bge" <Symbol> => branch_ins!(Bge, <>),
+    "blt" <Symbol> => branch_ins!(Blt, <>),
+    "bgt" <Symbol> => branch_ins!(Bgt, <>),
+    "ble" <Symbol> => branch_ins!(Ble, <>),
 
-    "bpl" <Symbol> => make_branch_ins!(Bpl, <>),
-    "bmi" <Symbol> => make_branch_ins!(Bmi, <>),
-    "bhi" <Symbol> => make_branch_ins!(Bhi, <>),
-    "bhis" <Symbol> => make_branch_ins!(Bcc, <>),
-    "blo" <Symbol> => make_branch_ins!(Bcs, <>),
-    "blos" <Symbol> => make_branch_ins!(Blos, <>),
-    "bvc" <Symbol> => make_branch_ins!(Bvc, <>),
-    "bvs" <Symbol> => make_branch_ins!(Bvs, <>),
-    "bcc" <Symbol> => make_branch_ins!(Bcc, <>),
-    "bcs" <Symbol> => make_branch_ins!(Bcs, <>),
+    "bpl" <Symbol> => branch_ins!(Bpl, <>),
+    "bmi" <Symbol> => branch_ins!(Bmi, <>),
+    "bhi" <Symbol> => branch_ins!(Bhi, <>),
+    "bhis" <Symbol> => branch_ins!(Bcc, <>),
+    "blo" <Symbol> => branch_ins!(Bcs, <>),
+    "blos" <Symbol> => branch_ins!(Blos, <>),
+    "bvc" <Symbol> => branch_ins!(Bvc, <>),
+    "bvs" <Symbol> => branch_ins!(Bvs, <>),
+    "bcc" <Symbol> => branch_ins!(Bcc, <>),
+    "bcs" <Symbol> => branch_ins!(Bcs, <>),
 
-    "jmp" <Operand> => make_jmp_ins!(<>),
+    "jmp" <Operand> => jmp_ins!(<>),
 
-    "jsr" <reg:R> "," <dst:Operand> => make_jsr_ins!(reg, dst),
-    "rts" <reg:R>  => make_rts_ins!(reg),
+    "jsr" <R> "," <Operand> => jsr_ins!(<>),
+    "rts" <R>  => rts_ins!(<>),
 
-    "clr" <Operand> => make_single_operand_ins!(Clr, <>),
-    "com" <Operand> => make_single_operand_ins!(Com, <>),
-    "inc" <Operand> => make_single_operand_ins!(Inc, <>),
-    "dec" <Operand> => make_single_operand_ins!(Dec, <>),
-    "neg" <Operand> => make_single_operand_ins!(Neg, <>),
-    "adc" <Operand> => make_single_operand_ins!(Adc, <>),
-    "sbc" <Operand> => make_single_operand_ins!(Sbc, <>),
-    "tst" <Operand> => make_single_operand_ins!(Tst, <>),
-    "ror" <Operand> => make_single_operand_ins!(Ror, <>),
-    "rol" <Operand> => make_single_operand_ins!(Rol, <>),
-    "asr" <Operand> => make_single_operand_ins!(Asr, <>),
-    "asl" <Operand> => make_single_operand_ins!(Asl, <>),
+    "clr" <Operand> => single_operand_ins!(Clr, <>),
+    "com" <Operand> => single_operand_ins!(Com, <>),
+    "inc" <Operand> => single_operand_ins!(Inc, <>),
+    "dec" <Operand> => single_operand_ins!(Dec, <>),
+    "neg" <Operand> => single_operand_ins!(Neg, <>),
+    "adc" <Operand> => single_operand_ins!(Adc, <>),
+    "sbc" <Operand> => single_operand_ins!(Sbc, <>),
+    "tst" <Operand> => single_operand_ins!(Tst, <>),
+    "ror" <Operand> => single_operand_ins!(Ror, <>),
+    "rol" <Operand> => single_operand_ins!(Rol, <>),
+    "asr" <Operand> => single_operand_ins!(Asr, <>),
+    "asl" <Operand> => single_operand_ins!(Asl, <>),
 
-    "clrb" <Operand> => make_single_operand_ins!(ClrB, <>),
-    "comb" <Operand> => make_single_operand_ins!(ComB, <>),
-    "incb" <Operand> => make_single_operand_ins!(IncB, <>),
-    "decb" <Operand> => make_single_operand_ins!(DecB, <>),
-    "negb" <Operand> => make_single_operand_ins!(NegB, <>),
-    "adcb" <Operand> => make_single_operand_ins!(AdcB, <>),
-    "sbcb" <Operand> => make_single_operand_ins!(SbcB, <>),
-    "tstb" <Operand> => make_single_operand_ins!(TstB, <>),
-    "rorb" <Operand> => make_single_operand_ins!(RorB, <>),
-    "rolb" <Operand> => make_single_operand_ins!(RolB, <>),
-    "asrb" <Operand> => make_single_operand_ins!(AsrB, <>),
-    "aslb" <Operand> => make_single_operand_ins!(AslB, <>),
+    "clrb" <Operand> => single_operand_ins!(ClrB, <>),
+    "comb" <Operand> => single_operand_ins!(ComB, <>),
+    "incb" <Operand> => single_operand_ins!(IncB, <>),
+    "decb" <Operand> => single_operand_ins!(DecB, <>),
+    "negb" <Operand> => single_operand_ins!(NegB, <>),
+    "adcb" <Operand> => single_operand_ins!(AdcB, <>),
+    "sbcb" <Operand> => single_operand_ins!(SbcB, <>),
+    "tstb" <Operand> => single_operand_ins!(TstB, <>),
+    "rorb" <Operand> => single_operand_ins!(RorB, <>),
+    "rolb" <Operand> => single_operand_ins!(RolB, <>),
+    "asrb" <Operand> => single_operand_ins!(AsrB, <>),
+    "aslb" <Operand> => single_operand_ins!(AslB, <>),
 
-    "swab" <Operand> => make_single_operand_ins!(Swab, <>),
+    "swab" <Operand> => single_operand_ins!(Swab, <>),
 
-    "nop" => make_cc_ins!(Nop),
-    "clc" => make_cc_ins!(Clc),
-    "clv" => make_cc_ins!(Clv),
-    "clz" => make_cc_ins!(Clz),
-    "cln" => make_cc_ins!(Cln),
-    "sec" => make_cc_ins!(Sec),
-    "sev" => make_cc_ins!(Sev),
-    "sez" => make_cc_ins!(Sez),
-    "sen" => make_cc_ins!(Sen),
+    "nop" => cc_ins!(Nop),
+    "clc" => cc_ins!(Clc),
+    "clv" => cc_ins!(Clv),
+    "clz" => cc_ins!(Clz),
+    "cln" => cc_ins!(Cln),
+    "sec" => cc_ins!(Sec),
+    "sev" => cc_ins!(Sev),
+    "sez" => cc_ins!(Sez),
+    "sen" => cc_ins!(Sen),
 
-    "emt" <Expr> => make_trap_ins!(Emt, <>),
-    "emt" => make_trap_ins!(Emt, Expr::Atom(Atom::Val(0))),
-    "trap" <Expr> => make_trap_ins!(Trap, <>),
-    "trap" => make_trap_ins!(Trap, Expr::Atom(Atom::Val(0))),
+    "emt" <Expr> => trap_ins!(Emt, <>),
+    "emt" => trap_ins!(Emt, Expr::Atom(Atom::Val(0))),
+    "trap" <Expr> => trap_ins!(Trap, <>),
+    "trap" => trap_ins!(Trap, Expr::Atom(Atom::Val(0))),
 };
 
 
@@ -188,37 +186,27 @@ Exprs = Comma<Expr>;
 pub Cmd: Cmd = {
     ".byte" <Exprs> => Cmd::Bytes(<>),
     ".word" <Exprs> => Cmd::Words(<>),
-    ".ascii" <StrLiteral> => {
-        let mut v = <>.as_bytes().to_vec();
-
-        // Remove quotes
-        v.pop();
-        v.remove(0);
-
-        Cmd::Ascii(v)
-    },
+    ".ascii" <s:StrLiteral> => Cmd::Ascii(s[1..s.len()-1].into()),
     ".asciz" <StrLiteral> => {
-        let mut v = <>.as_bytes().to_vec();
-
         // Remove quotes, add nul
+        let mut v = <>.as_bytes().to_vec();
         v.remove(0);
         let len = v.len();
         v[len-1] = 0;
-
         Cmd::Ascii(v)
     },
 
     ".even" => Cmd::Even,
 
-    <I> => Cmd::Ins(<>),
+    I => Cmd::Ins(<>),
 
-    <s:Symbol> "=" <e:Expr> => Cmd::SymbolDef(s, e),
+    <Symbol> "=" <Expr> => Cmd::SymbolDef(<>),
     "." "=" <Expr> => Cmd::LocDef(<>),
 };
 
 pub Stmt: Stmt = {
-    <label_def: Symbol> ":" => Stmt::new(Some(label_def), None),
-    <cmd:Cmd> => Stmt::new(None, Some(cmd)),
+    <Symbol> ":" => Stmt::new(Some(<>), None),
+    Cmd => Stmt::new(None, Some(<>)),
     <label_def: Symbol> ":" <cmd:Cmd> => Stmt::new(Some(label_def), Some(cmd)),
     () => Stmt::new(None, None),
 }
