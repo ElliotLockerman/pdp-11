@@ -135,4 +135,12 @@ fn call_stack_arg() {
     "#);
 }
 
+#[test]
+#[should_panic]
+fn call_reg() {
+    run(r#"
+        jsr r1
+    "#);
+}
+
 

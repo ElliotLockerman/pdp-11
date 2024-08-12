@@ -82,3 +82,10 @@ fn def() {
     "#);
 }
 
+#[test]
+#[should_panic]
+fn reg() {
+    run(r#"
+        jmp r1
+    "#);
+}
