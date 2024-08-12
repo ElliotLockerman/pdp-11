@@ -14,6 +14,7 @@ pub trait MMIOHandler: Send {
     fn reset(&mut self, _emu: &mut EmulatorState) {}
     fn tick(&mut self, _emu: &mut EmulatorState) -> Option<Interrupt> { None }
     fn interrupt_accepted(&mut self) {}
+    fn default_addrs(&self) -> &[u16] { &[] }
 
     fn read_byte(&mut self, emu: &mut EmulatorState, addr: u16) -> u8;
     fn read_word(&mut self, emu: &mut EmulatorState, addr: u16) -> u16;

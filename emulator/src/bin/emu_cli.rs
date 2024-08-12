@@ -24,12 +24,9 @@ fn main() {
 
     let opt = Args::parse();
 
-    let teleprinter = Teleprinter::default();
-    let clock = Clock::default();
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
-
-    emu.set_mmio_handler([Clock::LKS], clock);
+    emu.set_mmio_handler(Teleprinter::default());
+    emu.set_mmio_handler(Clock::default());
 
     let buf = std::fs::read(opt.bin).unwrap();
     emu.load_image(buf.as_slice(), 0);

@@ -158,19 +158,31 @@ impl Emulator {
         }
     }
 
-    pub fn set_mmio_handler<I, M>(&mut self, addrs: I, handler: M) 
+    pub fn set_mmio_handler_for<M, I>(&mut self, handler: M, addrs: I) 
     where 
-        I: IntoIterator<Item = u16>,
-        M: MMIOHandler + 'static {
+        M: MMIOHandler + 'static,
+        I: IntoIterator<Item = u16> {
 
         let handler = Arc::new(Mutex::new(handler));
         for addr in addrs.into_iter() {
-            assert!(addr >= MMIO_START);
-            assert!(addr & 0x1 == 0, "MMIOHandler addr {addr:o} not aligned");
-            let prev = self.mmio_handlers.insert(addr, handler.clone());
-            assert!(prev.is_none(), "Duplicate MMIOHandler for {addr:o}");
+            self.register_handler(handler.clone(), addr);
         }
     }
+
+    pub fn set_mmio_handler(&mut self, handler: impl MMIOHandler + 'static) {
+        let handler = Arc::new(Mutex::new(handler));
+        for addr in handler.lock().unwrap().default_addrs() {
+            self.register_handler(handler.clone(), *addr);
+        }
+    }
+
+    fn register_handler(&mut self, handler: Arc<Mutex<dyn MMIOHandler>>, addr: u16) {
+        assert!(addr >= MMIO_START);
+        assert!(addr & 0x1 == 0, "MMIOHandler addr {addr:o} not aligned");
+        let prev = self.mmio_handlers.insert(addr, handler);
+        assert!(prev.is_none(), "Duplicate MMIOHandler for {addr:o}");
+    }
+
 
     ///////////////////////////////////////////////////////////////////////////
 

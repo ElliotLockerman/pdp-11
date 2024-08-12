@@ -187,4 +187,8 @@ impl MMIOHandler for Teleprinter {
     fn interrupt_accepted(&mut self) {
         self.interrupted = true;
     }
+
+    fn default_addrs(&self) -> &[u16] {
+        &[Self::TPS, Self::TPB]
+    }
 }

@@ -26,12 +26,9 @@ fn main() {
     let input = std::fs::read_to_string(opt.input).unwrap();
     let (bin, symbols) = assemble_with_symbols(input.as_str());
 
-    let teleprinter = Teleprinter::default();
-    let clock = Clock::default();
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
-
-    emu.set_mmio_handler([Clock::LKS], clock);
+    emu.set_mmio_handler(Teleprinter::default());
+    emu.set_mmio_handler(Clock::default());
 
     emu.load_image(&bin, 0);
     let Some(start) = symbols.get(&opt.start) else {

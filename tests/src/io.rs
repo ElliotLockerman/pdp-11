@@ -15,7 +15,8 @@ fn hello() {
     let printer = Arc::new(PipePrinter::default());
     let teleprinter = Teleprinter::new(printer.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
+    emu.set_mmio_handler_for(teleprinter, [Teleprinter::TPS, Teleprinter::TPB]);
+
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
@@ -75,7 +76,7 @@ fn hello_spin() {
     let printer = Arc::new(PipePrinter::default());
     let teleprinter = Teleprinter::new(printer.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
+    emu.set_mmio_handler(teleprinter);
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
@@ -91,10 +92,9 @@ fn clock() {
 
     let printer = Arc::new(PipePrinter::default());
     let teleprinter = Teleprinter::new(printer.clone());
-    let clock = Clock::default();
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
-    emu.set_mmio_handler([Clock::LKS], clock);
+    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(Clock::default());
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
@@ -179,8 +179,8 @@ fn fake_clock() {
     let striker = clock.get_striker();
 
     let mut emu = Emulator::new();
-    emu.set_mmio_handler([Teleprinter::TPS, Teleprinter::TPB], teleprinter);
-    emu.set_mmio_handler([FakeClock::LKS], clock);
+    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(clock);
     emu.load_image(&bin, 0);
     emu.get_state_mut().reg_write_word(Reg::SP, 0o150000);
     emu.mem_write_byte(FakeClock::LKS, 0x1 << FakeClock::INT_ENB_SHIFT);
