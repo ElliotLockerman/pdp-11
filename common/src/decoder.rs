@@ -55,6 +55,13 @@ fn decode_single_operand_ins(input: &[u16]) -> Option<Ins> {
     Some(Ins::SingleOperand(SingleOperandIns{op, dst}))
 }
 
+fn decode_eis_ins(input: &[u16]) -> Option<Ins> {
+    let op = EisIns::decode_opcode(input[0])?;
+    let operand = decode_operand(input[0], input, 1);
+    let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
+    Some(Ins::Eis(EisIns{op, reg, operand}))
+}
+
 fn decode_cc_ins(input: &[u16]) -> Option<Ins> {
     let op = CCIns::decode_opcode(input[0])?;
     Some(Ins::CC(CCIns{op}))
@@ -80,6 +87,7 @@ const DECODERS: &[Decoder] = &[
     decode_jsr_ins,
     decode_rts_ins,
     decode_single_operand_ins,
+    decode_eis_ins,
     decode_cc_ins,
     decode_misc_ins,
     decode_trap_ins,

@@ -6,6 +6,7 @@ mod addressing_modes;
 mod mixed_addressing;
 mod double_operand;
 mod single_operand;
+mod eis;
 mod condition_code;
 mod branch;
 mod jmp;

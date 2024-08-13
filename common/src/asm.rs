@@ -516,6 +516,7 @@ impl fmt::Display for RtsIns {
 macro_rules! single_operand_ins {
     ($op:ident,  $dst:expr) => { Ins::SingleOperand(SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst}) };
 }
+
 // Also rotates, single operand byte inpub structions
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum SingleOperandOpcode {
@@ -587,6 +588,61 @@ impl fmt::Display for SingleOperandIns {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// KE11-E Extended Instruction Set instructions
+
+#[macro_export]
+macro_rules! eis_ins {
+    ($op:ident,  $reg:expr, $dst:expr) => { Ins::Eis(EisIns{op: EisOpcode::$op, reg: $reg, operand: $dst}) };
+}
+
+#[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
+pub enum EisOpcode {
+    Mul = 0o70,
+    Div,
+    Ash,
+    Ashc,
+    Xor, // Not technically an EIS instruction, but it has the same format, except operand is dst.
+}
+
+impl fmt::Display for EisOpcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EisIns {
+    pub op: EisOpcode,
+    pub reg: Reg,
+    pub operand: Operand, // src, except for Xor, where its dst.
+}
+
+impl EisIns {
+    pub fn num_extra(&self) -> u16 {
+        self.operand.num_extra()
+    }
+
+    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
+        write!(f, "{}\t{},", self.op, self.reg)?;
+        self.operand.fmt_with_pc(f, pc)
+    }
+}
+
+impl InstrVariant<EisOpcode> for EisIns {
+    const OPCODE_BITS: usize = 7;
+    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
+}
+
+impl fmt::Display for EisIns {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}\t{}, {}", self.op, self.reg, self.operand)
+    }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
 
 
 #[macro_export]
@@ -752,6 +808,7 @@ pub enum Ins {
     Jsr(JsrIns),
     Rts(RtsIns),
     SingleOperand(SingleOperandIns),
+    Eis(EisIns),
     CC(CCIns),
     Misc(MiscIns),
     Trap(TrapIns),
@@ -766,6 +823,7 @@ impl Ins {
             Ins::Jsr(x) => x.num_extra(),
             Ins::Rts(x) => x.num_extra(),
             Ins::SingleOperand(x) => x.num_extra(),
+            Ins::Eis(x) => x.num_extra(),
             Ins::CC(x) => x.num_extra(),
             Ins::Misc(x) => x.num_extra(),
             Ins::Trap(x) => x.num_extra(),
@@ -784,6 +842,7 @@ impl Ins {
             Ins::Jsr(x) => x.fmt_with_pc(f, pc),
             Ins::Rts(x) => x.fmt_with_pc(f, pc),
             Ins::SingleOperand(x) => x.fmt_with_pc(f, pc),
+            Ins::Eis(x) => x.fmt_with_pc(f, pc),
             Ins::CC(x) => x.fmt_with_pc(f, pc),
             Ins::Misc(x) => x.fmt_with_pc(f, pc),
             Ins::Trap(x) => x.fmt_with_pc(f, pc),
@@ -804,6 +863,7 @@ impl fmt::Display for Ins {
             Ins::Jsr(ins) => write!(f, "{ins}"),
             Ins::Rts(ins) => write!(f, "{ins}"),
             Ins::SingleOperand(ins) => write!(f, "{ins}"),
+            Ins::Eis(ins) => write!(f, "{ins}"),
             Ins::CC(ins) => write!(f, "{ins}"),
             Ins::Misc(ins) => write!(f, "{ins}"),
             Ins::Trap(ins) => write!(f, "{ins}"),

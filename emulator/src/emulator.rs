@@ -14,6 +14,7 @@ use std::ops::{BitOr, BitAnd};
 use std::sync::{Arc, Mutex};
 
 use log::{debug, trace};
+use num_traits::{ToPrimitive, FromPrimitive};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Size {
@@ -756,6 +757,59 @@ impl Emulator {
         }
     }
 
+    fn exec_eis_ins(&mut self, ins: &EisIns) {
+        let operand = self.resolve(&ins.operand, Size::Word);
+        let operand_val = self.read_resolved_word(operand);
+
+        use EisOpcode::*;
+        if ins.op == Xor {
+            let dst = operand;
+            let dst_val = operand_val;
+
+            let val = self.state.reg_read_word(ins.reg);
+            let res = dst_val ^ val;
+            self.write_resolved_word(dst, res);
+
+            self.state.status.set_negative(Size::Word.sign_bit(res as u32) != 0);
+            self.state.status.set_zero(res == 0);
+            self.state.status.set_overflow(false);
+            // Carry unaffected
+            return;
+        }
+
+        let src_val = operand_val;
+        let reg_val = self.state.reg_read_word(ins.reg);
+        match ins.op {
+            Mul => {
+                let src_val = src_val as i16 as i32;
+                let reg_val = reg_val as i16 as i32;
+                let res = src_val * reg_val;
+
+                self.state.status.set_negative(res < 0);
+                self.state.status.set_zero(res == 0);
+                self.state.status.set_overflow(false);
+                self.state.status.set_carry(i16::try_from(res).is_err());
+
+                self.state.reg_write_word(ins.reg, res as u16);
+                let reg_num = ins.reg.to_u16().unwrap();
+                if reg_num & 0x1 == 0 {
+                    let upper_reg = Reg::from_u16(reg_num + 1).unwrap();
+                    self.state.reg_write_word(upper_reg, (res >> u16::BITS) as u16);
+                }
+            },
+            Div => {
+                todo!()
+            },
+            Ash => {
+                todo!()
+            },
+            Ashc => {
+                todo!()
+            },
+            Xor => unreachable!(),
+        }
+    }
+
     fn exec_cc_ins(&mut self, ins: &CCIns) {
         let op = ins.op as u16;
         let bits = op & 0xf;
@@ -803,6 +857,7 @@ impl Emulator {
             Ins::Jsr(ins) =>  self.exec_jsr_ins(ins),
             Ins::Rts(ins) =>  self.exec_rts_ins(ins),
             Ins::SingleOperand(ins) =>  self.exec_single_operand_ins(ins),
+            Ins::Eis(ins) => self.exec_eis_ins(ins),
             Ins::CC(ins) =>  self.exec_cc_ins(ins),
             Ins::Misc(ins) => { return self.exec_misc_ins(ins); },
             Ins::Trap(ins) =>  self.exec_trap_ins(ins),

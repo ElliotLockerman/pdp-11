@@ -86,9 +86,21 @@ impl Assembler {
         }
 
     }
+
+    fn emit_eis_ins(&mut self, ins: &EisIns) {
+        let bin = (ins.op.to_u16().unwrap() << EisIns::LOWER_BITS) 
+            | (ins.reg.to_u16().unwrap() << Operand::NUM_BITS)
+            | ins.operand.format();
+        self.emit(bin);
+        if ins.operand.has_extra() {
+            self.emit(ins.operand.extra.unwrap_val());
+        }
+    }
+
     fn emit_cc_ins(&mut self, ins: &CCIns) {
         self.emit(ins.op.to_u16().unwrap());
     }
+
     fn emit_misc_ins(&mut self, ins: &MiscIns) {
         self.emit(ins.op.to_u16().unwrap());
     }
@@ -107,6 +119,7 @@ impl Assembler {
             Ins::Jsr(x) => self.emit_jsr_ins(x),
             Ins::Rts(x) => self.emit_rts_ins(x),
             Ins::SingleOperand(x) => self.emit_single_operand_ins(x),
+            Ins::Eis(x) => self.emit_eis_ins(x),
             Ins::CC(x) => self.emit_cc_ins(x),
             Ins::Misc(x) => self.emit_misc_ins(x),
             Ins::Trap(x) => self.emit_trap_ins(x),
@@ -266,6 +279,7 @@ impl Assembler {
                             Ins::Jmp(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
                             Ins::Jsr(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
                             Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc, iter),
+                            Ins::Eis(ins) => self.resolve_operand(&mut ins.operand, &mut addr, loc, iter),
                             Ins::Trap(ins) => {
                                 if let Some(val) = self.eval_expr(&ins.data, loc, iter) {
                                     assert_eq!(val & !0xff, 0);
@@ -723,6 +737,24 @@ mod tests {
         "#;
         let bin = assemble(prog);
         assert_eq!(bin.len(), 10);
+    }
+
+    #[test]
+    fn eis() {
+        let bin = to_u16(&assemble(r#"mul r0, r1"#));
+        assert_eq!(bin, [0o070001]);
+
+        let bin = to_u16(&assemble(r#"div r3, @(r2)+"#));
+        assert_eq!(bin, [0o071332]);
+
+        let bin = to_u16(&assemble(r#"ash r5, #23"#));
+        assert_eq!(bin, [0o072527, 0o23]);
+
+        let bin = to_u16(&assemble(r#"label: ashc r5, label"#));
+        assert_eq!(bin, [0o073567, 0o177776]);
+
+        let bin = to_u16(&assemble(r#"label: xor r5, label"#));
+        assert_eq!(bin, [0o074567, 0o177776]);
     }
 }
 

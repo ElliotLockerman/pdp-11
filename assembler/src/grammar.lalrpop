@@ -11,6 +11,7 @@ use common::{
     misc_ins,
     cc_ins,
     single_operand_ins,
+    eis_ins,
     trap_ins,
 };
 
@@ -157,6 +158,12 @@ I: Ins = {
     "aslb" <Operand> => single_operand_ins!(AslB, <>),
 
     "swab" <Operand> => single_operand_ins!(Swab, <>),
+    
+    "mul" <R> "," <Operand> => eis_ins!(Mul, <>),
+    "div" <R> "," <Operand> => eis_ins!(Div, <>),
+    "ash" <R> "," <Operand> => eis_ins!(Ash, <>),
+    "ashc" <R> "," <Operand> => eis_ins!(Ashc, <>),
+    "xor" <R> "," <Operand> => eis_ins!(Xor, <>),
 
     "nop" => cc_ins!(Nop),
     "clc" => cc_ins!(Clc),
