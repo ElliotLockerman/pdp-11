@@ -1,6 +1,7 @@
 
 pub mod teleprinter;
 pub mod clock;
+pub mod status_access;
 
 use crate::EmulatorState;
 

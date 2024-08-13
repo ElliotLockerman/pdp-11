@@ -230,4 +230,143 @@ fn threads() {
     let out = String::from_utf8_lossy(buf.as_slices().0);
     assert_eq!(out, "000011110");
 }
-    
+
+#[test]
+fn prio() {
+    // Check that we get regular interrupts.
+    let asm = r#"
+        LKS = 177546
+        STACK_TOP = 150000
+
+        . = 100
+        .word clock, 300
+
+    _start:
+        mov #STACK_TOP, sp
+        clr r0
+        clr r1
+        mov #100, LKS
+
+    loop:
+        inc r1
+        cmp #10., r1
+        bne loop
+        halt
+
+    clock:
+        mov #3, r0
+        halt
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(&asm);
+
+    let clock = FakeClock::default();
+    let striker = clock.get_striker();
+
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(clock);
+    striker.strike();
+    emu.load_image(&bin, 0);
+    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+
+    striker.strike();
+    emu.run();
+
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 3);
+
+
+    // Check that we don't get interrupts when we raise the priority.
+    let asm = r#"
+        LKS = 177546
+        STACK_TOP = 150000
+        STATUS = 177776
+
+        . = 100
+        .word clock, 300
+
+    _start:
+        mov #STACK_TOP, sp
+        clr r0
+        clr r1
+        bis #340, STATUS
+        mov #100, LKS
+
+    loop:
+        inc r1
+        cmp #10., r1
+        bne loop
+        halt
+
+    clock:
+        mov #3, r0
+        halt
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(&asm);
+
+    let clock = FakeClock::default();
+    let striker = clock.get_striker();
+
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(clock);
+    striker.strike();
+    emu.load_image(&bin, 0);
+    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+
+    striker.strike();
+    emu.run();
+
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0);
+
+
+    // Check that we get interrupts again once we lower the priority.
+    let asm = r#"
+        LKS = 177546
+        STACK_TOP = 150000
+        STATUS = 177776
+
+        . = 100
+        .word clock, 300
+
+    _start:
+        mov #STACK_TOP, sp
+        clr r0
+        clr r1
+        bis #340, STATUS
+        mov #100, LKS
+
+    loop:
+        inc r1
+        cmp #10., r1
+        bne loop
+
+        bic #340, STATUS
+
+    loop2:
+        inc r1
+        cmp #20., r1
+        bne loop2
+        halt
+
+    clock:
+        mov #3, r0
+        halt
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(&asm);
+
+    let clock = FakeClock::default();
+    let striker = clock.get_striker();
+
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(clock);
+    striker.strike();
+    emu.load_image(&bin, 0);
+    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+
+    striker.strike();
+    emu.run();
+
+    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 3);
+    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 10);
+}

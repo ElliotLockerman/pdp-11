@@ -4,6 +4,7 @@ use common::decoder::decode;
 use common::constants::*;
 use crate::MMIOHandler;
 use crate::io::Interrupt;
+use crate::io::status_access::StatusAccess;
 use crate::EmulatorState;
 use crate::Status;
 
@@ -79,11 +80,13 @@ pub struct Emulator {
 
 impl Emulator {
     pub fn new() -> Emulator {
-        Emulator {
+        let mut emu = Emulator {
             state: EmulatorState::new(),
             mmio_handlers: HashMap::new(),
             waiting: false,
-        }
+        };
+        emu.set_mmio_handler(StatusAccess::default());
+        emu
     }
 
     // Run until a halt.

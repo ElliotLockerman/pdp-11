@@ -24,7 +24,7 @@ impl Default for Clock {
 impl Clock {
 
     pub const LKS: u16 = 0o177546;
-    pub const LKS_UPPER: u16 = 0o177547;
+    pub const LKS_UPPER: u16 = Self::LKS + 1;
     pub const ADDRS: &[u16] = &[Self::LKS];
 
     const INT_ENB_SHIFT: u8 = 6;
