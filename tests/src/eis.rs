@@ -14,7 +14,7 @@ fn mul_full() {
         flags_exp: Flags,
     ) {
         let asm = format!(r#"
-            mul r0, r2
+            mul r2, r0
             halt
         "#);
         let bin = assemble(&asm);
@@ -43,6 +43,8 @@ fn mul_full() {
     run(0o7, -1i16 as u16, -7i32 as u32, flags().n());
     run(0o077777, 0o2, 0o177776, flags().c());
     run(i16::MIN as u16, 0o2, ((i16::MIN as i32) * 2) as u32, flags().c().n());
+    run(i16::MIN as u16, -1i16 as u16, (-(i16::MIN as i32)) as u32, flags().c());
+    run(i16::MIN as u16, -2i16 as u16, (-2 * (i16::MIN as i32)) as u32, flags().c());
 }
 
 #[test]
@@ -54,7 +56,7 @@ fn mul_lower() {
         flags_exp: Flags,
     ) {
         let asm = r#"
-            mul r3, r4
+            mul r4, r3
             halt
         "#;
         let bin = assemble(&asm);
@@ -82,6 +84,56 @@ fn mul_lower() {
     run(0o7, -1i16 as u16, -7i32 as u16, flags().n());
     run(0o077777, 0o2, 0o177776, flags().c());
     run(i16::MIN as u16, 0o2, ((i16::MIN as i32) * 2) as u16, flags().c().n());
+    run(i16::MIN as u16, -1i16 as u16, (-(i16::MIN as i32)) as u16, flags().c());
+    run(i16::MIN as u16, -2i16 as u16, 0, flags().c());
+}
+
+#[test]
+#[should_panic]
+fn div_odd() {
+    assemble("div r2, r1");
+}
+
+#[test]
+fn div() {
+    fn run(
+        dividend: u32,
+        divisor: u16,
+        quot_exp: u16,
+        rem_exp: u16,
+        flags_exp: Flags,
+    ) {
+        let asm = format!(r#"
+            div r2, r0
+            halt
+        "#);
+        let bin = assemble(&asm);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.get_state_mut().reg_write_word(Reg::R0, dividend as u16);
+        emu.get_state_mut().reg_write_word(Reg::R1, (dividend >> u16::BITS) as u16);
+        emu.get_state_mut().reg_write_word(Reg::R2, divisor);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), quot_exp, "quot");
+        assert_eq!(emu.get_state().reg_read_word(Reg::R1), rem_exp, "rem");
+        assert_eq!(emu.get_state().reg_read_word(Reg::R2), divisor);
+        let status = emu.get_state().get_status();
+        assert_eq!(status.get_carry(), flags_exp.c, "carry flag");
+        assert_eq!(status.get_overflow(),flags_exp.v, "overflow flag");
+        assert_eq!(status.get_zero(), flags_exp.z, "zero flag");
+        assert_eq!(status.get_negative(), flags_exp.n, "negative flag");
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    }
+
+    run(0, 1, 0, 0, flags().z());
+    run(1, 1, 1, 0, flags());
+    run(1, 0, 1, 0, flags().v().c());
+    run(2, 1, 2, 0, flags());
+    run(3, 2, 1, 1, flags());
+    run(1, 2, 0, 1, flags().z());
+    run(-2i32 as u32, 1, -2i16 as u16, 0, flags().n());
+    run(-3i32 as u32, 2, -1i16 as u16, -1i16 as u16, flags().n());
+    run(i32::MIN as u32, 1, i32::MIN as u16, ((i32::MIN as u32) >> u16::BITS) as u16, flags().n().v());
 }
 
 #[test]
@@ -93,7 +145,7 @@ fn xor() {
         flags_exp: Flags,
     ) {
         let asm = r#"
-            xor r0, r1
+            xor r1, r0
             halt
         "#;
         let bin = assemble(&asm);

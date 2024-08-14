@@ -798,7 +798,38 @@ impl Emulator {
                 }
             },
             Div => {
-                todo!()
+                let reg_num = ins.reg.to_u16().unwrap();
+                assert_eq!(reg_num & 0x1, 0);
+                let upper_reg = Reg::from_u16(reg_num + 1).unwrap();
+                let upper = self.state.reg_read_word(upper_reg);
+                let dividend = ((upper as i32) << u16::BITS) | (reg_val as i32);
+                let divisor = src_val as i32;
+
+                if divisor != 0 {
+                    let quot = dividend / divisor;
+                    let rem = dividend % divisor;
+                    if rem != 0 {
+                        debug_assert_eq!(rem < 0, dividend < 0);
+                    }
+
+                    let res = i16::try_from(quot);
+                    self.state.status.set_negative(quot < 0); 
+                    self.state.status.set_zero(quot == 0); 
+                    self.state.status.set_overflow(src_val == 0 || res.is_err());
+                    self.state.status.set_carry(false); 
+
+                    if let Ok(q) = res {
+                        // "instruction is aborted" if result can't find in 15 bits
+                        // (plus sign, presumably).
+                        self.state.reg_write_word(ins.reg, q as u16);
+                        assert!(i16::try_from(rem).is_ok());
+                        self.state.reg_write_word(upper_reg, rem as u16);
+                    }
+                } else {
+                    self.state.status.set_overflow(true);
+                    self.state.status.set_carry(true); 
+                }
+                
             },
             Ash => {
                 todo!()

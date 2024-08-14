@@ -159,11 +159,11 @@ I: Ins = {
 
     "swab" <Operand> => single_operand_ins!(Swab, <>),
     
-    "mul" <R> "," <Operand> => eis_ins!(Mul, <>),
-    "div" <R> "," <Operand> => eis_ins!(Div, <>),
-    "ash" <R> "," <Operand> => eis_ins!(Ash, <>),
-    "ashc" <R> "," <Operand> => eis_ins!(Ashc, <>),
-    "xor" <R> "," <Operand> => eis_ins!(Xor, <>),
+    "mul" <o:Operand> "," <r:R> => eis_ins!(Mul, r, o),
+    "div" <o:Operand> "," <r:R> => eis_ins!(Div, r, o),
+    "ash" <o:Operand> "," <r:R> => eis_ins!(Ash, r, o),
+    "ashc" <o:Operand> "," <r:R> => eis_ins!(Ashc, r, o),
+    "xor" <o:Operand> "," <r:R> => eis_ins!(Xor, r, o),
 
     "nop" => cc_ins!(Nop),
     "clc" => cc_ins!(Clc),

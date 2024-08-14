@@ -88,8 +88,12 @@ impl Assembler {
     }
 
     fn emit_eis_ins(&mut self, ins: &EisIns) {
+        let reg = ins.reg.to_u16().unwrap();
+        if ins.op == EisOpcode::Div {
+            assert_eq!(reg & 0x1, 0, "Division reg must be even");
+        }
         let bin = (ins.op.to_u16().unwrap() << EisIns::LOWER_BITS) 
-            | (ins.reg.to_u16().unwrap() << Operand::NUM_BITS)
+            | (reg << Operand::NUM_BITS)
             | ins.operand.format();
         self.emit(bin);
         if ins.operand.has_extra() {
@@ -741,20 +745,26 @@ mod tests {
 
     #[test]
     fn eis() {
-        let bin = to_u16(&assemble(r#"mul r0, r1"#));
+        let bin = to_u16(&assemble(r#"mul r1, r0"#));
         assert_eq!(bin, [0o070001]);
 
-        let bin = to_u16(&assemble(r#"div r3, @(r2)+"#));
-        assert_eq!(bin, [0o071332]);
+        let bin = to_u16(&assemble(r#"div @(r2)+, r4"#));
+        assert_eq!(bin, [0o071432]);
 
-        let bin = to_u16(&assemble(r#"ash r5, #23"#));
+        let bin = to_u16(&assemble(r#"ash #23, r5"#));
         assert_eq!(bin, [0o072527, 0o23]);
 
-        let bin = to_u16(&assemble(r#"label: ashc r5, label"#));
+        let bin = to_u16(&assemble(r#"label: ashc label, r5"#));
         assert_eq!(bin, [0o073567, 0o177776]);
 
-        let bin = to_u16(&assemble(r#"label: xor r5, label"#));
+        let bin = to_u16(&assemble(r#"label: xor label, r5"#));
         assert_eq!(bin, [0o074567, 0o177776]);
+    }
+
+    #[test]
+    #[should_panic]
+    fn div_odd() {
+        assemble(r#"div @(r2)+, r5"#);
     }
 }
 
