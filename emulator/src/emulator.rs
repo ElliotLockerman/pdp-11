@@ -876,7 +876,55 @@ impl Emulator {
                 
             },
             Ashc => {
-                todo!()
+                const SIG_BITS: u16 = 6;
+                const NONSIG_BITS: u16 = (u16::BITS as u16) - SIG_BITS;
+                const MASK: u16 = (0x1 << SIG_BITS) - 1;
+                let shift = src_val & MASK;
+                let mut shift: i16 = ((shift as i16) << NONSIG_BITS) >> NONSIG_BITS; // Sign extend
+                assert!((-32i16..=31i16).contains(&shift));
+
+                let reg_raw = ins.reg.to_u16().unwrap();
+                let reg_upper = Reg::from_u16(reg_raw + 1).unwrap();
+
+                // The manual actually specifies for odd registers and a negative shift, its a
+                // rotate; I can't see using it and think it would be a cause for errors.
+                assert!((reg_raw & 0x1) == 0, "Odd registers not supported for Ashc");
+                assert!(ins.reg != Reg::PC);
+                let upper = self.state.reg_read_word(reg_upper);
+                let wide_val = (reg_val as u32) | ((upper as u32) << u16::BITS);
+
+                let (new_val, carry) = match shift.cmp(&0) {
+                    Ordering::Greater => {
+                        // Left
+                        let carry = if (shift as u32) < i32::BITS {
+                            ((wide_val >> (i32::BITS - shift as u32)) & 0x1) != 0
+                        } else {
+                            false
+                        };
+                        let new_val = wide_val << shift;
+                        (new_val, carry)
+                    },
+                    Ordering::Equal => {
+                        (wide_val, false)
+                    },
+                    Ordering::Less => {
+                        // Right
+                        shift *= -1;
+                        let carry = ((wide_val >> (shift - 1)) & 0x1) != 0;
+                        let new_val = ((wide_val as i32) >> shift) as u32;
+                        (new_val, carry)
+                    },
+                };
+                self.state.reg_write_word(ins.reg, (new_val & ((0x1u32 << u16::BITS) - 1)) as u16);
+                self.state.reg_write_word(reg_upper, (new_val >> u16::BITS) as u16);
+
+                self.state.status.set_negative(((new_val >> (u32::BITS - 1)) & 0x1) != 0);
+                self.state.status.set_zero(new_val == 0);
+                self.state.status.set_overflow(
+                    (((wide_val >> (u32::BITS - 1)) & 0x1) != 0) != self.state.status.get_negative()
+                );
+                self.state.status.set_carry(carry);
+
             },
             Xor => unreachable!(),
         }

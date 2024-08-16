@@ -169,6 +169,8 @@ fn ash() {
     run(0o0, 0o1, 0o0,  flags().z());
     run(0o1, 0o1, 0o2,  flags());
     run(0o001234, 0o3, 0o012340,  flags());
+    run(0o100000u16 as i16, 0o1, 0o0u16 as i16,  flags().v().c().z());
+    run(0o100001u16 as i16, 0o1, 0o2u16 as i16,  flags().v().c());
     run(0o040000, 0o1, 0o100000u16 as i16,  flags().v().n());
     run(0o140000u16 as i16, 0o1, 0o100000u16 as i16,  flags().c().n());
 
@@ -178,6 +180,60 @@ fn ash() {
     run(0o3, -0o1, 0o1,  flags().c());
     run(0o100000u16 as i16, -0o1, 0o140000u16 as i16,  flags().n());
 }
+
+#[test]
+fn ashc() {
+    fn run(
+        val: i32,
+        shift: i16,
+        val_exp: i32,
+        flags_exp: Flags,
+    ) {
+        let asm = format!(r#"
+            ashc r0, r2
+            halt
+        "#);
+        let bin = assemble(&asm);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.get_state_mut().reg_write_word(Reg::R0, shift as u16);
+        emu.get_state_mut().reg_write_word(Reg::R2, val as u16);
+        emu.get_state_mut().reg_write_word(Reg::R3, ((val as u32) >> u16::BITS) as u16);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), shift as u16, "shift (after)");
+        let out_lower = emu.get_state().reg_read_word(Reg::R2) as u32;
+        let out_upper = emu.get_state().reg_read_word(Reg::R3) as u32;
+        assert_eq!((out_upper << u16::BITS) | out_lower, val_exp as u32, "val (after)");
+        let status = emu.get_state().get_status();
+        assert_eq!(status.get_carry(), flags_exp.c, "carry flag");
+        assert_eq!(status.get_overflow(),flags_exp.v, "overflow flag");
+        assert_eq!(status.get_zero(), flags_exp.z, "zero flag");
+        assert_eq!(status.get_negative(), flags_exp.n, "negative flag");
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    }
+
+    run(0o0, 0o0, 0o0,  flags().z());
+    run(-1, 0o0, -1,  flags().n());
+    run(0o0, 0o1, 0o0,  flags().z());
+    run(0o1, 0o1, 0o2,  flags());
+    run(0o001234, 0o3, 0o012340,  flags());
+    run(0o040000, 0o1, 0o100000, flags());
+    run(0o140000, 0o1, 0o300000, flags());
+    run(0o140000, 0o5, 0o140000 << 5, flags());
+    run(i32::MIN, 0o1, 0o0,  flags().v().c().z());
+    run(i32::MIN + 1, 0o1, 0o2,  flags().v().c());
+    run(i32::MAX, 0o1, 0i32 - 2,  flags().v().n());
+
+    run(0o0, -0o1, 0o0,  flags().z());
+    run(0o1, -0o1, 0o0,  flags().z().c());
+    run(0o2, -0o1, 0o1,  flags());
+    run(0o3, -0o1, 0o1,  flags().c());
+    run(0o100000, -0o1, 0o040000,  flags());
+    run(0o140000, -0o5, 0o140000 >> 5, flags());
+    run(-1i32, -0o1, -1i32,  flags().c().n());
+    run(i32::MIN, -0o1, i32::MIN >> 1 ,  flags().n());
+}
+
 
 #[test]
 fn xor() {
