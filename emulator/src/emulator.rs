@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::{BitOr, BitAnd};
 use std::sync::{Arc, Mutex};
+use std::cmp::Ordering;
 
 use log::{debug, trace};
 use num_traits::{ToPrimitive, FromPrimitive};
@@ -832,7 +833,47 @@ impl Emulator {
                 
             },
             Ash => {
-                todo!()
+                const SIG_BITS: u16 = 6;
+                const NONSIG_BITS: u16 = (u16::BITS as u16) - SIG_BITS;
+                const MASK: u16 = (0x1 << SIG_BITS) - 1;
+                let shift = src_val & MASK;
+                let mut shift: i16 = ((shift as i16) << NONSIG_BITS) >> NONSIG_BITS; // Sign extend
+                assert!((-32i16..=31i16).contains(&shift));
+
+                // Not clear what semantis are for shift more than 16, I'll just clamp.
+                shift = shift.clamp(-16, 16);
+
+                let (new_val, carry) = match shift.cmp(&0) {
+                    Ordering::Greater => {
+                        // Left
+                        let carry = if shift < i16::BITS as i16 {
+                            ((reg_val >> (i16::BITS  as i16 - shift)) & 0x1) != 0
+                        } else {
+                            false
+                        };
+                        let new_val = reg_val << shift;
+                        (new_val, carry)
+                    },
+                    Ordering::Equal => {
+                        (reg_val, false)
+                    },
+                    Ordering::Less => {
+                        // Right
+                        shift *= -1;
+                        let carry = ((reg_val >> (shift - 1)) & 0x1) != 0;
+                        let new_val = ((reg_val as i16) >> shift) as u16;
+                        (new_val, carry)
+                    },
+                };
+                self.state.reg_write_word(ins.reg, new_val);
+
+                self.state.status.set_negative(Size::Word.sign_bit(new_val as u32) != 0);
+                self.state.status.set_zero(new_val == 0);
+                self.state.status.set_overflow(
+                    (Size::Word.sign_bit(reg_val as u32) != 0) != self.state.status.get_negative()
+                );
+                self.state.status.set_carry(carry);
+                
             },
             Ashc => {
                 todo!()

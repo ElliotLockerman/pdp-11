@@ -137,6 +137,49 @@ fn div() {
 }
 
 #[test]
+fn ash() {
+    fn run(
+        val: i16,
+        shift: i16,
+        val_exp: i16,
+        flags_exp: Flags,
+    ) {
+        let asm = format!(r#"
+            ash r0, r1
+            halt
+        "#);
+        let bin = assemble(&asm);
+        let mut emu = Emulator::new();
+        emu.load_image(&bin, DATA_START);
+        emu.get_state_mut().reg_write_word(Reg::R0, shift as u16);
+        emu.get_state_mut().reg_write_word(Reg::R1, val as u16);
+        emu.run_at(DATA_START);
+        assert_eq!(emu.get_state().reg_read_word(Reg::R0), shift as u16, "shift (after)");
+        assert_eq!(emu.get_state().reg_read_word(Reg::R1), val_exp as u16, "val (after)");
+        let status = emu.get_state().get_status();
+        assert_eq!(status.get_carry(), flags_exp.c, "carry flag");
+        assert_eq!(status.get_overflow(),flags_exp.v, "overflow flag");
+        assert_eq!(status.get_zero(), flags_exp.z, "zero flag");
+        assert_eq!(status.get_negative(), flags_exp.n, "negative flag");
+        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    }
+
+    run(0o0, 0o0, 0o0,  flags().z());
+    run(-1i16, 0o0, -1i16,  flags().n());
+    run(0o0, 0o1, 0o0,  flags().z());
+    run(0o1, 0o1, 0o2,  flags());
+    run(0o001234, 0o3, 0o012340,  flags());
+    run(0o040000, 0o1, 0o100000u16 as i16,  flags().v().n());
+    run(0o140000u16 as i16, 0o1, 0o100000u16 as i16,  flags().c().n());
+
+    run(0o0, -0o1, 0o0,  flags().z());
+    run(0o1, -0o1, 0o0,  flags().z().c());
+    run(0o2, -0o1, 0o1,  flags());
+    run(0o3, -0o1, 0o1,  flags().c());
+    run(0o100000u16 as i16, -0o1, 0o140000u16 as i16,  flags().n());
+}
+
+#[test]
 fn xor() {
     fn run(
         r0_init: u16,
