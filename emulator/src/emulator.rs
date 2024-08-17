@@ -939,9 +939,11 @@ impl Emulator {
         let bits = op & 0xf;
         let set = ((op >> 4) & 0x1) != 0;
         if set {
-            self.state.status.set_flags(bits);
+            let curr = self.state.status.get_flags();
+            self.state.status.set_flags(curr | bits);
         } else {
-            self.state.status.clear_flags(bits);
+            let curr = self.state.status.get_flags();
+            self.state.status.set_flags(curr & !bits);
         }
     }
 

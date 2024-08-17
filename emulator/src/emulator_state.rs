@@ -15,6 +15,8 @@ impl Status {
     pub const NEGATIVE: usize = 3;
     const T: usize = 4;
 
+    const FLAGS_MASK: u16 = 0xf;
+
     const PRIO: usize = 5;
     const PRIO_MASK: u16 = 0x7;
 
@@ -29,6 +31,16 @@ impl Status {
 
     pub fn to_raw(&self) -> u16 {
         self.0
+    }
+
+    pub fn get_flags(&self) -> u16 {
+        self.0 & Self::FLAGS_MASK
+    }
+
+    pub fn set_flags(&mut self, bits: u16) {
+        assert_eq!(bits & !Self::FLAGS_MASK, 0);
+        self.0 &= !Self::FLAGS_MASK;
+        self.0 |= bits;
     }
 
     pub fn get_carry(&self) -> bool {
@@ -84,16 +96,6 @@ impl Status {
         assert!((val & !Self::PRIO_MASK) == 0);
         self.0 &= !(Self::PRIO_MASK << Self::PRIO);
         self.0 |= val << Self::PRIO;
-    }
-
-    pub fn set_flags(&mut self, bits: u16) {
-        assert_eq!(bits & !0xf, 0);
-        self.0 |= bits;
-    }
-
-    pub fn clear_flags(&mut self, bits: u16) {
-        assert_eq!(bits & !0xf, 0);
-        self.0 &= !bits;
     }
 }
 
