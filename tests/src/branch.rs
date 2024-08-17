@@ -2,9 +2,9 @@ use as_lib::assemble;
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{Flags, flags};
+use crate::flags::{C, V, Z, N};
 
-fn run(ins: &str, flags: Flags, should_take: bool) {
+fn run(ins: &str, flags: u16, should_take: bool) {
     let asm = format!(r#"
         {ins} taken
 
@@ -19,7 +19,7 @@ fn run(ins: &str, flags: Flags, should_take: bool) {
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
-    emu.get_state_mut().get_status_mut().set_flags(flags.to_bits());
+    emu.get_state_mut().get_status_mut().set_flags(flags);
     emu.run_at(DATA_START);
     let r0 = emu.get_state().reg_read_word(Reg::R0);
     let taken = match r0 {
@@ -32,156 +32,156 @@ fn run(ins: &str, flags: Flags, should_take: bool) {
 
 #[test]
 fn br() {
-    run("br", flags(), true);
-    run("br", flags().n(), true);
-    run("br", flags().z(), true);
-    run("br", flags().n().z().v().c(), true);
+    run("br", 0, true);
+    run("br", N, true);
+    run("br", Z, true);
+    run("br", N | Z | V | C, true);
 }
 
 #[test]
 fn beq() {
-    run("beq", flags(), false);
-    run("beq", flags().n(), false);
-    run("beq", flags().z(), true);
-    run("beq", flags().n().z().v().c(), true);
+    run("beq", 0, false);
+    run("beq", N, false);
+    run("beq", Z, true);
+    run("beq", N | Z | V | C, true);
 }
 
 #[test]
 fn bne() {
-    run("bne", flags(), true);
-    run("bne", flags().n(), true);
-    run("bne", flags().z(), false);
-    run("bne", flags().n().z().v().c(), false);
+    run("bne", 0, true);
+    run("bne", N, true);
+    run("bne", Z, false);
+    run("bne", N | Z | V | C, false);
 }
 
 #[test]
 fn bni() {
-    run("bmi", flags(), false);
-    run("bmi", flags().n(), true);
-    run("bmi", flags().z(), false);
-    run("bmi", flags().n().z().v().c(), true);
+    run("bmi", 0, false);
+    run("bmi", N, true);
+    run("bmi", Z, false);
+    run("bmi", N | Z | V | C, true);
 }
 
 #[test]
 fn bpl() {
-    run("bpl", flags(), true);
-    run("bpl", flags().n(), false);
-    run("bpl", flags().z(), true);
-    run("bpl", flags().n().z().v().c(), false);
+    run("bpl", 0, true);
+    run("bpl", N, false);
+    run("bpl", Z, true);
+    run("bpl", N | Z | V | C, false);
 }
 
 #[test]
 fn bcs() {
-    run("bcs", flags(), false);
-    run("bcs", flags().n(), false);
-    run("bcs", flags().c(), true);
-    run("bcs", flags().n().z().v().c(), true);
+    run("bcs", 0, false);
+    run("bcs", N, false);
+    run("bcs", C, true);
+    run("bcs", N | Z | V | C, true);
 }
 
 #[test]
 fn bcc() {
-    run("bcc", flags(), true);
-    run("bcc", flags().n(), true);
-    run("bcc", flags().c(), false);
-    run("bcc", flags().n().z().v().c(), false);
+    run("bcc", 0, true);
+    run("bcc", N, true);
+    run("bcc", C, false);
+    run("bcc", N | Z | V | C, false);
 }
 
 #[test]
 fn bvs() {
-    run("bvs", flags(), false);
-    run("bvs", flags().n(), false);
-    run("bvs", flags().v(), true);
-    run("bvs", flags().n().z().v().c(), true);
+    run("bvs", 0, false);
+    run("bvs", N, false);
+    run("bvs", V, true);
+    run("bvs", N | Z | V | C, true);
 }
 
 #[test]
 fn bvc() {
-    run("bvc", flags(), true);
-    run("bvc", flags().n(), true);
-    run("bvc", flags().v(), false);
-    run("bvc", flags().n().z().v().c(), false);
+    run("bvc", 0, true);
+    run("bvc", N, true);
+    run("bvc", V, false);
+    run("bvc", N | Z | V | C, false);
 }
 
 #[test]
 fn blt() {
-    run("blt", flags(), false);
-    run("blt", flags().n().v(), false);
-    run("blt", flags().n().z().v().c(), false);
-    run("blt", flags().n(), true);
-    run("blt", flags().v(), true);
-    run("blt", flags().v().c(), true);
-    run("blt", flags().n().z(), true);
+    run("blt", 0, false);
+    run("blt", N | V, false);
+    run("blt", N | Z | V | C, false);
+    run("blt", N, true);
+    run("blt", V, true);
+    run("blt", V | C, true);
+    run("blt", N | Z, true);
 }
 
 #[test]
 fn bge() {
-    run("bge", flags(), true);
-    run("bge", flags().n().v(), true);
-    run("bge", flags().n().z().v().c(), true);
-    run("bge", flags().n(), false);
-    run("bge", flags().v(), false);
-    run("bge", flags().v().c(), false);
-    run("bge", flags().n().z(), false);
+    run("bge", 0, true);
+    run("bge", N | V, true);
+    run("bge", N | Z | V | C, true);
+    run("bge", N, false);
+    run("bge", V, false);
+    run("bge", V | C, false);
+    run("bge", N | Z, false);
 }
 
 #[test]
 fn ble() {
-    run("ble", flags(), false);
-    run("ble", flags().z(), true);
-    run("ble", flags().n().v(), false);
-    run("ble", flags().n().v().z(), true);
-    run("ble", flags().n().z().v().c(), true);
-    run("ble", flags().n(), true);
-    run("ble", flags().v(), true);
-    run("ble", flags().v().c(), true);
-    run("ble", flags().n().z(), true);
+    run("ble", 0, false);
+    run("ble", Z, true);
+    run("ble", N | V, false);
+    run("ble", N | V | Z, true);
+    run("ble", N | Z | V | C, true);
+    run("ble", N, true);
+    run("ble", V, true);
+    run("ble", V | C, true);
+    run("ble", N | Z, true);
 }
 
 #[test]
 fn bgt() {
-    run("bgt", flags(), true);
-    run("bgt", flags().z(), false);
-    run("bgt", flags().n().v(), true);
-    run("bgt", flags().n().v().z(), false);
-    run("bgt", flags().n().z().v().c(), false);
-    run("bgt", flags().n(), false);
-    run("bgt", flags().v(), false);
-    run("bgt", flags().v().c(), false);
-    run("bgt", flags().n().z(), false);
+    run("bgt", 0, true);
+    run("bgt", Z, false);
+    run("bgt", N | V, true);
+    run("bgt", N | V | Z, false);
+    run("bgt", N | Z | V | C, false);
+    run("bgt", N, false);
+    run("bgt", V, false);
+    run("bgt", V | C, false);
+    run("bgt", N | Z, false);
 }
 
 #[test]
 fn bhi() {
-    run("bhi", flags(), true);
-    run("bhi", flags().n().v(), true);
-    run("bhi", flags().c(), false);
-    run("bhi", flags().z(), false);
-    run("bhi", flags().z().c().v().n(), false);
+    run("bhi", 0, true);
+    run("bhi", N | V, true);
+    run("bhi", C, false);
+    run("bhi", Z, false);
+    run("bhi", Z | C | V | N, false);
 }
 
 #[test]
 fn blos() {
-    run("blos", flags(), false);
-    run("blos", flags().n().v(), false);
-    run("blos", flags().c(), true);
-    run("blos", flags().z(), true);
-    run("blos", flags().z().c().v().n(), true);
+    run("blos", 0, false);
+    run("blos", N | V, false);
+    run("blos", C, true);
+    run("blos", Z, true);
+    run("blos", Z | C | V | N, true);
 }
 
 #[test]
 fn bhis() {
-    run("bhis", flags(), true);
-    run("bhis", flags().n(), true);
-    run("bhis", flags().c(), false);
-    run("bhis", flags().n().z().v().c(), false);
+    run("bhis", 0, true);
+    run("bhis", N, true);
+    run("bhis", C, false);
+    run("bhis", N | Z | V | C, false);
 }
 
 #[test]
 fn blo() {
-    run("blo", flags(), false);
-    run("blo", flags().n(), false);
-    run("blo", flags().c(), true);
-    run("blo", flags().n().z().v().c(), true);
+    run("blo", 0, false);
+    run("blo", N, false);
+    run("blo", C, true);
+    run("blo", N | Z | V | C, true);
 }
 
 #[test]

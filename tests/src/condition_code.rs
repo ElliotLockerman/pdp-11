@@ -2,12 +2,12 @@ use as_lib::assemble;
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{flags, Flags};
+use crate::flags::{C, V, Z, N, check_flags};
 
 fn run(
     ins: &str,
-    flags_init: Flags,
-    flags_exp: Flags,
+    flags_init: u16,
+    flags_exp: u16,
 ) {
     let asm = format!(r#"
         {ins}
@@ -16,76 +16,72 @@ fn run(
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
-    emu.get_state_mut().get_status_mut().set_flags(flags_init.to_bits());
+    emu.get_state_mut().get_status_mut().set_flags(flags_init);
     emu.run_at(DATA_START);
-    let status = emu.get_state().get_status();
-    assert_eq!(status.get_carry(), flags_exp.c, "carry flag");
-    assert_eq!(status.get_overflow(),flags_exp.v, "overflow flag");
-    assert_eq!(status.get_zero(), flags_exp.z, "zero flag");
-    assert_eq!(status.get_negative(), flags_exp.n, "negative flag");
+    check_flags(&emu, flags_exp);
     assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
 fn nop() {
-    run("nop", flags(), flags());
-    run("nop", flags().n().c().v().z(), flags().n().c().v().z());
+    run("nop", 0, 0);
+    run("nop", N | C | V | Z, N | C | V | Z);
 }
 
 #[test]
 fn clc() {
-    run("clc", flags(), flags());
-    run("clc", flags().n().v().z().c(), flags().n().v().z());
-    run("clc", flags().n().v().z(), flags().n().v().z());
+    run("clc", 0, 0);
+    run("clc", N | V | Z | C, N | V | Z);
+    run("clc", N | V | Z, N | V | Z);
 }
 
 #[test]
 fn clv() {
-    run("clv", flags(), flags());
-    run("clv", flags().n().v().z().c(), flags().n().c().z());
-    run("clv", flags().n().c().z(), flags().n().c().z());
+    run("clv", 0, 0);
+    run("clv", N | V | Z | C, N | C | Z);
+    run("clv", N | C | Z, N | C | Z);
 }
 
 #[test]
 fn clz() {
-    run("clz", flags(), flags());
-    run("clz", flags().n().v().z().c(), flags().n().c().v());
-    run("clz", flags().n().c().v(), flags().n().c().v());
+    run("clz", 0, 0);
+    run("clz", N | V | Z | C, N | C | V);
+    run("clz", N | C | V, N | C | V);
 }
 
 #[test]
 fn cln() {
-    run("cln", flags(), flags());
-    run("cln", flags().n().v().z().c(), flags().z().c().v());
-    run("cln", flags().z().c().v(), flags().z().c().v());
+    run("cln", 0, 0);
+    run("cln", N | V | Z | C, Z | C | V);
+    run("cln", Z | C | V, Z | C | V);
 }
 
 #[test]
 fn sec() {
-    run("sec", flags(), flags().c());
-    run("sec", flags().n().v().z(), flags().n().v().z().c());
-    run("sec", flags().n().v().z().c(), flags().n().v().z().c());
+    run("sec", 0, C);
+    run("sec", N | V | Z, N | V | Z | C);
+    run("sec", N | V | Z | C, N | V | Z | C);
 }
 
 #[test]
 fn sev() {
-    run("sev", flags(), flags().v());
-    run("sev", flags().n().c().z(), flags().n().v().z().c());
-    run("sev", flags().n().v().z().c(), flags().n().v().z().c());
+    run("sev", 0, V);
+    run("sev", N | C | Z, N | V | Z | C);
+    run("sev", N | V | Z | C, N | V | Z | C);
 }
 
 #[test]
 fn sez() {
-    run("sez", flags(), flags().z());
-    run("sez", flags().n().c().v(), flags().n().v().z().c());
-    run("sez", flags().n().v().z().c(), flags().n().v().z().c());
+    run("sez", 0, Z);
+    run("sez", N | C | V, N | V | Z | C);
+    run("sez", N | V | Z | C, N | V | Z | C);
 }
 
 #[test]
 fn sen() {
-    run("sen", flags(), flags().n());
-    run("sen", flags().z().c().v(), flags().n().v().z().c());
-    run("sen", flags().n().v().z().c(), flags().n().v().z().c());
+    run("sen", 0, N);
+    run("sen", Z | C | V, N | V | Z | C);
+    run("sen", N | V | Z | C, N | V | Z | C);
 }
 
 

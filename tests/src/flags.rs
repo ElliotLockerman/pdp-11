@@ -1,45 +1,17 @@
 
+use emu_lib::Emulator;
 use emu_lib::emulator_state::Status;
 
-// Because each test is run on a fresh emulator, unaffected flags will be false
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Flags {
-    pub c: bool,
-    pub v: bool, // overflow
-    pub z: bool,
-    pub n: bool,
-}
+pub const C: u16 = Status::C;
+pub const V: u16 = Status::V;
+pub const Z: u16 = Status::Z;
+pub const N: u16 = Status::N;
 
-impl Flags {
-    pub fn to_bits(self) -> u16 {
-        ((self.c as u16) << Status::CARRY)
-            | ((self.v as u16) << Status::OVERFLOW) 
-            | ((self.z as u16) << Status::ZERO) 
-            | ((self.n as u16) << Status::NEGATIVE)
-    }
-
-    pub fn c(mut self) -> Self {
-        self.c = true;
-        self
-    }
-
-    pub fn v(mut self) -> Self {
-        self.v = true;
-        self
-    }
-
-    pub fn z(mut self) -> Self {
-        self.z = true;
-        self
-    }
-
-    pub fn n(mut self) -> Self {
-        self.n = true;
-        self
-    }
-}
-
-pub fn flags() -> Flags {
-    Flags::default()
+pub fn check_flags(emu: &Emulator, exp: u16) {
+    let status = emu.get_state().get_status();
+    assert_eq!(status.get_carry(), exp & C != 0, "carry flag");
+    assert_eq!(status.get_overflow(),exp & V != 0, "overflow flag");
+    assert_eq!(status.get_zero(), exp & Z != 0, "zero flag");
+    assert_eq!(status.get_negative(), exp & N != 0, "negative flag");
 }
 

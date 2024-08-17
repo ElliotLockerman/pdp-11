@@ -9,15 +9,20 @@ use log::trace;
 pub struct Status(u16);
 
 impl Status {
-    pub const CARRY: usize = 0;
-    pub const OVERFLOW: usize = 1;
-    pub const ZERO: usize = 2;
-    pub const NEGATIVE: usize = 3;
-    const T: usize = 4;
+    pub const CARRY_SHIFT: u16 = 0;
+    pub const OVERFLOW_SHIFT: u16 = 1;
+    pub const ZERO_SHIFT: u16 = 2;
+    pub const NEGATIVE_SHIFT: u16 = 3;
+    const T: u16 = 4;
+
+    pub const C: u16 = 0x1 << Self::CARRY_SHIFT;
+    pub const V: u16 = 0x1 << Self::OVERFLOW_SHIFT;
+    pub const Z: u16 = 0x1 << Self::ZERO_SHIFT;
+    pub const N: u16 = 0x1 << Self::NEGATIVE_SHIFT;
 
     const FLAGS_MASK: u16 = 0xf;
 
-    const PRIO: usize = 5;
+    const PRIO: u16 = 5;
     const PRIO_MASK: u16 = 0x7;
 
 
@@ -44,39 +49,39 @@ impl Status {
     }
 
     pub fn get_carry(&self) -> bool {
-        ((self.0 >> Self::CARRY) & 0x1) != 0
+        (self.0 & Self::C) != 0
     }
 
     pub fn set_carry(&mut self, val: bool) {
-        self.0 &= !(1u16 << Self::CARRY);
-        self.0 |= (val as u16) << Self::CARRY;
+        self.0 &= !(1u16 << Self::CARRY_SHIFT);
+        self.0 |= (val as u16) << Self::CARRY_SHIFT;
     }
 
     pub fn get_overflow(&self) -> bool {
-        ((self.0 >> Self::OVERFLOW) & 0x1) != 0
+        (self.0 & Self::V) != 0
     }
 
     pub fn set_overflow(&mut self, val: bool) {
-        self.0 &= !(1u16 << Self::OVERFLOW);
-        self.0 |= (val as u16) << Self::OVERFLOW;
+        self.0 &= !(1u16 << Self::OVERFLOW_SHIFT);
+        self.0 |= (val as u16) << Self::OVERFLOW_SHIFT;
     }
 
     pub fn get_zero(&self) -> bool {
-        ((self.0 >> Self::ZERO) & 0x1) != 0
+        (self.0 & Self::Z) != 0
     }
 
     pub fn set_zero(&mut self, val: bool) {
-        self.0 &= !(1u16 << Self::ZERO);
-        self.0 |= (val as u16) << Self::ZERO;
+        self.0 &= !(1u16 << Self::ZERO_SHIFT);
+        self.0 |= (val as u16) << Self::ZERO_SHIFT;
     }
 
     pub fn get_negative(&self) -> bool {
-        ((self.0 >> Self::NEGATIVE) & 0x1) != 0
+        (self.0 & Self::N) != 0
     }
 
     pub fn set_negative(&mut self, val: bool) {
-        self.0 &= !(1u16 << Self::NEGATIVE);
-        self.0 |= (val as u16) << Self::NEGATIVE;
+        self.0 &= !(1u16 << Self::NEGATIVE_SHIFT);
+        self.0 |= (val as u16) << Self::NEGATIVE_SHIFT;
     }
 
     pub fn get_t(&self) -> bool {
