@@ -31,11 +31,6 @@ impl Status {
         self.0
     }
 
-
-    pub fn flags(&self) -> (bool, bool, bool, bool) {
-        (self.get_zero(), self.get_negative(), self.get_carry(), self.get_overflow())
-    }
-
     pub fn get_carry(&self) -> bool {
         ((self.0 >> Self::CARRY) & 0x1) != 0
     }

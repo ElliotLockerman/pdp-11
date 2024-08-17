@@ -509,7 +509,11 @@ impl Emulator {
     }
 
     fn exec_branch_ins(&mut self, ins: &BranchIns) {
-        let (z, n, c, v) = self.state.status.flags();
+        let status = &self.state.status;
+        let z = status.get_zero();
+        let n = status.get_negative();
+        let c = status.get_carry();
+        let v = status.get_overflow();
         let taken = match ins.op {
             BranchOpcode::Br => true,
             BranchOpcode::Bne => !z,
