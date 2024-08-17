@@ -1,4 +1,5 @@
 #![cfg(test)]
+#![feature(bigint_helper_methods)]
 
 mod flags;
 
