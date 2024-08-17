@@ -300,6 +300,22 @@ impl Emulator {
             pub fn reg_write_byte(&mut self, reg: Reg, val: u8);
             pub fn reg_write_word(&mut self, reg: Reg, val: u16);
         }
+
+        to self.state.get_status() {
+            pub fn get_carry(&self) -> bool;
+            pub fn get_overflow(&self) -> bool;
+            pub fn get_zero(&self) -> bool;
+            pub fn get_negative(&self) -> bool;
+            pub fn get_flags(&self) -> u16;
+        }
+
+        to self.state.get_status_mut() {
+            pub fn set_carry(&mut self, val: bool);
+            pub fn set_overflow(&mut self, val: bool);
+            pub fn set_zero(&mut self, val: bool);
+            pub fn set_negative(&mut self, val: bool);
+            pub fn set_flags(&mut self, bits: u16);
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -406,9 +422,9 @@ impl Emulator {
         } else {
             self.write_resolved_word(dst, val as u16);
         }
-        self.state.status.set_zero(val == 0);
-        self.state.status.set_negative(size.sign_bit(val) != 0);
-        self.state.status.set_overflow(false);
+        self.set_zero(val == 0);
+        self.set_negative(size.sign_bit(val) != 0);
+        self.set_overflow(false);
     }
 
     // TODO: combine these?
@@ -420,10 +436,10 @@ impl Emulator {
         let res = op(src_val, dst_val);
         let res_sign = size.sign_bit(res);
 
-        self.state.status.set_zero(res == 0);
-        self.state.status.set_negative(res_sign != 0);
+        self.set_zero(res == 0);
+        self.set_negative(res_sign != 0);
         // Carry not affected
-        self.state.status.set_overflow(false);
+        self.set_overflow(false);
 
         if !discard {
             self.write_resolved_narrow(dst, res, size);
@@ -441,10 +457,10 @@ impl Emulator {
         let res = src_val + dst_val;
         let res_sign = size.sign_bit(res);
 
-        self.state.status.set_zero((res & size.mask()) == 0);
-        self.state.status.set_negative(res_sign != 0);
-        self.state.status.set_carry(res >> size.bits() != 0);
-        self.state.status.set_overflow(src_sign == dst_sign && dst_sign != res_sign);
+        self.set_zero((res & size.mask()) == 0);
+        self.set_negative(res_sign != 0);
+        self.set_carry(res >> size.bits() != 0);
+        self.set_overflow(src_sign == dst_sign && dst_sign != res_sign);
         self.write_resolved_narrow(dst, res, size);
     }
 
@@ -458,10 +474,10 @@ impl Emulator {
         let res = dst_val.wrapping_add((!src_val).wrapping_add(1) & size.mask());
         let res_sign = size.sign_bit(res);
 
-        self.state.status.set_zero((res & size.mask()) == 0);
-        self.state.status.set_negative(res_sign != 0);
-        self.state.status.set_carry(dst_val < src_val);
-        self.state.status.set_overflow(src_sign != dst_sign && src_sign == res_sign);
+        self.set_zero((res & size.mask()) == 0);
+        self.set_negative(res_sign != 0);
+        self.set_carry(dst_val < src_val);
+        self.set_overflow(src_sign != dst_sign && src_sign == res_sign);
 
         self.write_resolved_narrow(dst, res, size);
     }
@@ -478,10 +494,10 @@ impl Emulator {
         let res = src_val.wrapping_add((!dst_val).wrapping_add(1) & size.mask());
         let res_sign = size.sign_bit(res);
 
-        self.state.status.set_zero((res & size.mask()) == 0);
-        self.state.status.set_negative(res_sign != 0);
-        self.state.status.set_carry(src_val < dst_val);
-        self.state.status.set_overflow(src_sign != dst_sign && dst_sign == res_sign);
+        self.set_zero((res & size.mask()) == 0);
+        self.set_negative(res_sign != 0);
+        self.set_carry(src_val < dst_val);
+        self.set_overflow(src_sign != dst_sign && dst_sign == res_sign);
     }
 
     fn exec_double_operand_ins(&mut self, ins: &DoubleOperandIns) {
@@ -519,11 +535,10 @@ impl Emulator {
     }
 
     fn exec_branch_ins(&mut self, ins: &BranchIns) {
-        let status = &self.state.status;
-        let z = status.get_zero();
-        let n = status.get_negative();
-        let c = status.get_carry();
-        let v = status.get_overflow();
+        let z = self.get_zero();
+        let n = self.get_negative();
+        let c = self.get_carry();
+        let v = self.get_overflow();
         let taken = match ins.op {
             BranchOpcode::Br => true,
             BranchOpcode::Bne => !z,
@@ -618,27 +633,27 @@ impl Emulator {
                 let res = (lower << 8) | upper;
 
                 self.write_resolved_word(dst, res);
-                self.state.status.set_zero((res & 0xff) == 0);
-                self.state.status.set_negative((res >> 7) & 0x1 == 1);
-                self.state.status.set_carry(false);
-                self.state.status.set_overflow(false);
+                self.set_zero((res & 0xff) == 0);
+                self.set_negative((res >> 7) & 0x1 == 1);
+                self.set_carry(false);
+                self.set_overflow(false);
             },
             Clr | ClrB => {
                 self.write_resolved_narrow(dst, 0, size);
-                self.state.status.set_zero(true);
-                self.state.status.set_negative(false);
-                self.state.status.set_carry(false);
-                self.state.status.set_overflow(false);
+                self.set_zero(true);
+                self.set_negative(false);
+                self.set_carry(false);
+                self.set_overflow(false);
             },
             Inc | IncB => {
                 let val = self.read_resolved_widen(dst, size);
                 let (res, _) = val.overflowing_add(1);
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
+                self.set_zero((res & size.mask()) == 0);
+                self.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
-                self.state.status.set_overflow(val == (size.mask() >> 1));
+                self.set_overflow(val == (size.mask() >> 1));
                 
             },
             Dec | DecB => {
@@ -646,89 +661,89 @@ impl Emulator {
                 let (res, _) = val.overflowing_sub(1);
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
+                self.set_zero(res & size.mask() == 0);
+                self.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
-                self.state.status.set_overflow(val == size.smallest_signed());
+                self.set_overflow(val == size.smallest_signed());
             },
             Neg | NegB => {
                 let val = self.read_resolved_widen(dst, size);
                 let res = (!val).wrapping_add(1);
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(res & size.mask() != 0);
-                self.state.status.set_overflow(val == size.smallest_signed());
+                self.set_zero(res & size.mask() == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(res & size.mask() != 0);
+                self.set_overflow(val == size.smallest_signed());
             },
             Tst | TstB => {
                 let val = self.read_resolved_widen(dst, size);
                 let (res, _) = 0u32.overflowing_sub(val);
 
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(false);
-                self.state.status.set_overflow(false);
+                self.set_zero(res == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(false);
+                self.set_overflow(false);
             },
             Com | ComB => {
                 let val = self.read_resolved_widen(dst, size);
                 let res = !val;
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(true);
-                self.state.status.set_overflow(false);
+                self.set_zero(res & size.mask() == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(true);
+                self.set_overflow(false);
             },
             Adc | AdcB => {
-                let carry = self.state.status.get_carry();
+                let carry = self.get_carry();
                 let val = self.read_resolved_widen(dst, size);
                 let res = val.wrapping_add(carry as u32);
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(val == size.mask() && carry);
-                self.state.status.set_overflow(val == size.largest_signed() && carry);
+                self.set_zero(res & size.mask() == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(val == size.mask() && carry);
+                self.set_overflow(val == size.largest_signed() && carry);
             },
             Sbc | SbcB => {
-                let carry = self.state.status.get_carry();
+                let carry = self.get_carry();
                 let val = self.read_resolved_widen(dst, size);
                 let res = val.wrapping_sub(carry as u32);
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(!((res & size.mask()) == 0 && carry));
-                self.state.status.set_overflow(res == size.smallest_signed());
+                self.set_zero(res & size.mask() == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(!((res & size.mask()) == 0 && carry));
+                self.set_overflow(res == size.smallest_signed());
             },
             Ror | RorB => {
                 let val = self.read_resolved_widen(dst, size);
-                let carry = self.state.status.get_carry() as u32;
+                let carry = self.get_carry() as u32;
                 let new_carry = val & 0x1;
                 let res = (val >> 1) | (carry << (size.bits() - 1));
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(new_carry != 0);
+                self.set_zero((res & size.mask()) == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u32;
-                self.state.status.set_overflow((n ^ new_carry) != 0);
+                let n = self.get_negative() as u32;
+                self.set_overflow((n ^ new_carry) != 0);
             },
             Rol | RolB => {
                 let val = self.read_resolved_widen(dst, size);
-                let carry = self.state.status.get_carry() as u32;
+                let carry = self.get_carry() as u32;
                 let new_carry = (val >> (size.bits() - 1)) & 0x1;
                 let res = (val << 1) | carry;
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero((res & size.mask()) == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(new_carry != 0);
+                self.set_zero((res & size.mask()) == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u32;
-                self.state.status.set_overflow((n ^ new_carry) != 0);
+                let n = self.get_negative() as u32;
+                self.set_overflow((n ^ new_carry) != 0);
             },
             Asr => {
                 let val = self.read_resolved_word(dst);
@@ -736,12 +751,12 @@ impl Emulator {
                 let res = (val as i16) >> 1; // i16 for arithmetic shift
 
                 self.write_resolved_word(dst, res as u16);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 15 != 0);
-                self.state.status.set_carry(new_carry != 0);
+                self.set_zero(res == 0);
+                self.set_negative(res >> 15 != 0);
+                self.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u16;
-                self.state.status.set_overflow((n ^ new_carry) != 0);
+                let n = self.get_negative() as u16;
+                self.set_overflow((n ^ new_carry) != 0);
             },
             AsrB => {
                 let val = self.read_resolved_byte(dst);
@@ -749,12 +764,12 @@ impl Emulator {
                 let res = (val as i8) >> 1; // i16 for arithmetic shift
 
                 self.write_resolved_byte(dst, res as u8);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_negative(res >> 7 != 0);
-                self.state.status.set_carry(new_carry != 0);
+                self.set_zero(res == 0);
+                self.set_negative(res >> 7 != 0);
+                self.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u8;
-                self.state.status.set_overflow((n ^ new_carry) != 0);
+                let n = self.get_negative() as u8;
+                self.set_overflow((n ^ new_carry) != 0);
             },
             Asl | AslB => {
                 let val = self.read_resolved_widen(dst, size);
@@ -762,12 +777,12 @@ impl Emulator {
                 let new_carry = size.sign_bit(val);
 
                 self.write_resolved_narrow(dst, res, size);
-                self.state.status.set_zero(res & size.mask() == 0);
-                self.state.status.set_negative(size.sign_bit(res) != 0);
-                self.state.status.set_carry(new_carry != 0);
+                self.set_zero(res & size.mask() == 0);
+                self.set_negative(size.sign_bit(res) != 0);
+                self.set_carry(new_carry != 0);
 
-                let n = self.state.status.get_negative() as u32;
-                self.state.status.set_overflow((n ^ new_carry) != 0);
+                let n = self.get_negative() as u32;
+                self.set_overflow((n ^ new_carry) != 0);
             },
         }
     }
@@ -785,9 +800,9 @@ impl Emulator {
             let res = dst_val ^ val;
             self.write_resolved_word(dst, res);
 
-            self.state.status.set_negative(Size::Word.sign_bit(res as u32) != 0);
-            self.state.status.set_zero(res == 0);
-            self.state.status.set_overflow(false);
+            self.set_negative(Size::Word.sign_bit(res as u32) != 0);
+            self.set_zero(res == 0);
+            self.set_overflow(false);
             // Carry unaffected
             return;
         }
@@ -800,10 +815,10 @@ impl Emulator {
                 let reg_val = reg_val as i16 as i32;
                 let res = src_val * reg_val;
 
-                self.state.status.set_negative(res < 0);
-                self.state.status.set_zero(res == 0);
-                self.state.status.set_overflow(false);
-                self.state.status.set_carry(i16::try_from(res).is_err());
+                self.set_negative(res < 0);
+                self.set_zero(res == 0);
+                self.set_overflow(false);
+                self.set_carry(i16::try_from(res).is_err());
 
                 self.reg_write_word(ins.reg, res as u16);
                 let reg_num = ins.reg.to_u16().unwrap();
@@ -828,10 +843,10 @@ impl Emulator {
                     }
 
                     let res = i16::try_from(quot);
-                    self.state.status.set_negative(quot < 0); 
-                    self.state.status.set_zero(quot == 0); 
-                    self.state.status.set_overflow(src_val == 0 || res.is_err());
-                    self.state.status.set_carry(false); 
+                    self.set_negative(quot < 0); 
+                    self.set_zero(quot == 0); 
+                    self.set_overflow(src_val == 0 || res.is_err());
+                    self.set_carry(false); 
 
                     if let Ok(q) = res {
                         // "instruction is aborted" if result can't find in 15 bits
@@ -841,8 +856,8 @@ impl Emulator {
                         self.reg_write_word(upper_reg, rem as u16);
                     }
                 } else {
-                    self.state.status.set_overflow(true);
-                    self.state.status.set_carry(true); 
+                    self.set_overflow(true);
+                    self.set_carry(true); 
                 }
                 
             },
@@ -881,12 +896,12 @@ impl Emulator {
                 };
                 self.reg_write_word(ins.reg, new_val);
 
-                self.state.status.set_negative(Size::Word.sign_bit(new_val as u32) != 0);
-                self.state.status.set_zero(new_val == 0);
-                self.state.status.set_overflow(
-                    (Size::Word.sign_bit(reg_val as u32) != 0) != self.state.status.get_negative()
+                self.set_negative(Size::Word.sign_bit(new_val as u32) != 0);
+                self.set_zero(new_val == 0);
+                self.set_overflow(
+                    (Size::Word.sign_bit(reg_val as u32) != 0) != self.get_negative()
                 );
-                self.state.status.set_carry(carry);
+                self.set_carry(carry);
                 
             },
             Ashc => {
@@ -932,12 +947,12 @@ impl Emulator {
                 self.reg_write_word(ins.reg, (new_val & ((0x1u32 << u16::BITS) - 1)) as u16);
                 self.reg_write_word(reg_upper, (new_val >> u16::BITS) as u16);
 
-                self.state.status.set_negative(((new_val >> (u32::BITS - 1)) & 0x1) != 0);
-                self.state.status.set_zero(new_val == 0);
-                self.state.status.set_overflow(
-                    (((wide_val >> (u32::BITS - 1)) & 0x1) != 0) != self.state.status.get_negative()
+                self.set_negative(((new_val >> (u32::BITS - 1)) & 0x1) != 0);
+                self.set_zero(new_val == 0);
+                self.set_overflow(
+                    (((wide_val >> (u32::BITS - 1)) & 0x1) != 0) != self.get_negative()
                 );
-                self.state.status.set_carry(carry);
+                self.set_carry(carry);
 
             },
             Xor => unreachable!(),
@@ -949,11 +964,11 @@ impl Emulator {
         let bits = op & 0xf;
         let set = ((op >> 4) & 0x1) != 0;
         if set {
-            let curr = self.state.status.get_flags();
-            self.state.status.set_flags(curr | bits);
+            let curr = self.get_flags();
+            self.set_flags(curr | bits);
         } else {
-            let curr = self.state.status.get_flags();
-            self.state.status.set_flags(curr & !bits);
+            let curr = self.get_flags();
+            self.set_flags(curr & !bits);
         }
     }
 

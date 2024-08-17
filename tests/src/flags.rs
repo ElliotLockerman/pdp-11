@@ -8,10 +8,9 @@ pub const Z: u16 = Status::Z;
 pub const N: u16 = Status::N;
 
 pub fn check_flags(emu: &Emulator, exp: u16) {
-    let status = emu.get_state().get_status();
-    assert_eq!(status.get_carry(), exp & C != 0, "carry flag");
-    assert_eq!(status.get_overflow(),exp & V != 0, "overflow flag");
-    assert_eq!(status.get_zero(), exp & Z != 0, "zero flag");
-    assert_eq!(status.get_negative(), exp & N != 0, "negative flag");
+    assert_eq!(emu.get_carry(), exp & C != 0, "carry flag");
+    assert_eq!(emu.get_overflow(),exp & V != 0, "overflow flag");
+    assert_eq!(emu.get_zero(), exp & Z != 0, "zero flag");
+    assert_eq!(emu.get_negative(), exp & N != 0, "negative flag");
 }
 

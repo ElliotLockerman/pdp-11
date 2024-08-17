@@ -111,7 +111,7 @@ pub struct EmulatorState {
     num_ins: usize,
     mem: Vec<u8>,
     regs: [u16; NUM_REGS],
-    pub status: Status,
+    status: Status,
 }
 
 impl EmulatorState {

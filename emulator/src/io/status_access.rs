@@ -14,12 +14,12 @@ impl StatusAccess {
 impl MMIOHandler for StatusAccess {
     fn read_word(&mut self, state: &mut EmulatorState, addr: u16) -> u16 {
         assert_eq!(addr, Self::ADDR);
-        state.status.to_raw()
+        state.get_status().to_raw()
     }
 
     fn read_byte(&mut self, state: &mut EmulatorState, addr: u16) -> u8 {
         match addr {
-            Self::ADDR => state.status.to_raw() as u8,
+            Self::ADDR => state.get_status().to_raw() as u8,
             Self::ADDR_UPPER => 0u8,
             _ => panic!("PsAcesss doesn't handle address {addr:o}"),
         }
@@ -28,7 +28,7 @@ impl MMIOHandler for StatusAccess {
     fn write_word(&mut self,  state: &mut EmulatorState, addr: u16, val: u16) {
         assert_eq!(addr, Self::ADDR);
         assert_eq!(val & !0xff, 0);
-        state.status = Status::from_raw(val);
+        *state.get_status_mut() = Status::from_raw(val);
     }
 
     fn write_byte(&mut self, state: &mut EmulatorState, addr: u16, val: u8) {
