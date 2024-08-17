@@ -13,8 +13,8 @@ fn eval_word(expr: &str, r0_exp: u16) {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), r0_exp);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), r0_exp);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 fn eval_byte(expr: &str, exp: u8) {
@@ -32,11 +32,11 @@ fn eval_byte(expr: &str, exp: u8) {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), exp as i8 as i16 as u16);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), exp as u16);
-    assert_eq!(emu.get_state().mem_read_byte(DATA_START + bin.len() as u16 - 2), exp);
-    assert_eq!(emu.get_state().mem_read_word(DATA_START + bin.len() as u16 - 2), exp as u16);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+    assert_eq!(emu.reg_read_word(Reg::R0), exp as i8 as i16 as u16);
+    assert_eq!(emu.reg_read_word(Reg::R1), exp as u16);
+    assert_eq!(emu.mem_read_byte(DATA_START + bin.len() as u16 - 2), exp);
+    assert_eq!(emu.mem_read_word(DATA_START + bin.len() as u16 - 2), exp as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
 }
 
 #[test]
@@ -64,10 +64,10 @@ fn literal() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o177777);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o377);
-    assert_eq!(emu.get_state().mem_read_word(DATA_START + bin.len() as u16 - 2), 0o377);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o177777);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o377);
+    assert_eq!(emu.mem_read_word(DATA_START + bin.len() as u16 - 2), 0o377);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16 - 2);
 
 
 }
@@ -172,8 +172,8 @@ fn array_len() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o14);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o14);
+    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
 
 
     let asm = r#"
@@ -192,8 +192,8 @@ fn array_len() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o14);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o14);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
 }
 
@@ -213,8 +213,8 @@ fn relocation() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o2), 0o66);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.mem_read_word(DATA_START + 0o2), 0o66);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
     let asm = r#"
         br start
@@ -230,8 +230,8 @@ fn relocation() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run();
-    assert_eq!(emu.get_state().mem_read_word(0o2), 0o66);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.mem_read_word(0o2), 0o66);
+    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
 
     let asm = r#"
         . = 400
@@ -249,8 +249,8 @@ fn relocation() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o2), 0o66);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.mem_read_word(DATA_START + 0o2), 0o66);
+    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
 }
 
 #[test]
@@ -273,8 +273,8 @@ fn period_unchanged() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().mem_read_word(DATA_START + 0o2), 0o66);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.mem_read_word(DATA_START + 0o2), 0o66);
+    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
 }
 
 // Setting the location to a lower value may very well be allowed, but I've chosen to not support
@@ -302,12 +302,12 @@ fn reloc_label_reads() {
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
-    emu.get_state_mut().mem_write_word(0o100, 0o123);
-    emu.get_state_mut().mem_write_word(DATA_START + 0o100, 0o333);
+    emu.mem_write_word(0o100, 0o123);
+    emu.mem_write_word(DATA_START + 0o100, 0o333);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o123);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o123);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o100);
+    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
 
     let asm = r#"
         loc = 100
@@ -318,12 +318,12 @@ fn reloc_label_reads() {
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
-    emu.get_state_mut().mem_write_word(0o100, 0o123);
-    emu.get_state_mut().mem_write_word(DATA_START + 0o100, 0o333);
+    emu.mem_write_word(0o100, 0o123);
+    emu.mem_write_word(DATA_START + 0o100, 0o333);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o333);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o333);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o100);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
 
     let asm = r#"
@@ -335,12 +335,12 @@ fn reloc_label_reads() {
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
-    emu.get_state_mut().mem_write_word(0o100, 0o123);
-    emu.get_state_mut().mem_write_word(DATA_START + 0o100, 0o333);
+    emu.mem_write_word(0o100, 0o123);
+    emu.mem_write_word(DATA_START + 0o100, 0o333);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o123);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o100);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o123);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o100);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -356,9 +356,9 @@ fn update_symbol() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o100);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o101);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o101);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -378,8 +378,8 @@ fn forward() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o27);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o27);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -398,6 +398,6 @@ fn double_forward() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o27);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o27);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }

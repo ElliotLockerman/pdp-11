@@ -18,8 +18,8 @@ fn looop() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o12, "r0");
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o12, "r0");
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn strcpy() {
     let expected = b"  hello, world!\0";
     for byte_idx in 2u16..=15 {
         assert_eq!(
-            emu.get_state().mem_read_byte(byte_idx),
+            emu.mem_read_byte(byte_idx),
             expected[byte_idx as usize]
         );
     }
@@ -136,6 +136,6 @@ fn fib() {
     }
 
     for i in 0..10 {
-        assert_eq!(emu.get_state().mem_read_word(i * 2 + 2), fib(i));
+        assert_eq!(emu.mem_read_word(i * 2 + 2), fib(i));
     }
 }

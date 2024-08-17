@@ -16,6 +16,7 @@ use std::cmp::Ordering;
 
 use log::{debug, trace};
 use num_traits::{ToPrimitive, FromPrimitive};
+use delegate::delegate;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Size {
@@ -103,7 +104,7 @@ impl Emulator {
         self.state.inc_ins();
 
         if let Some((dev, inter)) = self.tick_devices() {
-            if inter.prio > self.get_state().get_status().get_prio() {
+            if inter.prio > self.state.get_status().get_prio() {
                 self.waiting = false;
                 dev.lock().unwrap().interrupt_accepted();
                 self.interrupt(inter.vector);
@@ -116,7 +117,7 @@ impl Emulator {
 
         let ins = self.decode();
         debug!("PC: 0o{:o}: {}", self.state.pc(), ins.display_with_pc(self.state.pc()));
-        self.state.reg_write_word(Reg::PC, self.state.pc() + 2);
+        self.reg_write_word(Reg::PC, self.state.pc() + 2);
 
         if matches!(ins, Ins::Misc(MiscIns{op: MiscOpcode::Wait})) {
             self.waiting = true;
@@ -156,7 +157,7 @@ impl Emulator {
     }
 
     pub fn run_at(&mut self, pc: u16) {
-        self.state.reg_write_word(Reg::PC, pc);
+        self.reg_write_word(Reg::PC, pc);
         self.run();
     }
 
@@ -254,26 +255,26 @@ impl Emulator {
 
     fn write_resolved_word(&mut self, res: ResolvedOperand, val: u16) {
         match res {
-            ResolvedOperand::Reg(r) => self.state.reg_write_word(r, val),
+            ResolvedOperand::Reg(r) => self.reg_write_word(r, val),
             ResolvedOperand::Mem(addr) => self.mem_write_word(addr, val),
         }
     }
 
     fn write_resolved_byte(&mut self, res: ResolvedOperand, val: u8) {
         match res {
-            ResolvedOperand::Reg(r) => self.state.reg_write_byte(r, val),
+            ResolvedOperand::Reg(r) => self.reg_write_byte(r, val),
             ResolvedOperand::Mem(addr) => self.mem_write_byte(addr, val),
         }
     }
     fn read_resolved_byte(&mut self, res: ResolvedOperand) -> u8 {
         match res {
-            ResolvedOperand::Reg(r) => self.state.reg_read_byte(r),
+            ResolvedOperand::Reg(r) => self.reg_read_byte(r),
             ResolvedOperand::Mem(addr) => self.mem_read_byte(addr),
         }
     }
     fn read_resolved_word(&mut self, res: ResolvedOperand) -> u16 {
         match res {
-            ResolvedOperand::Reg(r) => self.state.reg_read_word(r),
+            ResolvedOperand::Reg(r) => self.reg_read_word(r),
             ResolvedOperand::Mem(addr) => self.mem_read_word(addr),
         }
     }
@@ -292,6 +293,15 @@ impl Emulator {
         }
     }
 
+    delegate! {
+        to self.state {
+            pub fn reg_read_byte(&self, reg: Reg) -> u8;
+            pub fn reg_read_word(&self, reg: Reg) -> u16;
+            pub fn reg_write_byte(&mut self, reg: Reg, val: u8);
+            pub fn reg_write_word(&mut self, reg: Reg, val: u16);
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Execute
     ///////////////////////////////////////////////////////////////////////////
@@ -301,7 +311,7 @@ impl Emulator {
             // Special case for literals for byte instructions
             size = Size::Word;
         }
-        let mut val = self.state.reg_read_word(reg);
+        let mut val = self.reg_read_word(reg);
         if !inc { 
             val = val.wrapping_sub(size.bytes());
         }
@@ -309,7 +319,7 @@ impl Emulator {
         if inc { 
             val = val.wrapping_add(size.bytes());
         }
-        self.state.reg_write_word(reg, val);
+        self.reg_write_word(reg, val);
         ret
     }
 
@@ -323,7 +333,7 @@ impl Emulator {
     #[inline]
     fn debug_check_extra_addr(&self, arg: &Operand, addr: u16) {
         if arg.needs_extra() {
-            debug_assert_eq!(arg.extra.unwrap_val(), self.get_state().mem_read_word(addr));
+            debug_assert_eq!(arg.extra.unwrap_val(), self.state.mem_read_word(addr));
         }
     }
 
@@ -340,7 +350,7 @@ impl Emulator {
     fn resolve(&mut self, arg: &Operand, size: Size) -> ResolvedOperand {
         let loc = match arg.mode {
             AddrMode::Gen => return ResolvedOperand::Reg(arg.reg),
-            AddrMode::Def => self.state.reg_read_word(arg.reg),
+            AddrMode::Def => self.reg_read_word(arg.reg),
             AddrMode::AutoInc => {
                 let addr = self.exec_auto(arg.reg, true, size);
                 self.debug_check_extra_addr(arg, addr);
@@ -362,14 +372,14 @@ impl Emulator {
                 self.mem_read_word(addr)
             },
             AddrMode::Index => {
-                let reg_val = self.state.reg_read_word(arg.reg);
+                let reg_val = self.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
                 Self::debug_check_extra_val(arg, imm);
                 reg_val.wrapping_add(imm)
             },
             AddrMode::IndexDef => {
-                let reg_val = self.state.reg_read_word(arg.reg);
+                let reg_val = self.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
                 Self::debug_check_extra_val(arg, imm);
@@ -502,7 +512,7 @@ impl Emulator {
             _ => panic!(
                 "Instruction {ins:?} (0o{:o}) at pc 0o{:o} not yet implemented",
                 ins.op as u16,
-                self.state.reg_read_word(Reg::PC)
+                self.reg_read_word(Reg::PC)
             ),
         }
         ExecRet::Ok
@@ -537,7 +547,7 @@ impl Emulator {
             let off = (ins.target.unwrap_offset() as i8) * 2;
             let pc = self.state.pc();
             let pc = pc.wrapping_add(off as i16 as u16);
-            self.state.reg_write_word(Reg::PC,  pc);
+            self.reg_write_word(Reg::PC,  pc);
         }
     }
 
@@ -554,19 +564,19 @@ impl Emulator {
         assert_eq!(new_pc & 0x1, 0);
 
         trace!("PC: 0o{:o}: JMP to 0o{new_pc:o}", self.state.pc());
-        self.state.reg_write_word(Reg::PC,  new_pc);
+        self.reg_write_word(Reg::PC,  new_pc);
     }
 
     fn push_word(&mut self, val: u16) {
-        let sp = self.state.reg_read_word(Reg::SP) - 2;
-        self.state.reg_write_word(Reg::SP, sp);
+        let sp = self.reg_read_word(Reg::SP) - 2;
+        self.reg_write_word(Reg::SP, sp);
         self.mem_write_word(sp, val);
     }
 
     fn pop_word(&mut self) -> u16 {
-        let sp = self.state.reg_read_word(Reg::SP);
+        let sp = self.reg_read_word(Reg::SP);
         let val = self.mem_read_word(sp);
-        self.state.reg_write_word(Reg::SP, sp + 2);
+        self.reg_write_word(Reg::SP, sp + 2);
         val
     }
 
@@ -580,20 +590,20 @@ impl Emulator {
             dst => self.read_resolved_word(dst),
         };
         assert_eq!(new_pc & 0x1, 0);
-        let old_val = self.state.reg_read_word(ins.reg);
+        let old_val = self.reg_read_word(ins.reg);
         self.push_word(old_val);
         
-        self.state.reg_write_word(ins.reg, self.state.pc());
-        self.state.reg_write_word(Reg::PC, new_pc);
+        self.reg_write_word(ins.reg, self.state.pc());
+        self.reg_write_word(Reg::PC, new_pc);
     }
 
     fn exec_rts_ins(&mut self, ins: &RtsIns) {
         assert_eq!(ins.op, RtsOpcode::Rts);
-        let new_pc = self.state.reg_read_word(ins.reg);
-        self.state.reg_write_word(Reg::PC, new_pc);
+        let new_pc = self.reg_read_word(ins.reg);
+        self.reg_write_word(Reg::PC, new_pc);
         
         let old_val = self.pop_word();
-        self.state.reg_write_word(ins.reg, old_val);
+        self.reg_write_word(ins.reg, old_val);
     }
 
     fn exec_single_operand_ins(&mut self, ins: &SingleOperandIns) {
@@ -771,7 +781,7 @@ impl Emulator {
             let dst = operand;
             let dst_val = operand_val;
 
-            let val = self.state.reg_read_word(ins.reg);
+            let val = self.reg_read_word(ins.reg);
             let res = dst_val ^ val;
             self.write_resolved_word(dst, res);
 
@@ -783,7 +793,7 @@ impl Emulator {
         }
 
         let src_val = operand_val;
-        let reg_val = self.state.reg_read_word(ins.reg);
+        let reg_val = self.reg_read_word(ins.reg);
         match ins.op {
             Mul => {
                 let src_val = src_val as i16 as i32;
@@ -795,18 +805,18 @@ impl Emulator {
                 self.state.status.set_overflow(false);
                 self.state.status.set_carry(i16::try_from(res).is_err());
 
-                self.state.reg_write_word(ins.reg, res as u16);
+                self.reg_write_word(ins.reg, res as u16);
                 let reg_num = ins.reg.to_u16().unwrap();
                 if reg_num & 0x1 == 0 {
                     let upper_reg = Reg::from_u16(reg_num + 1).unwrap();
-                    self.state.reg_write_word(upper_reg, (res >> u16::BITS) as u16);
+                    self.reg_write_word(upper_reg, (res >> u16::BITS) as u16);
                 }
             },
             Div => {
                 let reg_num = ins.reg.to_u16().unwrap();
                 assert_eq!(reg_num & 0x1, 0);
                 let upper_reg = Reg::from_u16(reg_num + 1).unwrap();
-                let upper = self.state.reg_read_word(upper_reg);
+                let upper = self.reg_read_word(upper_reg);
                 let dividend = ((upper as i32) << u16::BITS) | (reg_val as i32);
                 let divisor = src_val as i32;
 
@@ -826,9 +836,9 @@ impl Emulator {
                     if let Ok(q) = res {
                         // "instruction is aborted" if result can't find in 15 bits
                         // (plus sign, presumably).
-                        self.state.reg_write_word(ins.reg, q as u16);
+                        self.reg_write_word(ins.reg, q as u16);
                         assert!(i16::try_from(rem).is_ok());
-                        self.state.reg_write_word(upper_reg, rem as u16);
+                        self.reg_write_word(upper_reg, rem as u16);
                     }
                 } else {
                     self.state.status.set_overflow(true);
@@ -869,7 +879,7 @@ impl Emulator {
                         (new_val, carry)
                     },
                 };
-                self.state.reg_write_word(ins.reg, new_val);
+                self.reg_write_word(ins.reg, new_val);
 
                 self.state.status.set_negative(Size::Word.sign_bit(new_val as u32) != 0);
                 self.state.status.set_zero(new_val == 0);
@@ -894,7 +904,7 @@ impl Emulator {
                 // rotate; I can't see using it and think it would be a cause for errors.
                 assert!((reg_raw & 0x1) == 0, "Odd registers not supported for Ashc");
                 assert!(ins.reg != Reg::PC);
-                let upper = self.state.reg_read_word(reg_upper);
+                let upper = self.reg_read_word(reg_upper);
                 let wide_val = (reg_val as u32) | ((upper as u32) << u16::BITS);
 
                 let (new_val, carry) = match shift.cmp(&0) {
@@ -919,8 +929,8 @@ impl Emulator {
                         (new_val, carry)
                     },
                 };
-                self.state.reg_write_word(ins.reg, (new_val & ((0x1u32 << u16::BITS) - 1)) as u16);
-                self.state.reg_write_word(reg_upper, (new_val >> u16::BITS) as u16);
+                self.reg_write_word(ins.reg, (new_val & ((0x1u32 << u16::BITS) - 1)) as u16);
+                self.reg_write_word(reg_upper, (new_val >> u16::BITS) as u16);
 
                 self.state.status.set_negative(((new_val >> (u32::BITS - 1)) & 0x1) != 0);
                 self.state.status.set_zero(new_val == 0);
@@ -948,7 +958,7 @@ impl Emulator {
     }
 
     fn interrupt(&mut self, vector: u16) {
-        let old_ps = self.get_state().get_status().to_raw();
+        let old_ps = self.state.get_status().to_raw();
         let old_pc = self.state.pc();
         self.push_word(old_ps);
         self.push_word(old_pc);
@@ -956,8 +966,8 @@ impl Emulator {
         let new_pc = self.mem_read_word(vector);
         let new_ps = self.mem_read_word(vector + 2);
         debug!("Interrupt; saving pc {old_pc:#o} and ps {old_ps:#o}; loading pc {new_pc:#o}, ps {new_ps:#o}");
-        self.get_state_mut().reg_write_word(Reg::PC, new_pc);
-        self.get_state_mut().set_status(Status::from_raw(new_ps));
+        self.reg_write_word(Reg::PC, new_pc);
+        self.state.set_status(Status::from_raw(new_ps));
     }
 
     fn exec_trap_ins(&mut self, ins: &TrapIns) {
@@ -971,8 +981,8 @@ impl Emulator {
         let new_pc = self.pop_word();
         let new_ps = self.pop_word();
         debug!("RTI to pc {new_pc:#o}, ps {new_ps:#o}");
-        self.get_state_mut().reg_write_word(Reg::PC, new_pc);
-        self.get_state_mut().set_status(Status::from_raw(new_ps));
+        self.reg_write_word(Reg::PC, new_pc);
+        self.state.set_status(Status::from_raw(new_ps));
     }
 
     fn exec(&mut self, ins: &Ins) -> ExecRet {
@@ -1017,7 +1027,7 @@ mod tests {
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
         emu.run_at(DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::PC), DATA_START + 2);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + 2);
     }
 
     #[test]
@@ -1031,10 +1041,10 @@ mod tests {
         let val = 0xabcd;
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
-        emu.state.reg_write_word(Reg::R0, val);
-        assert_eq!(emu.state.reg_read_word(Reg::R1), 0);
+        emu.reg_write_word(Reg::R0, val);
+        assert_eq!(emu.reg_read_word(Reg::R1), 0);
         emu.run_at(DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R1), val);
+        assert_eq!(emu.reg_read_word(Reg::R1), val);
     }
 
     #[test]
@@ -1048,9 +1058,9 @@ mod tests {
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R0), 0);
+        assert_eq!(emu.reg_read_word(Reg::R0), 0);
         emu.run_at(DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R0), val);
+        assert_eq!(emu.reg_read_word(Reg::R0), val);
     }
     
     #[test]
@@ -1064,9 +1074,9 @@ mod tests {
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R0), 0);
+        assert_eq!(emu.reg_read_word(Reg::R0), 0);
         emu.run_at(DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R0), 1);
+        assert_eq!(emu.reg_read_word(Reg::R0), 1);
     }
 
     #[test]
@@ -1111,9 +1121,9 @@ mod tests {
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R0), 0);
+        assert_eq!(emu.reg_read_word(Reg::R0), 0);
         emu.run_at(DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R0), 10);
+        assert_eq!(emu.reg_read_word(Reg::R0), 10);
     }
 
     #[test]
@@ -1139,10 +1149,10 @@ mod tests {
 
         let mut emu = Emulator::new();
         emu.load_image(bin, DATA_START);
-        emu.state.reg_write_word(Reg::SP, 2 * DATA_START);
+        emu.reg_write_word(Reg::SP, 2 * DATA_START);
         emu.run_at(DATA_START);
-        assert_eq!(emu.state.reg_read_word(Reg::R1), 1);
-        assert_eq!(emu.state.reg_read_word(Reg::R2), 0);
+        assert_eq!(emu.reg_read_word(Reg::R1), 1);
+        assert_eq!(emu.reg_read_word(Reg::R2), 0);
     }
 
 }

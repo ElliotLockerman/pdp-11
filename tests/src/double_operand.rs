@@ -19,13 +19,13 @@ fn run(
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
-    emu.get_state_mut().reg_write_word(Reg::R0, r0_init);
-    emu.get_state_mut().reg_write_word(Reg::R1, r1_init);
+    emu.reg_write_word(Reg::R0, r0_init);
+    emu.reg_write_word(Reg::R1, r1_init);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), r0_init);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), r1_exp);
+    assert_eq!(emu.reg_read_word(Reg::R0), r0_init);
+    assert_eq!(emu.reg_read_word(Reg::R1), r1_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 

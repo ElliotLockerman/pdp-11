@@ -52,8 +52,8 @@ fn even() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
     let bin = assemble(r#"
         jmp start
@@ -68,8 +68,8 @@ fn even() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
     let bin = assemble(r#"
         jmp start
@@ -84,8 +84,8 @@ fn even() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 
     let bin = assemble(r#"
         jmp start
@@ -100,8 +100,8 @@ fn even() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -119,10 +119,10 @@ fn cont() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0);
     emu.cont();
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 1);
+    assert_eq!(emu.reg_read_word(Reg::R0), 1);
     emu.cont();
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 2);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::R0), 2);
+    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
 }

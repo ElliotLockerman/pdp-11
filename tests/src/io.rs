@@ -182,7 +182,7 @@ fn fake_clock() {
     emu.set_mmio_handler(teleprinter);
     emu.set_mmio_handler(clock);
     emu.load_image(&bin, 0);
-    emu.get_state_mut().reg_write_word(Reg::SP, 0o150000);
+    emu.reg_write_word(Reg::SP, 0o150000);
     emu.mem_write_byte(FakeClock::LKS, 0x1 << FakeClock::INT_ENB_SHIFT);
     let start = *symbols.get("_start").unwrap();
 
@@ -216,7 +216,7 @@ fn threads() {
     emu.set_mmio_handler(teleprinter);
     emu.set_mmio_handler(Clock::default());
     emu.load_image(&bin, 0);
-    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
 
     for _ in 0..2_000_000 {
         let ret = emu.run_ins();
@@ -267,12 +267,12 @@ fn prio() {
     emu.set_mmio_handler(clock);
     striker.strike();
     emu.load_image(&bin, 0);
-    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
 
     striker.strike();
     emu.run();
 
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 3);
+    assert_eq!(emu.reg_read_word(Reg::R0), 3);
 
 
     // Check that we don't get interrupts when we raise the priority.
@@ -311,12 +311,12 @@ fn prio() {
     emu.set_mmio_handler(clock);
     striker.strike();
     emu.load_image(&bin, 0);
-    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
 
     striker.strike();
     emu.run();
 
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0);
 
 
     // Check that we get interrupts again once we lower the priority.
@@ -362,11 +362,11 @@ fn prio() {
     emu.set_mmio_handler(clock);
     striker.strike();
     emu.load_image(&bin, 0);
-    emu.get_state_mut().reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
 
     striker.strike();
     emu.run();
 
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 3);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 10);
+    assert_eq!(emu.reg_read_word(Reg::R0), 3);
+    assert_eq!(emu.reg_read_word(Reg::R1), 10);
 }

@@ -21,7 +21,7 @@ fn run(ins: &str, flags: u16, should_take: bool) {
     emu.load_image(&bin, DATA_START);
     emu.get_state_mut().get_status_mut().set_flags(flags);
     emu.run_at(DATA_START);
-    let r0 = emu.get_state().reg_read_word(Reg::R0);
+    let r0 = emu.reg_read_word(Reg::R0);
     let taken = match r0 {
         1 => false,
         2 => true,

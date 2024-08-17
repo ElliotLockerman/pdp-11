@@ -9,10 +9,10 @@ fn run(asm: &str) {
     let bin = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
-    emu.get_state_mut().reg_write_word(Reg::SP, 0o150000);
+    emu.reg_write_word(Reg::SP, 0o150000);
     emu.run_at(DATA_START);
-    println!("pc: {:o}", emu.get_state().reg_read_word(Reg::PC));
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 2);
+    println!("pc: {:o}", emu.reg_read_word(Reg::PC));
+    assert_eq!(emu.reg_read_word(Reg::R0), 2);
 }
 
 #[test]

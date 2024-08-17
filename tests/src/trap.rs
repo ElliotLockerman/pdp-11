@@ -34,7 +34,7 @@ fn emt() {
     "#;
 
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o7);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o7);
 
     let asm = r#"
         STACK_TOP = 150000 
@@ -58,7 +58,7 @@ fn emt() {
         halt
     "#;
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o4);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o4);
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn emt_rti() {
         halt
     "#;
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o5);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o5);
 
     let asm = r#"
         STACK_TOP = 150000 
@@ -121,8 +121,8 @@ fn emt_rti() {
         halt
     "#;
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o4);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o1);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o4);
 }
 
 
@@ -147,7 +147,7 @@ fn trap() {
     "#;
 
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o7);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o7);
 
     let asm = r#"
         STACK_TOP = 150000 
@@ -171,7 +171,7 @@ fn trap() {
         halt
     "#;
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o4);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o4);
 }
 
 
@@ -199,7 +199,7 @@ fn trap_rti() {
         halt
     "#;
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o5);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o5);
 
     let asm = r#"
         STACK_TOP = 150000 
@@ -235,8 +235,8 @@ fn trap_rti() {
         halt
     "#;
     let emu = run(asm);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R0), 0o1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R1), 0o4);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o1);
+    assert_eq!(emu.reg_read_word(Reg::R1), 0o4);
 }
 
 

@@ -19,14 +19,14 @@ fn mul_full() {
         let bin = assemble(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&bin, DATA_START);
-        emu.get_state_mut().reg_write_word(Reg::R0, r0_init);
-        emu.get_state_mut().reg_write_word(Reg::R2, r2_init);
+        emu.reg_write_word(Reg::R0, r0_init);
+        emu.reg_write_word(Reg::R2, r2_init);
         emu.run_at(DATA_START);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R0), result_exp as u16);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R1), (result_exp >> u16::BITS) as u16);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R2), r2_init);
+        assert_eq!(emu.reg_read_word(Reg::R0), result_exp as u16);
+        assert_eq!(emu.reg_read_word(Reg::R1), (result_exp >> u16::BITS) as u16);
+        assert_eq!(emu.reg_read_word(Reg::R2), r2_init);
         check_flags(&emu, flags_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
     run(0, 0, 0, Z);
@@ -56,13 +56,13 @@ fn mul_lower() {
         let bin = assemble(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&bin, DATA_START);
-        emu.get_state_mut().reg_write_word(Reg::R3, r3_init);
-        emu.get_state_mut().reg_write_word(Reg::R4, r4_init);
+        emu.reg_write_word(Reg::R3, r3_init);
+        emu.reg_write_word(Reg::R4, r4_init);
         emu.run_at(DATA_START);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R3), r3_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R4), r4_init);
+        assert_eq!(emu.reg_read_word(Reg::R3), r3_exp);
+        assert_eq!(emu.reg_read_word(Reg::R4), r4_init);
         check_flags(&emu, flags_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
 
@@ -100,15 +100,15 @@ fn div() {
         let bin = assemble(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&bin, DATA_START);
-        emu.get_state_mut().reg_write_word(Reg::R0, dividend as u16);
-        emu.get_state_mut().reg_write_word(Reg::R1, (dividend >> u16::BITS) as u16);
-        emu.get_state_mut().reg_write_word(Reg::R2, divisor);
+        emu.reg_write_word(Reg::R0, dividend as u16);
+        emu.reg_write_word(Reg::R1, (dividend >> u16::BITS) as u16);
+        emu.reg_write_word(Reg::R2, divisor);
         emu.run_at(DATA_START);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R0), quot_exp, "quot");
-        assert_eq!(emu.get_state().reg_read_word(Reg::R1), rem_exp, "rem");
-        assert_eq!(emu.get_state().reg_read_word(Reg::R2), divisor);
+        assert_eq!(emu.reg_read_word(Reg::R0), quot_exp, "quot");
+        assert_eq!(emu.reg_read_word(Reg::R1), rem_exp, "rem");
+        assert_eq!(emu.reg_read_word(Reg::R2), divisor);
         check_flags(&emu, flags_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
     run(0, 1, 0, 0, Z);
@@ -137,13 +137,13 @@ fn ash() {
         let bin = assemble(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&bin, DATA_START);
-        emu.get_state_mut().reg_write_word(Reg::R0, shift as u16);
-        emu.get_state_mut().reg_write_word(Reg::R1, val as u16);
+        emu.reg_write_word(Reg::R0, shift as u16);
+        emu.reg_write_word(Reg::R1, val as u16);
         emu.run_at(DATA_START);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R0), shift as u16, "shift (after)");
-        assert_eq!(emu.get_state().reg_read_word(Reg::R1), val_exp as u16, "val (after)");
+        assert_eq!(emu.reg_read_word(Reg::R0), shift as u16, "shift (after)");
+        assert_eq!(emu.reg_read_word(Reg::R1), val_exp as u16, "val (after)");
         check_flags(&emu, flags_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
     run(0o0, 0o0, 0o0, Z);
@@ -178,16 +178,16 @@ fn ashc() {
         let bin = assemble(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&bin, DATA_START);
-        emu.get_state_mut().reg_write_word(Reg::R0, shift as u16);
-        emu.get_state_mut().reg_write_word(Reg::R2, val as u16);
-        emu.get_state_mut().reg_write_word(Reg::R3, ((val as u32) >> u16::BITS) as u16);
+        emu.reg_write_word(Reg::R0, shift as u16);
+        emu.reg_write_word(Reg::R2, val as u16);
+        emu.reg_write_word(Reg::R3, ((val as u32) >> u16::BITS) as u16);
         emu.run_at(DATA_START);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R0), shift as u16, "shift (after)");
-        let out_lower = emu.get_state().reg_read_word(Reg::R2) as u32;
-        let out_upper = emu.get_state().reg_read_word(Reg::R3) as u32;
+        assert_eq!(emu.reg_read_word(Reg::R0), shift as u16, "shift (after)");
+        let out_lower = emu.reg_read_word(Reg::R2) as u32;
+        let out_upper = emu.reg_read_word(Reg::R3) as u32;
         assert_eq!((out_upper << u16::BITS) | out_lower, val_exp as u32, "val (after)");
         check_flags(&emu, flags_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
     run(0o0, 0o0, 0o0, Z);
@@ -228,13 +228,13 @@ fn xor() {
         let bin = assemble(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&bin, DATA_START);
-        emu.get_state_mut().reg_write_word(Reg::R0, r0_init);
-        emu.get_state_mut().reg_write_word(Reg::R1, r1_init);
+        emu.reg_write_word(Reg::R0, r0_init);
+        emu.reg_write_word(Reg::R1, r1_init);
         emu.run_at(DATA_START);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R0), r0_init);
-        assert_eq!(emu.get_state().reg_read_word(Reg::R1), r1_exp);
+        assert_eq!(emu.reg_read_word(Reg::R0), r0_init);
+        assert_eq!(emu.reg_read_word(Reg::R1), r1_exp);
         check_flags(&emu, flags_exp);
-        assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+        assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
     }
 
     run(0, 0, 0, Z);

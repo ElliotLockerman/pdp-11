@@ -19,7 +19,7 @@ fn run(
     emu.get_state_mut().get_status_mut().set_flags(flags_init);
     emu.run_at(DATA_START);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]

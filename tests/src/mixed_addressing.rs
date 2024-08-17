@@ -13,8 +13,8 @@ fn literal_to_abs() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, DATA_START);
     emu.run_at(DATA_START);
-    assert_eq!(emu.get_state().mem_read_word(0o20), 0o753);
-    assert_eq!(emu.get_state().reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.mem_read_word(0o20), 0o753);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
 }
 
 #[test]
@@ -39,8 +39,8 @@ fn double_autoinc() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run_at(0);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R2), 0o1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R3), 0o2);
+    assert_eq!(emu.reg_read_word(Reg::R2), 0o1);
+    assert_eq!(emu.reg_read_word(Reg::R3), 0o2);
 }
 
 #[test]
@@ -65,6 +65,6 @@ fn index_autoinc() {
     let mut emu = Emulator::new();
     emu.load_image(&bin, 0);
     emu.run_at(0);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R2), 0o1);
-    assert_eq!(emu.get_state().reg_read_word(Reg::R3), 0o2);
+    assert_eq!(emu.reg_read_word(Reg::R2), 0o1);
+    assert_eq!(emu.reg_read_word(Reg::R3), 0o2);
 }
