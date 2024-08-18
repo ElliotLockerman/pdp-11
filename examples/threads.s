@@ -9,6 +9,8 @@
     TPS = 177564
     TPB = TPS + 2
     TPS_READY_MASK = 177
+    STATUS = 177776;
+    PRIO7 = 340
 
     . = 100
     .word clock, 300 ; Clock interrupt vector
@@ -74,7 +76,7 @@ run_loop:
     bne run_loop
 
     jsr pc, print
-    br run_loop
+    br  run_loop
     
 
 
@@ -96,7 +98,7 @@ clock:
     ; Increment tick counter; if it hasn't rolled over, just return.
     incb ticks
     cmpb #0, ticks
-    bne clock_done
+    bne  clock_done
 
     ; Every time the tick counter rolls over, swap threads.
 
@@ -135,10 +137,22 @@ ticks:
 ; char to print in r0
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 print:
-    ; Loop until the teleprinter is ready to accept another character.
-    bicb #TPS_READY_MASK, @#TPS
-    beq print
+    mov     @#STATUS, -(sp)
 
-    movb r0, @#TPB
-    rts pc  
+print_loop:
+    ; Loop until the teleprinter is ready to accept another character.
+    bicb    #PRIO7, @#STATUS ; Enable interrupts
+    bicb    #TPS_READY_MASK, @#TPS
+    beq     print_loop
+
+    ; Mask interrupts and check one last time
+    bis     #PRIO7, @#STATUS
+    bicb    #TPS_READY_MASK, @#TPS
+    beq     print_loop
+    
+    ; Actually print the character
+    movb    r0, @#TPB
+
+    mov     (sp)+, @#STATUS
+    rts     pc
 

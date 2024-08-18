@@ -136,7 +136,7 @@ fn fake_clock() {
         mov r4, -(sp)
         mov r5, -(sp)
 
-        mov LKS, r0 ; clear clock bit
+        mov @#LKS, r0 ; clear clock bit
 
         mov #'., r0
         jsr pc, print
@@ -236,16 +236,18 @@ fn prio() {
     // Check that we get regular interrupts.
     let asm = r#"
         LKS = 177546
+        LKS_INT_ENB = 100
         STACK_TOP = 150000
 
         . = 100
         .word clock, 300
 
+        . = 400
     _start:
         mov #STACK_TOP, sp
         clr r0
         clr r1
-        mov #100, LKS
+        mov #LKS_INT_ENB, @#LKS
 
     loop:
         inc r1
@@ -278,18 +280,21 @@ fn prio() {
     // Check that we don't get interrupts when we raise the priority.
     let asm = r#"
         LKS = 177546
+        LKS_INT_ENB = 100
         STACK_TOP = 150000
         STATUS = 177776
+        PRIO7 = 340
 
         . = 100
         .word clock, 300
 
+        . = 400
     _start:
         mov #STACK_TOP, sp
         clr r0
         clr r1
-        bis #340, STATUS
-        mov #100, LKS
+        bis #PRIO7, @#STATUS
+        mov #LKS_INT_ENB, @#LKS
 
     loop:
         inc r1
@@ -322,8 +327,10 @@ fn prio() {
     // Check that we get interrupts again once we lower the priority.
     let asm = r#"
         LKS = 177546
+        LKS_INT_ENB = 100
         STACK_TOP = 150000
         STATUS = 177776
+        PRIO7 = 340
 
         . = 100
         .word clock, 300
@@ -332,15 +339,15 @@ fn prio() {
         mov #STACK_TOP, sp
         clr r0
         clr r1
-        bis #340, STATUS
-        mov #100, LKS
+        bis #PRIO7, @#STATUS
+        mov #LKS_INT_ENB, @#LKS
 
     loop:
         inc r1
         cmp #10., r1
         bne loop
 
-        bic #340, STATUS
+        bic #PRIO7, @#STATUS
 
     loop2:
         inc r1
