@@ -465,3 +465,75 @@ fn pipe_echo_spin() {
     buf.make_contiguous();
     assert_eq!(&buf, input);
 }
+
+#[test]
+fn pipe_keyboard_interrupt() {
+    let asm = r#"
+
+        STACK_TOP = 150000 
+
+        TPS = 177564
+        TPB = TPS + 2
+        TPS_READY_CMASK = 177
+        TKS = 177560
+        TKB = TKS + 2
+        TKS_INT_ENB = 100
+
+        PRIO7 = 340
+
+        . = 60
+        .word keyboard, PRIO7
+
+        . = 400
+
+    _start:
+        mov #STACK_TOP, sp
+        mov #TKS_INT_ENB, @#TKS
+
+    loop:
+        tst done
+        beq loop
+
+        halt
+
+    done:
+        .word 0
+
+    keyboard:
+        mov r0, -(sp)
+
+        mov  @#TKB, r0
+        movb r0, @next
+        inc  next
+        tst  r0
+        bne  ret
+
+        mov #1, done
+
+    ret:
+        mov (sp)+, r0
+        rti
+
+    buf:
+    . = . + 100
+    next:
+        .word buf
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(teletype);
+    emu.load_image(&bin, 0);
+    let msg = b"foo bar baz\0";
+    tty.write_input(msg);
+    emu.run_at(*symbols.get("_start").unwrap());
+
+    let buf = *symbols.get("buf").unwrap();
+    for (i, ch) in msg.iter().enumerate() {
+        assert_eq!(emu.mem_read_byte(buf + i as u16), *ch);
+    }
+}
+

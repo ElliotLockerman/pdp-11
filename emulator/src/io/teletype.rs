@@ -92,11 +92,14 @@ pub struct Teletype {
 
     tps_maintenance_control: bool, // Not used.
     tps_interrupt_enabled: bool,
-    tps_interrupted: bool,
+    printer_interrupted: bool,
+    printer_interrupt_accepted: bool,
     tps_ready: bool,
     tps_ticks_until_ready: usize,
 
     tks_interrupt_enabled: bool,
+    keyboard_interrupt_accepted: bool,
+    keyboard_interrupted: bool,
 }
 
 impl Default for Teletype {
@@ -170,11 +173,14 @@ impl Teletype {
 
             tps_maintenance_control: false,
             tps_interrupt_enabled: false,
-            tps_interrupted: false,
+            printer_interrupted: false,
+            printer_interrupt_accepted: false,
             tps_ready: true,
             tps_ticks_until_ready: 0,
 
             tks_interrupt_enabled: false,
+            keyboard_interrupted: false,
+            keyboard_interrupt_accepted: false,
         }
     }
 
@@ -213,6 +219,8 @@ impl Teletype {
 
     fn tkb_read(&mut self) -> u8 {
         if let Some(ch) = self.device.poll_input() {
+            self.keyboard_interrupt_accepted = false;
+            println!("keyboard returned '{}'", ch as char);
             return ch;
         }
         error!("Teletype: read of TKB when no character is available");
@@ -227,9 +235,19 @@ impl MMIOHandler for Teletype {
             todo!()
         }
 
+        // Keyboard gets priority.
+        if self.device.input_available()
+            && self.tks_interrupt_enabled
+            && !self.printer_interrupt_accepted {
+
+            self.keyboard_interrupted = true;
+            return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::KEY_VECTOR});
+        }
+
         if self.tps_ticks_until_ready == 0 {
             assert!(self.tps_ready);
-            if self.tps_interrupt_enabled && !self.tps_interrupted {
+            if self.tps_interrupt_enabled && !self.printer_interrupt_accepted {
+                self.printer_interrupted = true;
                 return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::PRINT_VECTOR});
             }
             return None;
@@ -238,8 +256,9 @@ impl MMIOHandler for Teletype {
         self.tps_ticks_until_ready -= 1;
         if self.tps_ticks_until_ready == 0 {
             self.tps_ready = true;
-            self.tps_interrupted = false;
+            self.printer_interrupt_accepted = false;
             if self.tps_interrupt_enabled {
+                self.printer_interrupted = true;
                 return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::PRINT_VECTOR});
             }
         }
@@ -281,7 +300,15 @@ impl MMIOHandler for Teletype {
     }
 
     fn interrupt_accepted(&mut self) {
-        self.tps_interrupted = true;
+        if self.keyboard_interrupted {
+            self.keyboard_interrupted = false;
+            self.keyboard_interrupt_accepted = true;
+        } else if self.printer_interrupted {
+            self.printer_interrupted = false;
+            self.printer_interrupt_accepted = true;
+        } else {
+            panic!("Teletype received interrupt_accepted() but didn't interrupt");
+        }
     }
 
     fn default_addrs(&self) -> &[u16] {
