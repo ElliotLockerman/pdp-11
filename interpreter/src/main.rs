@@ -1,7 +1,7 @@
 
 use as_lib::assemble_with_symbols;
 use emu_lib::Emulator;
-use emu_lib::io::teleprinter::Teleprinter;
+use emu_lib::io::teletype::Teletype;
 use emu_lib::io::clock::Clock;
 
 use clap::Parser;
@@ -27,7 +27,7 @@ fn main() {
     let (bin, symbols) = assemble_with_symbols(input.as_str());
 
     let mut emu = Emulator::new();
-    emu.set_mmio_handler(Teleprinter::default());
+    emu.set_mmio_handler(Teletype::default());
     emu.set_mmio_handler(Clock::default());
 
     emu.load_image(&bin, 0);

@@ -1,6 +1,6 @@
 
 use emu_lib::Emulator;
-use emu_lib::io::teleprinter::Teleprinter;
+use emu_lib::io::teletype::Teletype;
 use emu_lib::io::clock::Clock;
 
 use clap::Parser;
@@ -25,7 +25,7 @@ fn main() {
     let opt = Args::parse();
 
     let mut emu = Emulator::new();
-    emu.set_mmio_handler(Teleprinter::default());
+    emu.set_mmio_handler(Teletype::default());
     emu.set_mmio_handler(Clock::default());
 
     let buf = std::fs::read(opt.bin).unwrap();

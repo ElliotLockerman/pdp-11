@@ -1,7 +1,7 @@
 
 use as_lib::assemble_with_symbols;
 use emu_lib::{Emulator, ExecRet};
-use emu_lib::io::teleprinter::*;
+use emu_lib::io::teletype::*;
 use emu_lib::io::clock::{Clock, FakeClock};
 use common::asm::Reg;
 
@@ -12,15 +12,15 @@ use std::thread;
 fn hello() {
     let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/hello.s"));
 
-    let printer = Arc::new(PipePrinter::default());
-    let teleprinter = Teleprinter::new(printer.clone());
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler_for(teleprinter, [Teleprinter::TPS, Teleprinter::TPB]);
+    emu.set_mmio_handler_for(teletype, [Teletype::TPS, Teletype::TPB]);
 
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
-    let mut buf = printer.take();
+    let mut buf = tty.take_output();
     buf.make_contiguous();
     let out = String::from_utf8_lossy(buf.as_slices().0);
     assert_eq!(out, "hello, world!\n");
@@ -35,7 +35,7 @@ fn hello_spin() {
 
         TPS = 177564
         TPB = TPS + 2
-        TPS_READY_MASK = 177
+        TPS_READY_CMASK = 177
 
     _start:
         mov #STACK_TOP, sp
@@ -63,8 +63,8 @@ fn hello_spin() {
         .even
 
     print:
-        ; Loop until the teleprinter is ready to accept another character.
-        bicb #TPS_READY_MASK, @#TPS
+        ; Loop until the teletype is ready to accept another character.
+        bicb #TPS_READY_CMASK, @#TPS
         beq print
 
         movb r0, @#TPB
@@ -73,14 +73,14 @@ fn hello_spin() {
 
     let (bin, symbols) = assemble_with_symbols(asm);
 
-    let printer = Arc::new(PipePrinter::default());
-    let teleprinter = Teleprinter::new(printer.clone());
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(teletype);
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
-    let mut buf = printer.take();
+    let mut buf = tty.take_output();
     buf.make_contiguous();
     let out = String::from_utf8_lossy(buf.as_slices().0);
     assert_eq!(out, "hello, world!\n");
@@ -90,15 +90,15 @@ fn hello_spin() {
 fn clock() {
     let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/timer_ticks.s"));
 
-    let printer = Arc::new(PipePrinter::default());
-    let teleprinter = Teleprinter::new(printer.clone());
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(teletype);
     emu.set_mmio_handler(Clock::default());
     emu.load_image(&bin, 0);
     emu.run_at(*symbols.get("_start").unwrap());
 
-    let mut buf = printer.take();
+    let mut buf = tty.take_output();
     buf.make_contiguous();
     let out = String::from_utf8_lossy(buf.as_slices().0);
     assert_eq!(out, "123456789\n");
@@ -113,7 +113,7 @@ fn fake_clock() {
 
         TPS = 177564
         TPB = TPS + 2
-        TPS_READY_MASK = 177
+        TPS_READY_CMASK = 177
 
         . = 100
         .word clock, 300
@@ -163,8 +163,8 @@ fn fake_clock() {
 
 
     print:
-        ; Loop until the teleprinter is ready to accept another character.
-        bicb #TPS_READY_MASK, @#TPS
+        ; Loop until the teletype is ready to accept another character.
+        bicb #TPS_READY_CMASK, @#TPS
         beq print
 
         movb r0, @#TPB
@@ -173,13 +173,13 @@ fn fake_clock() {
     "#);
     let (bin, symbols) = assemble_with_symbols(&asm);
 
-    let printer = Arc::new(PipePrinter::default());
-    let teleprinter = Teleprinter::new(printer.clone());
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
     let clock = FakeClock::default();
     let striker = clock.get_striker();
 
     let mut emu = Emulator::new();
-    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(teletype);
     emu.set_mmio_handler(clock);
     emu.load_image(&bin, 0);
     emu.reg_write_word(Reg::SP, 0o150000);
@@ -190,30 +190,30 @@ fn fake_clock() {
         emu.run_at(start);
     });
 
-    assert!(printer.is_empty());
+    assert!(tty.is_out_empty());
     for _ in 0..times {
         striker.strike();
 
-        while printer.is_empty() {
+        while tty.is_out_empty() {
             thread::yield_now(); 
         }
-        let val = printer.pop_front().unwrap();
+        let val = tty.pop_output().unwrap();
         assert_eq!(val, b'.');
-        assert!(printer.is_empty());
+        assert!(tty.is_out_empty());
     }
 
     thread.join().unwrap();
-    assert!(printer.is_empty());
+    assert!(tty.is_out_empty());
 }
 
 #[test]
 fn threads() {
     let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/threads.s"));
 
-    let printer = Arc::new(PipePrinter::default());
-    let teleprinter = Teleprinter::new(printer.clone());
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
-    emu.set_mmio_handler(teleprinter);
+    emu.set_mmio_handler(teletype);
     emu.set_mmio_handler(Clock::default());
     emu.load_image(&bin, 0);
     emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
@@ -225,7 +225,7 @@ fn threads() {
         }
     }
 
-    let mut buf = printer.take();
+    let mut buf = tty.take_output();
     buf.make_contiguous();
     let out = String::from_utf8_lossy(buf.as_slices().0);
     assert_eq!(out, "000011110");
@@ -376,4 +376,92 @@ fn prio() {
 
     assert_eq!(emu.reg_read_word(Reg::R0), 3);
     assert_eq!(emu.reg_read_word(Reg::R1), 10);
+}
+
+#[test]
+fn pipe_keyboard_spin() {
+    let asm = r#"
+        TKS = 177560
+        TKB = TKS + 2
+        TKS_DONE_CMASK = 177577
+
+        . = 400
+
+    _start:
+        bic #TKS_DONE_CMASK, @#TKS
+        beq _start
+
+        movb @#TKB, r0
+        halt
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(teletype);
+    emu.load_image(&bin, 0);
+    let val = 0o23u8;
+    tty.push_input(val);
+    emu.run_at(*symbols.get("_start").unwrap());
+    assert_eq!(emu.reg_read_byte(Reg::R0), val);
+}
+
+#[test]
+fn pipe_echo_spin() {
+    let asm = r#"
+        STACK_TOP = 150000 
+
+        TPS = 177564
+        TPB = TPS + 2
+        TPS_READY_CMASK = 177
+        TKS = 177560
+        TKB = TKS + 2
+        TKS_DONE_CMASK = 177577
+
+        . = 400
+
+    _start:
+        mov #STACK_TOP, sp
+
+    read_loop:
+        jsr  pc, read
+        jsr  pc, print
+        cmpb #'\n, r0
+        bne  read_loop
+
+        halt
+
+    read:
+        bic #TKS_DONE_CMASK, @#TKS
+        beq read
+
+        movb @#TKB, r0
+        rts  pc
+
+    print:
+        ; Loop until the teletype is ready to accept another character.
+        bicb #TPS_READY_CMASK, @#TPS
+        beq  print
+
+        movb r0, @#TPB
+        rts  pc  
+    "#;
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(teletype);
+    
+    let input = b"Hello, world!\n";
+    tty.write_input(input);
+    emu.load_image(&bin, 0);
+    emu.run_at(*symbols.get("_start").unwrap());
+
+    let mut buf = tty.take_output();
+    buf.make_contiguous();
+    assert_eq!(&buf, input);
 }

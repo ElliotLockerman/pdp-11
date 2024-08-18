@@ -1,5 +1,5 @@
 
-pub mod teleprinter;
+pub mod teletype;
 pub mod clock;
 pub mod status_access;
 
