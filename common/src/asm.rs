@@ -182,6 +182,17 @@ impl Operand {
             (_, _) => fmt::Display::fmt(self, f),
         }
     }
+
+    fn decode(arg: u16, input: &[u16], imm_idx: usize) -> Operand {
+        let reg = Reg::from_u16(arg & Reg::MASK).unwrap();
+        let mode = AddrMode::from_u16((arg >> Reg::NUM_BITS) & AddrMode::MASK).unwrap();
+
+        let mut op = Self{mode, reg, extra: Extra::None};
+        if op.needs_extra() {
+            op.add_extra(input[imm_idx]);
+        }
+        op
+    }
 }
 
 impl fmt::Display for Operand {
@@ -313,6 +324,15 @@ impl DoubleOperandIns {
             write_u16(out, self.dst.extra.unwrap_val());
         }
     }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = DoubleOperandIns::decode_opcode(input[0])?;
+
+        let src = Operand::decode(input[0] >> Operand::NUM_BITS, input, 1);
+        let dst = Operand::decode(input[0], input, (src.num_extra() + 1) as usize);
+
+        Some(Ins::DoubleOperand(Self{op, src, dst}))
+    }
 }
 
 impl fmt::Display for DoubleOperandIns {
@@ -380,6 +400,12 @@ impl BranchIns {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | (offset as u16);
         write_u16(out, bin);
     }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let offset = Target::Offset((input[0] & Self::OFFSET_MASK) as u8);
+        Some(Ins::Branch(Self{op, target: offset}))
+    }
 }
 
 impl InstrVariant<BranchOpcode> for BranchIns {
@@ -431,6 +457,12 @@ impl JmpIns {
         if self.dst.has_extra() {
             write_u16(out, self.dst.extra.unwrap_val());
         }
+    }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let dst = Operand::decode(input[0], input, 1);
+        Some(Ins::Jmp(Self{op, dst}))
     }
 }
 
@@ -488,6 +520,12 @@ impl JsrIns {
             write_u16(out, self.dst.extra.unwrap_val());
         }
     }
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let dst = Operand::decode(input[0], input, 1);
+        let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
+        Some(Ins::Jsr(Self{op, reg, dst}))
+    }
 }
 
 impl InstrVariant<JsrOpcode> for JsrIns {
@@ -535,6 +573,12 @@ impl RtsIns {
     pub fn emit(&self, out: &mut impl Write) {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.reg.to_u16().unwrap();
         write_u16(out, bin);
+    }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let reg = Reg::from_u16(input[0] & Reg::MASK).unwrap();
+        Some(Ins::Rts(Self{op, reg}))
     }
 }
 
@@ -623,6 +667,12 @@ impl SingleOperandIns {
         }
 
     }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let dst = Operand::decode(input[0], input, 1);
+        Some(Ins::SingleOperand(Self{op, dst}))
+    }
 }
 
 impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
@@ -690,6 +740,12 @@ impl EisIns {
         }
     }
 
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let operand = Operand::decode(input[0], input, 1);
+        let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
+        Some(Ins::Eis(Self{op, reg, operand}))
+    }
 }
 
 impl InstrVariant<EisOpcode> for EisIns {
@@ -747,6 +803,11 @@ impl CCIns {
 
     pub fn emit(&self, out: &mut impl Write) {
         write_u16(out, self.op.to_u16().unwrap());
+    }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        Some(Ins::CC(Self{op}))
     }
 }
 
@@ -806,6 +867,11 @@ impl MiscIns {
     pub fn emit(&self, out: &mut impl Write) {
         write_u16(out, self.op.to_u16().unwrap());
     }
+
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        Some(Ins::Misc(Self{op}))
+    }
 }
 
 impl InstrVariant<MiscOpcode> for MiscIns {
@@ -859,6 +925,11 @@ impl TrapIns {
         write_u16(out, (self.op.to_u16().unwrap() << Self::LOWER_BITS) | data);
     }
 
+    fn decode(input: &[u16]) -> Option<Ins> {
+        let op = Self::decode_opcode(input[0])?;
+        let data = input[0] & Self::DATA_MASK;
+        Some(Ins::Trap(Self{op, data: Expr::Atom(Atom::Val(data))}))
+    }
 }
 
 impl InstrVariant<TrapOpcode> for TrapIns {
@@ -941,6 +1012,31 @@ impl Ins {
             Ins::Trap(x) => x.emit(out),
         }
     }
+
+
+    const DECODERS: &[Decoder] = &[
+        DoubleOperandIns::decode,
+        BranchIns::decode,
+        JmpIns::decode,
+        JsrIns::decode,
+        RtsIns::decode,
+        SingleOperandIns::decode,
+        EisIns::decode,
+        CCIns::decode,
+        MiscIns::decode,
+        TrapIns::decode,
+    ]; 
+
+    pub fn decode(input: &[u16]) -> Option<Ins> {
+        for decoder in Self::DECODERS {
+            let ins = decoder(input);
+            if ins.is_some() {
+                return ins;
+            }
+        }
+
+        None
+    }
 }
 
 impl fmt::Display for Ins {
@@ -968,4 +1064,7 @@ impl<'a> fmt::Display for InsWithPc<'a> {
         self.0.fmt_with_pc(f, self.1)
     }
 }
+
+
+type Decoder = fn(&[u16]) -> Option<Ins>;
 

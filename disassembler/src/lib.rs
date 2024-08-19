@@ -1,6 +1,5 @@
 
 use common::mem::as_word_slice;
-use common::decoder::decode;
 use common::constants::{WORD_SIZE, MAX_INS_WORDS};
 use common::asm::Ins;
 
@@ -52,7 +51,7 @@ pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
     let mut addr: usize = 0;
     while addr < bin.len() {
         let upper = usize::min(addr + 3 * WORD_SIZE as usize, bin.len());
-        let ins = decode(as_word_slice(&bin[addr..upper]));
+        let ins = Ins::decode(as_word_slice(&bin[addr..upper]));
         let size = ins.as_ref().map(|x| x.size()).unwrap_or(WORD_SIZE) as usize;
         out.push(Disassembled{
             addr: addr as u16,

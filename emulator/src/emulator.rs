@@ -1,6 +1,5 @@
 
 use common::asm::*;
-use common::decoder::decode;
 use common::constants::*;
 use crate::MMIOHandler;
 use crate::io::Interrupt;
@@ -171,7 +170,7 @@ impl Emulator {
 
     fn decode(&self) -> Ins {
         let next_ins = self.state.next_ins();
-        let Some(ins) = decode(next_ins) else {
+        let Some(ins) = Ins::decode(next_ins) else {
             panic!("Invalid instruction 0{:o}", next_ins[0]);
         };
         ins
