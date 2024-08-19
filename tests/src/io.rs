@@ -7,6 +7,7 @@ use common::asm::Reg;
 
 use std::sync::Arc;
 use std::thread;
+use std::io::BufRead;
 
 #[test]
 fn hello() {
@@ -464,6 +465,51 @@ fn pipe_echo_spin() {
     let mut buf = tty.take_output();
     buf.make_contiguous();
     assert_eq!(&buf, input);
+
+}
+
+#[test]
+fn pipe_echo_spin_line() {
+    let asm = include_str!("../../examples/echo_spin.s");
+
+    let (bin, symbols) = assemble_with_symbols(asm);
+
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler(teletype);
+    
+    const LINE_LIMIT: usize = 72;
+    let lines: &[Vec<u8>] = &[
+        b"sadlkfa".into(),
+        b";la;lskdfjlaskfjds;lkfjas; dfkjs;lkdfja;slkfjaslkdfjas;ldkfjasl;dkfjal;kkjfasew".into(),
+        b"aslfkdja;".into(),
+    ];
+    for line in lines {
+        let len = usize::min(line.len(), LINE_LIMIT);
+        let line = &line[0..len];
+        tty.write_input(line);
+        tty.push_input(b'\n');
+    }
+    emu.load_image(&bin, 0);
+
+    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    for _ in 0..1_000_000 {
+        let ret = emu.run_ins();
+        if ret == ExecRet::Halt {
+            break;
+        }
+    }
+
+    let mut buf = tty.take_output();
+    buf.make_contiguous();
+    for (i, line) in buf.lines().enumerate() {
+        let line = line.unwrap();
+        let gold = &lines[i / 2];
+        let len = usize::min(gold.len(), LINE_LIMIT);
+        let gold = String::from_utf8_lossy(&gold[0..len]);
+        assert_eq!(gold, line);
+    }
 }
 
 #[test]
