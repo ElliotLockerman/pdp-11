@@ -218,7 +218,7 @@ fn threads() {
     emu.load_image(&bin, 0);
     emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
 
-    for _ in 0..2_000_000 {
+    for _ in 0..250_000 {
         let ret = emu.run_ins();
         if ret == ExecRet::Halt {
             break;
@@ -228,7 +228,7 @@ fn threads() {
     let mut buf = tty.take_output();
     buf.make_contiguous();
     let out = String::from_utf8_lossy(buf.as_slices().0);
-    assert_eq!(out, "000011110");
+    assert_eq!(out, "00000000000111111111110000000000111111111110000000");
 }
 
 #[test]

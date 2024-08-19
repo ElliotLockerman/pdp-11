@@ -12,6 +12,8 @@
     STATUS = 177776;
     PRIO7 = 340
 
+    SWAP_PERIOD = 20 ; In ticks
+
     . = 100
     .word clock, 300 ; Clock interrupt vector
 
@@ -69,10 +71,10 @@ run:
     ; loop counter in r1.
     clr r1
 
-    ; loop forever, printing tid once every 2^16 iterations.
+    ; loop forever, printing tid once every 2^8 iterations.
 run_loop:
     inc r1
-    cmp #0, r1
+    cmpb #0, r1
     bne run_loop
 
     jsr pc, print
@@ -97,10 +99,11 @@ clock:
 
     ; Increment tick counter; if it hasn't rolled over, just return.
     incb ticks
-    cmpb #0, ticks
+    cmpb #SWAP_PERIOD, ticks
     bne  clock_done
 
     ; Every time the tick counter rolls over, swap threads.
+    mov #0, ticks
 
     ; Save currently running thread's sp
     mov tid, r0
