@@ -1,7 +1,9 @@
 
 use crate::constants::WORD_SIZE;
+use crate::mem::write_u16;
 
 use std::fmt;
+use std::io::Write;
 
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
@@ -10,14 +12,13 @@ use derive_more::{IsVariant, Unwrap};
 
 pub trait InstrVariant<Opcode: FromPrimitive> {
     const OPCODE_BITS: usize;
-    const LOWER_BITS: usize;
+    const LOWER_BITS: usize = (u16::BITS as usize) - Self::OPCODE_BITS;
 
     fn decode_opcode(input: u16) -> Option<Opcode> {
         let op = input >> Self::LOWER_BITS;
         Opcode::from_u16(op)
     }
 }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +169,7 @@ impl Operand {
     }
 
 
-    pub fn format(&self) -> u16 {
+    pub fn encode(&self) -> u16 {
         self.reg.to_u16().unwrap() | (self.mode.to_u16().unwrap() << Reg::NUM_BITS)
     }
 
@@ -284,7 +285,6 @@ pub struct DoubleOperandIns {
 
 impl InstrVariant<DoubleOperandOpcode> for DoubleOperandIns {
     const OPCODE_BITS: usize = 4;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl DoubleOperandIns {
@@ -297,6 +297,21 @@ impl DoubleOperandIns {
         self.src.fmt_with_pc(f, pc)?;
         write!(f, ", ")?;
         self.dst.fmt_with_pc(f, pc)
+    }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) 
+            | (self.src.encode() << Operand::NUM_BITS) 
+            | self.dst.encode();
+        write_u16(out, bin);
+
+        if self.src.has_extra() {
+            write_u16(out, self.src.extra.unwrap_val());
+        }
+
+        if self.dst.has_extra() {
+            write_u16(out, self.dst.extra.unwrap_val());
+        }
     }
 }
 
@@ -359,11 +374,16 @@ impl BranchIns {
         write!(f, "{}\t", self.op)?;
         self.target.fmt_with_pc(f, pc)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let offset = self.target.unwrap_offset();
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | (offset as u16);
+        write_u16(out, bin);
+    }
 }
 
 impl InstrVariant<BranchOpcode> for BranchIns {
     const OPCODE_BITS: usize = 8;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for BranchIns {
@@ -404,11 +424,18 @@ impl JmpIns {
         write!(f, "{}\t", self.op)?;
         self.dst.fmt_with_pc(f, pc)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.dst.encode();
+        write_u16(out, bin);
+        if self.dst.has_extra() {
+            write_u16(out, self.dst.extra.unwrap_val());
+        }
+    }
 }
 
 impl InstrVariant<JmpOpcode> for JmpIns {
     const OPCODE_BITS: usize =  10;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for JmpIns {
@@ -451,11 +478,20 @@ impl JsrIns {
         write!(f, "{}\t{},", self.op, self.reg)?;
         self.dst.fmt_with_pc(f, pc)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS)
+            | (self.reg.to_u16().unwrap() << Operand::NUM_BITS)
+            | self.dst.encode();
+        write_u16(out, bin);
+        if self.dst.has_extra() {
+            write_u16(out, self.dst.extra.unwrap_val());
+        }
+    }
 }
 
 impl InstrVariant<JsrOpcode> for JsrIns {
     const OPCODE_BITS: usize = 7;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for JsrIns {
@@ -495,11 +531,15 @@ impl RtsIns {
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
         write!(f, "{}", self)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.reg.to_u16().unwrap();
+        write_u16(out, bin);
+    }
 }
 
 impl InstrVariant<RtsOpcode> for RtsIns {
     const OPCODE_BITS: usize = 13;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for RtsIns {
@@ -574,11 +614,19 @@ impl SingleOperandIns {
         write!(f, "{}\t", self.op)?;
         self.dst.fmt_with_pc(f, pc)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.dst.encode();
+        write_u16(out, bin);
+        if self.dst.has_extra() {
+            write_u16(out, self.dst.extra.unwrap_val());
+        }
+
+    }
 }
 
 impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
     const OPCODE_BITS: usize = 10;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for SingleOperandIns {
@@ -627,11 +675,25 @@ impl EisIns {
         write!(f, "{}\t{},", self.op, self.reg)?;
         self.operand.fmt_with_pc(f, pc)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let reg = self.reg.to_u16().unwrap();
+        if self.op == EisOpcode::Div {
+            assert_eq!(reg & 0x1, 0, "Division reg must be even");
+        }
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) 
+            | (reg << Operand::NUM_BITS)
+            | self.operand.encode();
+        write_u16(out, bin);
+        if self.operand.has_extra() {
+            write_u16(out, self.operand.extra.unwrap_val());
+        }
+    }
+
 }
 
 impl InstrVariant<EisOpcode> for EisIns {
     const OPCODE_BITS: usize = 7;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for EisIns {
@@ -682,11 +744,14 @@ impl CCIns {
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
         write!(f, "{}", self)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        write_u16(out, self.op.to_u16().unwrap());
+    }
 }
 
 impl InstrVariant<CCOpcode> for CCIns {
     const OPCODE_BITS: usize = 16;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for CCIns {
@@ -737,11 +802,14 @@ impl MiscIns {
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
         write!(f, "{}", self)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        write_u16(out, self.op.to_u16().unwrap());
+    }
 }
 
 impl InstrVariant<MiscOpcode> for MiscIns {
     const OPCODE_BITS: usize = 16;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for MiscIns {
@@ -784,11 +852,17 @@ impl TrapIns {
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, _pc: u16) -> fmt::Result {
         write!(f, "{}", self)
     }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        let data = self.data.unwrap_val();
+        assert_eq!(data & !0xff, 0);
+        write_u16(out, (self.op.to_u16().unwrap() << Self::LOWER_BITS) | data);
+    }
+
 }
 
 impl InstrVariant<TrapOpcode> for TrapIns {
     const OPCODE_BITS: usize = 8;
-    const LOWER_BITS: usize = 16 - Self::OPCODE_BITS;
 }
 
 impl fmt::Display for TrapIns {
@@ -851,6 +925,21 @@ impl Ins {
 
     pub fn display_with_pc(&self, pc: u16) -> InsWithPc {
         InsWithPc(self, pc)
+    }
+
+    pub fn emit(&self, out: &mut impl Write) {
+        match self {
+            Ins::DoubleOperand(x) => x.emit(out),
+            Ins::Branch(x) => x.emit(out),
+            Ins::Jmp(x) => x.emit(out),
+            Ins::Jsr(x) => x.emit(out),
+            Ins::Rts(x) => x.emit(out),
+            Ins::SingleOperand(x) => x.emit(out),
+            Ins::Eis(x) => x.emit(out),
+            Ins::CC(x) => x.emit(out),
+            Ins::Misc(x) => x.emit(out),
+            Ins::Trap(x) => x.emit(out),
+        }
     }
 }
 

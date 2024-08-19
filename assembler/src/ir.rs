@@ -2,6 +2,7 @@
 use std::convert::TryInto;
 
 use common::asm::*;
+use common::mem::write_u16;
 
 
 // Args are src, dst
@@ -49,6 +50,38 @@ impl Stmt {
             Cmd::LocDef(_) | Cmd::Even => return None,
         };
         Some(val)
+    }
+
+    pub fn emit(&self, buf: &mut Vec<u8>) {
+        if let Some(cmd) = &self.cmd {
+            match cmd {
+                Cmd::Bytes(exprs) => {
+                    for e in exprs {
+                        let val = TryInto::<u8>::try_into(e.unwrap_val()).unwrap();
+                        buf.push(val);
+                    }
+                }
+                Cmd::Words(exprs) => {
+                    for e in exprs {
+                        write_u16(buf, e.unwrap_val());
+                    }
+                },
+                Cmd::Ascii(a) => buf.extend(a),
+                Cmd::Ins(ins) => ins.emit(buf),
+                Cmd::SymbolDef(_, _) => (),
+                Cmd::LocDef(addr) => {
+                    let addr = addr.unwrap_val();
+                    assert!(addr as usize >= buf.len());
+                    buf.resize(addr as usize, 0);
+                    
+                },
+                Cmd::Even => {
+                    if buf.len() & 0x1 == 1 {
+                        buf.push(0);
+                    }
+                }
+            }
+        }
     }
 }
 

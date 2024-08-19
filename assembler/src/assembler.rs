@@ -7,7 +7,6 @@ use crate::grammar::StmtParser;
 use common::asm::*;
 use common::constants::WORD_SIZE;
 
-use num_traits::ToPrimitive;
 use log::trace;
 
 pub fn assemble(prog: &str) -> Vec<u8> {
@@ -32,141 +31,6 @@ impl Assembler {
             buf: Vec::new(),
             symbols: HashMap::new(),
         }
-    }
-
-    fn emit_double_operand_ins(&mut self, ins: &DoubleOperandIns) {
-        let bin = (ins.op.to_u16().unwrap() <<DoubleOperandIns::LOWER_BITS) 
-            | (ins.src.format() << Operand::NUM_BITS) 
-            | ins.dst.format();
-        self.emit(bin);
-
-        if ins.src.has_extra() {
-            self.emit(ins.src.extra.unwrap_val());
-        }
-
-        if ins.dst.has_extra() {
-            self.emit(ins.dst.extra.unwrap_val());
-        }
-    }
-
-    fn emit_branch_ins(&mut self, ins: &BranchIns) {
-        let offset = ins.target.unwrap_offset();
-        let bin = (ins.op.to_u16().unwrap() << BranchIns::LOWER_BITS) | (offset as u16);
-        self.emit(bin);
-    }
-
-    fn emit_jmp_ins(&mut self, ins: &JmpIns) {
-        let bin = (ins.op.to_u16().unwrap() << JmpIns::LOWER_BITS) | ins.dst.format();
-        self.emit(bin);
-        if ins.dst.has_extra() {
-            self.emit(ins.dst.extra.unwrap_val());
-        }
-    }
-
-    fn emit_jsr_ins(&mut self, ins: &JsrIns) {
-        let bin = (ins.op.to_u16().unwrap() << JsrIns::LOWER_BITS)
-            | (ins.reg.to_u16().unwrap() << Operand::NUM_BITS)
-            | ins.dst.format();
-        self.emit(bin);
-        if ins.dst.has_extra() {
-            self.emit(ins.dst.extra.unwrap_val());
-        }
-    }
-
-    fn emit_rts_ins(&mut self, ins: &RtsIns) {
-        let bin = (ins.op.to_u16().unwrap() << RtsIns::LOWER_BITS) | ins.reg.to_u16().unwrap();
-        self.emit(bin);
-    }
-
-    fn emit_single_operand_ins(&mut self, ins: &SingleOperandIns) {
-        let bin = (ins.op.to_u16().unwrap() << SingleOperandIns::LOWER_BITS) | ins.dst.format();
-        self.emit(bin);
-        if ins.dst.has_extra() {
-            self.emit(ins.dst.extra.unwrap_val());
-        }
-
-    }
-
-    fn emit_eis_ins(&mut self, ins: &EisIns) {
-        let reg = ins.reg.to_u16().unwrap();
-        if ins.op == EisOpcode::Div {
-            assert_eq!(reg & 0x1, 0, "Division reg must be even");
-        }
-        let bin = (ins.op.to_u16().unwrap() << EisIns::LOWER_BITS) 
-            | (reg << Operand::NUM_BITS)
-            | ins.operand.format();
-        self.emit(bin);
-        if ins.operand.has_extra() {
-            self.emit(ins.operand.extra.unwrap_val());
-        }
-    }
-
-    fn emit_cc_ins(&mut self, ins: &CCIns) {
-        self.emit(ins.op.to_u16().unwrap());
-    }
-
-    fn emit_misc_ins(&mut self, ins: &MiscIns) {
-        self.emit(ins.op.to_u16().unwrap());
-    }
-
-    fn emit_trap_ins(&mut self, ins: &TrapIns) {
-        let data = ins.data.unwrap_val();
-        assert_eq!(data & !0xff, 0);
-        self.emit((ins.op.to_u16().unwrap() << TrapIns::LOWER_BITS) | data);
-    }
-
-    fn emit_ins(&mut self, ins: &Ins) {
-        match ins {
-            Ins::DoubleOperand(x) => self.emit_double_operand_ins(x),
-            Ins::Branch(x) => self.emit_branch_ins(x),
-            Ins::Jmp(x) => self.emit_jmp_ins(x),
-            Ins::Jsr(x) => self.emit_jsr_ins(x),
-            Ins::Rts(x) => self.emit_rts_ins(x),
-            Ins::SingleOperand(x) => self.emit_single_operand_ins(x),
-            Ins::Eis(x) => self.emit_eis_ins(x),
-            Ins::CC(x) => self.emit_cc_ins(x),
-            Ins::Misc(x) => self.emit_misc_ins(x),
-            Ins::Trap(x) => self.emit_trap_ins(x),
-        }
-    }
-
-    fn emit_stmt(&mut self, stmt: &Stmt) {
-        if let Some(cmd) = &stmt.cmd {
-            match cmd {
-                Cmd::Bytes(exprs) => {
-                    for e in exprs {
-                        let val = TryInto::<u8>::try_into(e.unwrap_val()).unwrap();
-                        self.buf.push(val);
-                    }
-                }
-                Cmd::Words(exprs) => {
-                    for e in exprs {
-                        self.emit(e.unwrap_val());
-                    }
-                },
-                Cmd::Ascii(a) => self.buf.extend(a),
-                Cmd::Ins(ins) => self.emit_ins(ins),
-                Cmd::SymbolDef(_, _) => (),
-                Cmd::LocDef(addr) => {
-                    let addr = addr.unwrap_val();
-                    assert!(addr as usize >= self.buf.len());
-                    self.buf.resize(addr as usize, 0);
-                    
-                },
-                Cmd::Even => {
-                    if self.buf.len() & 0x1 == 1 {
-                        self.buf.push(0);
-                    }
-                }
-            }
-        }
-    }
-
-    fn emit(&mut self, word: u16) {
-        let lower = word as u8;
-        let upper = (word >> 8) as u8;
-        self.buf.push(lower);
-        self.buf.push(upper);
     }
 
     fn eval_atom(&self, atom: &Atom, loc: u16, iter: i32) -> Option<u16> {
@@ -344,7 +208,7 @@ impl Assembler {
         self.resolve_and_eval(&mut prog);
 
         for stmt in prog {
-            self.emit_stmt(&stmt);
+            stmt.emit(&mut self.buf);
         }
         (self.buf, self.symbols)
     }
