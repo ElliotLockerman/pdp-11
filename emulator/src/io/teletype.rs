@@ -2,11 +2,17 @@
 use std::io::{stdout, Write};
 use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
+use std::time::Duration;
+use std::ascii;
 
 use crate::EmulatorState;
 use crate::io::{Interrupt, MMIOHandler};
 
 use log::error;
+use crossterm::execute;
+use crossterm::terminal;
+use crossterm::event::{poll, read, Event, KeyCode, KeyModifiers};
+use crossterm::cursor;
 
 pub trait Tty: Send + Sync {
     fn handle_output(&self, val: u8);
@@ -17,26 +23,103 @@ pub trait Tty: Send + Sync {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Default, Clone, Copy)]
-struct StdIo();
+#[derive(Default, Clone)]
+struct StdIo {
+    next: Arc<Mutex<Option<u8>>>,
+}
 
-impl Tty for StdIo {
-    fn handle_output(&self, val: u8) {
-        let mut out = stdout().lock();
-        out.write_all(&[val]).unwrap();
-        out.flush().unwrap();
+impl StdIo {
+    const POLL_TIME_NS: u64 = 0;
+
+    fn new() -> StdIo {
+        terminal::enable_raw_mode().unwrap();
+        StdIo {
+            next: Arc::new(Mutex::new(None)),
+        }
     }
 
-    fn input_available(&self) -> bool {
-        todo!()
+    fn poll_ch(&self) -> Option<u8> {
+        let next = *self.next.lock().unwrap();
+        if next.is_some() {
+            return next;
+        }
+
+        if !poll(Duration::from_nanos(Self::POLL_TIME_NS)).unwrap() {
+            return None;
+        }
+
+        let Event::Key(event) = read().unwrap() else {
+            return None;
+        };
+
+        if (event.code == KeyCode::Char('c') || event.code == KeyCode::Char('d')) 
+            && (event.modifiers.contains(KeyModifiers::CONTROL)) {
+            crate::emulator::quit();
+            return None;
+        }
+
+        if event.code == KeyCode::Enter {
+            let val = Some(b'\n');
+            *self.next.lock().unwrap() = val;
+            return val;
+        }
+
+        let KeyCode::Char(ch) = event.code else {
+            return None;
+        };
+
+        let val = Some(ch.as_ascii().unwrap().to_u8());
+        *self.next.lock().unwrap() = val;
+        val
     }
 
-    fn poll_input(&self) -> Option<u8> {
-        todo!()
+    fn consume(&self) {
+        *self.next.lock().unwrap() = None;
     }
 }
 
-const STDIO: StdIo = StdIo();
+impl Drop for StdIo {
+    fn drop(&mut self) {
+        let res = terminal::disable_raw_mode();
+        if let Err(e) = res {
+            error!("Error disabling raw mode: {e}");
+        }
+    }
+}
+
+
+impl Tty for StdIo {
+
+    fn handle_output(&self, val: u8) {
+        let mut stdout = stdout().lock();
+
+        if val == b'\n' {
+            let (_, rows) = terminal::size().unwrap();
+            let (_, row) = cursor::position().unwrap();
+            let scroll = if row + 1 == rows { 1 } else { 0 };
+
+            execute!(
+                stdout,
+                cursor::MoveToNextLine(1),
+                terminal::ScrollUp(scroll)
+            ).unwrap();
+        } else {
+            write!(stdout, "{}", ascii::Char::from_u8(val).unwrap()).unwrap();
+            stdout.flush().unwrap();
+        }
+    }
+
+    fn input_available(&self) -> bool {
+        self.poll_ch().is_some()
+    }
+
+    fn poll_input(&self) -> Option<u8> {
+        let val = self.poll_ch();
+        self.consume();
+        val
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -160,11 +243,13 @@ impl Teletype {
     const TPS_READY_MASK: u8 = 0x1 << Self::TPS_READY_SHIFT;
 
     // Takes 100 ms to type a character.
-    // I'm going to arbitrarily choose a fixed 5 us per instruction.
-    const PRINT_DELAY_TICKS: usize = 20_000;
+    // I'm going to arbitrarily choose a fixed 10 us per instruction.
+    // (With a delay of 10,000, it can print (very roughly) 10 char/s, which
+    // is in line with the manual).
+    const PRINT_DELAY_TICKS: usize = 10_000;
 
     pub fn new_to_stdout() -> Self {
-        Self::new(Arc::new(STDIO))
+        Self::new(Arc::new(StdIo::new()))
     }
 
     pub fn new(device: Arc<dyn Tty>) -> Self {
@@ -220,7 +305,6 @@ impl Teletype {
     fn tkb_read(&mut self) -> u8 {
         if let Some(ch) = self.device.poll_input() {
             self.keyboard_interrupt_accepted = false;
-            println!("keyboard returned '{}'", ch as char);
             return ch;
         }
         error!("Teletype: read of TKB when no character is available");

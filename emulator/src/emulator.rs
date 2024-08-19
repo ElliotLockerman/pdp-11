@@ -13,10 +13,21 @@ use std::convert::TryFrom;
 use std::ops::{BitOr, BitAnd};
 use std::sync::{Arc, Mutex};
 use std::cmp::Ordering;
+use std::sync::atomic::{self, AtomicBool};
 
 use log::{debug, trace};
 use num_traits::{ToPrimitive, FromPrimitive};
 use delegate::delegate;
+
+static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
+
+pub fn quit() {
+    SHOULD_QUIT.store(true, atomic::Ordering::Relaxed);
+}
+
+fn should_quit() -> bool {
+    SHOULD_QUIT.load(atomic::Ordering::Relaxed)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Size {
@@ -72,6 +83,7 @@ pub enum ExecRet {
     Ok,
     Halt,
     Wait,
+    Quit,
 }
 
 
@@ -92,14 +104,23 @@ impl Emulator {
         emu
     }
 
-    // Run until a halt.
-    pub fn run(&mut self) {
-        while self.run_ins() != ExecRet::Halt {}
+    // Run until a halt or quit.
+    pub fn run(&mut self) -> ExecRet {
+        loop {
+            let ret = self.run_ins();
+            if matches!(ret, ExecRet::Halt | ExecRet::Quit) {
+                return ret;
+            }
+        }
     }
 
     // Run a single instruction, letting each device get a time slice and potentially
     // generating an interrupt.
     pub fn run_ins(&mut self) -> ExecRet {
+        if should_quit() {
+            return ExecRet::Quit;
+        }
+
         // TODO: better timing model
         self.state.inc_ins();
 
