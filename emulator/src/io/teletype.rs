@@ -1,6 +1,6 @@
 
 use std::io::{stdout, Write};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, atomic::AtomicU32, atomic::Ordering};
 use std::collections::VecDeque;
 use std::time::Duration;
 use std::ascii;
@@ -23,18 +23,21 @@ pub trait Tty: Send + Sync {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 struct StdIo {
-    next: Arc<Mutex<Option<u8>>>,
+    next: Mutex<Option<u8>>,
+    count: AtomicU32,
 }
 
 impl StdIo {
     const POLL_TIME_NS: u64 = 0;
+    const POLL_PERIOD: u32 = 13;
 
     fn new() -> StdIo {
         terminal::enable_raw_mode().unwrap();
         StdIo {
-            next: Arc::new(Mutex::new(None)),
+            next: Mutex::new(None),
+            count: AtomicU32::new(0),
         }
     }
 
@@ -44,11 +47,19 @@ impl StdIo {
             return next;
         }
 
+        // poll() is very slow, if we haven't just seen a character, call it less frequently.
+        if self.count.load(Ordering::Relaxed) > 0 {
+            self.count.fetch_sub(1, Ordering::Relaxed);
+            return None;
+        }
+
         if !poll(Duration::from_nanos(Self::POLL_TIME_NS)).unwrap() {
+            self.count.store(Self::POLL_PERIOD, Ordering::Relaxed);
             return None;
         }
 
         let Event::Key(event) = read().unwrap() else {
+            self.count.fetch_sub(1, Ordering::Relaxed);
             return None;
         };
 
@@ -243,10 +254,8 @@ impl Teletype {
     const TPS_READY_MASK: u8 = 0x1 << Self::TPS_READY_SHIFT;
 
     // Takes 100 ms to type a character.
-    // I'm going to arbitrarily choose a fixed 10 us per instruction.
-    // (With a delay of 10,000, it can print (very roughly) 10 char/s, which
-    // is in line with the manual).
-    const PRINT_DELAY_TICKS: usize = 10_000;
+    // I'm going to arbitrarily choose a fixed 5 us per instruction.
+    const PRINT_DELAY_TICKS: usize = 20_000;
 
     pub fn new_to_stdout() -> Self {
         Self::new(Arc::new(StdIo::new()))
