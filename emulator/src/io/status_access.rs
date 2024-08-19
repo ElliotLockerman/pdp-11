@@ -28,7 +28,7 @@ impl MMIOHandler for StatusAccess {
     fn write_word(&mut self,  state: &mut EmulatorState, addr: u16, val: u16) {
         assert_eq!(addr, Self::ADDR);
         assert_eq!(val & !0xff, 0);
-        *state.get_status_mut() = Status::from_raw(val);
+        state.set_status(Status::from_raw(val));
     }
 
     fn write_byte(&mut self, state: &mut EmulatorState, addr: u16, val: u8) {

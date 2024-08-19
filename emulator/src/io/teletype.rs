@@ -328,6 +328,14 @@ impl MMIOHandler for Teletype {
             todo!()
         }
 
+        if self.tps_ticks_until_ready == 1 {
+            self.printer_interrupt_accepted = false;
+        }
+        self.tps_ticks_until_ready = self.tps_ticks_until_ready.saturating_sub(1);
+        if self.tps_ticks_until_ready == 0 {
+            self.tps_ready = true;
+        }
+
         // Keyboard gets priority.
         if self.device.input_available()
             && self.tks_interrupt_enabled
@@ -337,23 +345,9 @@ impl MMIOHandler for Teletype {
             return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::KEY_VECTOR});
         }
 
-        if self.tps_ticks_until_ready == 0 {
-            assert!(self.tps_ready);
-            if self.tps_interrupt_enabled && !self.printer_interrupt_accepted {
-                self.printer_interrupted = true;
-                return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::PRINT_VECTOR});
-            }
-            return None;
-        }
-
-        self.tps_ticks_until_ready -= 1;
-        if self.tps_ticks_until_ready == 0 {
-            self.tps_ready = true;
-            self.printer_interrupt_accepted = false;
-            if self.tps_interrupt_enabled {
-                self.printer_interrupted = true;
-                return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::PRINT_VECTOR});
-            }
+        if self.tps_ready && self.tps_interrupt_enabled & !self.printer_interrupt_accepted {
+            self.printer_interrupted = true;
+            return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::PRINT_VECTOR});
         }
 
         None
