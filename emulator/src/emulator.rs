@@ -253,7 +253,7 @@ impl Emulator {
     }
 
     pub fn mem_write_word(&mut self, addr: u16, val: u16) {
-        assert!(addr & 1 == 0, "Word write of 0o{addr:o} not aligned");
+        assert!(addr & 1 == 0, "Word write of {val:#o} to {addr:#o} not aligned");
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
                 handler.lock().unwrap().write_word(&mut self.state, addr, val);
