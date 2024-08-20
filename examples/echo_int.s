@@ -56,16 +56,14 @@ main_loop:
     ; dropped.
     mov     #line_queue, r0
     jsr     pc, byte_queue_len
-    cmp     #LINE_LEN, r0
-    beq     main_loop
+    cmp     r0, #LINE_LEN
+    bge     main_loop
 
     ; Echo the character and push for later.
     mov     r1, r0
     jsr     pc, printer_push
     mov     #line_queue, r0
-    jsr     pc, byte_queue_push
-    tst     r0
-    beq     error
+    jsr     pc, byte_queue_push ; We checked the length, so this can't fail.
 
     br main_loop
 
@@ -95,18 +93,6 @@ line_buf:
 
 .even
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; fn error()
-; Print "err" and halt
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-error:
-    mov     #'e, r0
-    jsr     pc, print_blocking
-    mov     #'r, r0
-    jsr     pc, print_blocking 
-    mov     #'r, r0
-    jsr     pc, print_blocking
-    halt
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; fn print_push_queue(r0 queue: &Queue)
@@ -136,19 +122,6 @@ printer_push_queue_done:
     rts     pc
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; fn print_blocking(r0 char: u8)
-; Blocks until ready to print, then prints r0.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Blocks until ready to print; prints char passed r0 without modifying it.
-print_blocking:
-    ; Loop until the teletype is ready to accept another character.
-    bicb #TPS_READY_CMASK, @#TPS
-    beq  print_blocking
-
-    movb r0, @#TPB
-    rts  pc  
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; fn printer_push(r0 char: u8)
@@ -156,15 +129,20 @@ print_blocking:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 printer_push:
     mov     r1, -(sp)
-
     movb    r0, r1
+
+printer_push_loop:
     mov     #print_queue, r0
     bis     #PRIO7, @#STATUS
     jsr     pc, byte_queue_push 
-    tst     r0
-    beq     error
     bic     #PRIO7, @#STATUS
+    tst     r0
+    bne     printer_push_done
 
+    wait
+    br      printer_push_loop
+
+printer_push_done:
     ; The printer interrupt will disable interrupts once the queue is empty.
     ; enable interrupts in case that has occured to start up printing again.
     bis     #TPS_INT_ENB, @#TPS
