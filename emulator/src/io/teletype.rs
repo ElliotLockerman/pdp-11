@@ -280,7 +280,15 @@ impl Teletype {
 
     fn tps_write(&mut self, val: u8) {
         self.tps_maintenance_control = (val & Self::TPS_MAINT_MASK) != 0;
+        let were_enabled = self.tps_interrupt_enabled; 
         self.tps_interrupt_enabled = (val & Self::TPS_INT_ENB_MASK) != 0;
+        if were_enabled && !self.tps_interrupt_enabled {
+            // This might be too much of a hack, but I need a way to clear
+            // this flag even if the printer interrupt handler never prints.
+            // My handler happens to disable interrupts if it doesn't print.
+            // A general solution is still needed.
+            self.printer_interrupt_accepted = false;
+        }
 
         // Ignore writes to ready
     }

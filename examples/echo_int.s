@@ -4,6 +4,7 @@
     TPS = 177564
     TPB = TPS + 2
     TPS_READY_CMASK = 177
+    TPS_INT_ENB = 100
     TKS = 177560
     TKB = TKS + 2
     TKS_DONE_CMASK = 177577
@@ -12,12 +13,14 @@
     LINE_LEN = 72
     KEYBOARD_BUF_LEN = LINE_LEN + LINE_LEN
     LINE_BUF_LEN = LINE_LEN + 1 ; line + \n
+    PRINT_BUF_LEN = LINE_LEN + LINE_LEN + LINE_LEN
 
     STATUS = 177776
     PRIO7 = 340
 
     . = 60
     .word keyboard, PRIO7
+    .word printer, PRIO7
 
     . = 400
 
@@ -25,8 +28,9 @@
 ; fn _start()
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 _start:
-    mov #STACK_TOP, sp
-    mov #TKS_INT_ENB, @#TKS
+    mov     #STACK_TOP, sp
+    bis     #TKS_INT_ENB, @#TKS
+    bis     #TPS_INT_ENB, @#TPS
 
 main_wait:
     wait
@@ -57,33 +61,26 @@ main_loop:
 
     ; Echo the character and push for later.
     mov     r1, r0
-    jsr     pc, print
+    jsr     pc, printer_push
     mov     #line_queue, r0
     jsr     pc, byte_queue_push
     tst     r0
-    beq     main_error
+    beq     error
 
     br main_loop
 
 main_nl:
     ; If the character was \n, we have room reserved, echo it, push it and print the line.
     movb    r1, r0
-    jsr     pc, print
+    jsr     pc, printer_push
     mov     #line_queue, r0
     jsr     pc, byte_queue_push
+
     mov     #line_queue, r0
-    jsr     pc, print_queue 
+    jsr     pc, printer_push_queue
 
     br main_loop
 
-main_error:
-    mov     #'e, r0
-    jsr     pc, print
-    mov     #'r, r0
-    jsr     pc, print
-    mov     #'r, r0
-    jsr     pc, print
-    halt
 
 
 line_queue:
@@ -99,29 +96,131 @@ line_buf:
 .even
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; fn print_queue(r0 queue: &Queue)
+; fn error()
+; Print "err" and halt
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-print_queue:
-    mov     r1, -(sp)
-    mov     r2, -(sp)
-    
-    mov     r0, r2  ; Save queue
+error:
+    mov     #'e, r0
+    jsr     pc, print_blocking
+    mov     #'r, r0
+    jsr     pc, print_blocking 
+    mov     #'r, r0
+    jsr     pc, print_blocking
+    halt
 
-print_queue_loop:
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; fn print_push_queue(r0 queue: &Queue)
+; Pop all elements from queue and push on print queue.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+printer_push_queue:
+    mov r1, -(sp)
+    mov r2, -(sp)
+
+    mov     r0, r2
+
+printer_push_queue_loop:
     mov     r2, r0
+    mov     #line_queue, r0
     jsr     pc, byte_queue_pop
-    tstb    r0
-    beq     print_queue_done
-
+    tst     r0
+    beq     printer_push_queue_done
+    
     movb    r1, r0
-    jsr     pc, print
+    jsr     pc, printer_push
+    br      printer_push_queue_loop
 
-    br      print_queue_loop
 
-print_queue_done:
+printer_push_queue_done:
     mov     (sp)+, r2
     mov     (sp)+, r1
     rts     pc
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; fn print_blocking(r0 char: u8)
+; Blocks until ready to print, then prints r0.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Blocks until ready to print; prints char passed r0 without modifying it.
+print_blocking:
+    ; Loop until the teletype is ready to accept another character.
+    bicb #TPS_READY_CMASK, @#TPS
+    beq  print_blocking
+
+    movb r0, @#TPB
+    rts  pc  
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; fn printer_push(r0 char: u8)
+; Enqueues character to be printed.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+printer_push:
+    mov     r1, -(sp)
+
+    movb    r0, r1
+    mov     #print_queue, r0
+    bis     #PRIO7, @#STATUS
+    jsr     pc, byte_queue_push 
+    tst     r0
+    beq     error
+    bic     #PRIO7, @#STATUS
+
+    ; The printer interrupt will disable interrupts once the queue is empty.
+    ; enable interrupts in case that has occured to start up printing again.
+    bis     #TPS_INT_ENB, @#TPS
+
+    mov     (sp)+, r1
+    rts     pc
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; fn printer()
+; Received printer interrupt.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+printer:
+    mov r0, -(sp)
+    mov r1, -(sp)
+    mov r2, -(sp)
+    mov r3, -(sp)
+    mov r4, -(sp)
+    mov r5, -(sp)
+
+    mov     #print_queue, r0
+    jsr     pc, byte_queue_pop 
+    tst     r0
+    bne     printer_do_print
+
+    ; print queue was empty. Disabled interrupts so when printer_enqueue is called,
+    ; it can reenabled interrupts and get this called again.
+    bic     #TPS_INT_ENB, @#TPS
+    br      printer_done
+
+printer_do_print:
+    movb    r1, @#TPB
+
+printer_done:
+    mov (sp)+, r5
+    mov (sp)+, r4
+    mov (sp)+, r3
+    mov (sp)+, r2
+    mov (sp)+, r1
+    mov (sp)+, r0
+    rti
+
+
+print_queue:
+    .word print_buf     ; buf
+    .word 0             ; head
+    .word 0             ; tail
+    .word PRINT_BUF_LEN ; cap
+    .word 0             ; len
+
+print_buf:
+    . = . + PRINT_BUF_LEN
+
+.even
+
+
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
