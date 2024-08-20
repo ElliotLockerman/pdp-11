@@ -192,7 +192,6 @@ pub struct Teletype {
     tps_ticks_until_ready: usize,
 
     tks_interrupt_enabled: bool,
-    keyboard_interrupt_accepted: bool,
     keyboard_interrupted: bool,
 }
 
@@ -274,7 +273,6 @@ impl Teletype {
 
             tks_interrupt_enabled: false,
             keyboard_interrupted: false,
-            keyboard_interrupt_accepted: false,
         }
     }
 
@@ -283,10 +281,10 @@ impl Teletype {
         let were_enabled = self.tps_interrupt_enabled; 
         self.tps_interrupt_enabled = (val & Self::TPS_INT_ENB_MASK) != 0;
         if were_enabled && !self.tps_interrupt_enabled {
-            // This might be too much of a hack, but I need a way to clear
-            // this flag even if the printer interrupt handler never prints.
-            // My handler happens to disable interrupts if it doesn't print.
-            // A general solution is still needed.
+            // If printer interrupts are disabled while tps_ready, clear this flag 
+            // so when printer interrupts are reenabled, a new interrupt is fired.
+            // (Not clear if this is the actual hardware behavior, but it seems
+            // reasonable enough).
             self.printer_interrupt_accepted = false;
         }
 
@@ -321,7 +319,6 @@ impl Teletype {
 
     fn tkb_read(&mut self) -> u8 {
         if let Some(ch) = self.device.poll_input() {
-            self.keyboard_interrupt_accepted = false;
             return ch;
         }
         error!("Teletype: read of TKB when no character is available");
@@ -345,9 +342,7 @@ impl MMIOHandler for Teletype {
         }
 
         // Keyboard gets priority.
-        if self.device.input_available()
-            && self.tks_interrupt_enabled
-            && !self.printer_interrupt_accepted {
+        if self.device.input_available() && self.tks_interrupt_enabled {
 
             self.keyboard_interrupted = true;
             return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::KEY_VECTOR});
@@ -397,7 +392,6 @@ impl MMIOHandler for Teletype {
     fn interrupt_accepted(&mut self) {
         if self.keyboard_interrupted {
             self.keyboard_interrupted = false;
-            self.keyboard_interrupt_accepted = true;
         } else if self.printer_interrupted {
             self.printer_interrupted = false;
             self.printer_interrupt_accepted = true;
