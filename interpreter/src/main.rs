@@ -16,6 +16,10 @@ struct Args {
     /// Symbol at which to start executing
     #[arg(long, default_value="_start")]
     start: String,
+
+    /// Print symbols.
+    #[arg(long)]
+    dump_symbols: bool,
 }
 
 
@@ -25,6 +29,13 @@ fn main() {
     let opt = Args::parse();
     let input = std::fs::read_to_string(opt.input).unwrap();
     let (bin, symbols) = assemble_with_symbols(input.as_str());
+
+    if opt.dump_symbols {
+        eprintln!("symbols: \n");
+        for (k, v) in &symbols {
+            eprintln!("{k}:\t{v:#o}")
+        }
+    }
 
     let mut emu = Emulator::new();
     emu.set_mmio_handler(Teletype::default());
