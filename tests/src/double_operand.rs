@@ -16,16 +16,16 @@ fn run(
         {ins} r0, r1
         halt
     "#);
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.reg_write_word(Reg::R0, r0_init);
     emu.reg_write_word(Reg::R1, r1_init);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), r0_init);
     assert_eq!(emu.reg_read_word(Reg::R1), r1_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 }
 
 

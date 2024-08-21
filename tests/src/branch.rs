@@ -16,9 +16,9 @@ fn run(ins: &str, flags: u16, should_take: bool) {
         halt
     "#);
 
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.get_state_mut().get_status_mut().set_flags(flags);
     emu.run_at(DATA_START);
     let r0 = emu.reg_read_word(Reg::R0);

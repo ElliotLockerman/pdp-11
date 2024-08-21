@@ -13,13 +13,13 @@ fn run(
         {ins}
         halt
     "#);
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.get_state_mut().get_status_mut().set_flags(flags_init);
     emu.run_at(DATA_START);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 }
 
 #[test]

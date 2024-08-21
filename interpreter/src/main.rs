@@ -1,5 +1,5 @@
 
-use as_lib::assemble_with_symbols;
+use as_lib::assemble;
 use emu_lib::Emulator;
 use emu_lib::io::teletype::Teletype;
 use emu_lib::io::clock::Clock;
@@ -28,12 +28,12 @@ fn main() {
 
     let opt = Args::parse();
     let input = std::fs::read_to_string(opt.input).unwrap();
-    let (bin, symbols) = assemble_with_symbols(input.as_str());
+    let prog = assemble(input.as_str());
 
     if opt.dump_symbols {
         eprintln!("symbols: \n");
-        for (k, v) in &symbols {
-            eprintln!("{k}:\t{v:#o}")
+        for sym in &prog.symbols {
+            eprintln!("{sym:?}")
         }
     }
 
@@ -41,9 +41,9 @@ fn main() {
     emu.set_mmio_handler(Teletype::default());
     emu.set_mmio_handler(Clock::default());
 
-    emu.load_image(&bin, 0);
-    let Some(start) = symbols.get(&opt.start) else {
+    emu.load_image(&prog.text, 0);
+    let Some(start) = prog.symbols.get(&opt.start) else {
         panic!("Start symbol {} not found", opt.start);
     };
-    emu.run_at(*start);
+    emu.run_at(start.val);
 }

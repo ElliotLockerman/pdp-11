@@ -1,5 +1,5 @@
 
-use as_lib::{assemble, assemble_with_symbols};
+use as_lib::assemble;
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
@@ -8,7 +8,7 @@ use std::assert_matches::assert_matches;
 
 #[test]
 fn looop() {
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         clr r0
     loop:
         inc r0
@@ -18,15 +18,15 @@ fn looop() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o12, "r0");
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 }
 
 #[test]
 fn strcpy() {
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         br start
     out:
         . = . + 16
@@ -50,7 +50,7 @@ fn strcpy() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
     emu.run_at(0);
 
     let expected = b"  hello, world!\0";
@@ -65,7 +65,7 @@ fn strcpy() {
 
 #[test]
 fn fib() {
-    let bin = assemble(r#"
+    let prog = assemble(r#"
     br start
 
     out:
@@ -126,7 +126,7 @@ fn fib() {
 
 
     let mut emu = Emulator::new();
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
     emu.run_at(0);
 
     fn fib(i: u16) -> u16 {
@@ -198,9 +198,9 @@ fn unsigned_mul() {
         mov (sp)+, r2
         rts pc
     "#;
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
 
     let mut run = |lhs, rhs| {
         emu.reg_write_word(Reg::R0, lhs);
@@ -402,20 +402,19 @@ fn byte_queue() {
         . = . + BUF_LEN
     "#.to_owned();
 
-    let (bin, symbols) = assemble_with_symbols(&(harness + queue));
+    let prog = assemble(&(harness + queue));
 
-    eprintln!("symbols: {:?}", symbols);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
 
     let push = |emu: &mut Emulator, val: u16| -> u16 {
         emu.reg_write_word(Reg::R1, val);
-        emu.run_at(*symbols.get("call_push").unwrap());
+        emu.run_at(prog.symbols.get("call_push").unwrap().val);
         emu.reg_read_word(Reg::R0)
     };
 
     let pop = |emu: &mut Emulator| -> (u16, u16) {
-        emu.run_at(*symbols.get("call_pop").unwrap());
+        emu.run_at(prog.symbols.get("call_pop").unwrap().val);
         (
             emu.reg_read_word(Reg::R0),
             emu.reg_read_word(Reg::R1),
@@ -423,17 +422,17 @@ fn byte_queue() {
     };
 
     let len = |emu: &mut Emulator| -> u16 {
-        emu.run_at(*symbols.get("call_len").unwrap());
+        emu.run_at(prog.symbols.get("call_len").unwrap().val);
         emu.reg_read_word(Reg::R0)
     };
 
     let full = |emu: &mut Emulator| -> u16 {
-        emu.run_at(*symbols.get("call_full").unwrap());
+        emu.run_at(prog.symbols.get("call_full").unwrap().val);
         emu.reg_read_word(Reg::R0)
     };
 
     let empty = |emu: &mut Emulator| -> u16 {
-        emu.run_at(*symbols.get("call_empty").unwrap());
+        emu.run_at(prog.symbols.get("call_empty").unwrap().val);
         emu.reg_read_word(Reg::R0)
     };
 
@@ -466,7 +465,7 @@ fn byte_queue() {
     assert_eq!(empty(&mut emu), 1);
     assert_matches!(pop(&mut emu), (0, _));
 
-    let count = *symbols.get("BUF_LEN").unwrap();
+    let count = prog.symbols.get("BUF_LEN").unwrap().val;
     for i in 1..=count {
         assert_eq!(push(&mut emu, i), 1);
         assert_eq!(full(&mut emu), (i == count) as u16);

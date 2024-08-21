@@ -1,5 +1,5 @@
 
-use as_lib::assemble_with_symbols;
+use as_lib::assemble;
 use emu_lib::{Emulator, ExecRet};
 use emu_lib::io::teletype::*;
 use emu_lib::io::clock::{Clock, FakeClock};
@@ -11,15 +11,15 @@ use std::io::BufRead;
 
 #[test]
 fn hello() {
-    let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/hello.s"));
+    let prog = assemble(include_str!("../../examples/hello.s"));
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler_for(teletype, [Teletype::TPS, Teletype::TPB]);
 
-    emu.load_image(&bin, 0);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
 
     let mut buf = tty.take_output();
     buf.make_contiguous();
@@ -72,14 +72,14 @@ fn hello_spin() {
         rts pc  
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
-    emu.load_image(&bin, 0);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
 
     let mut buf = tty.take_output();
     buf.make_contiguous();
@@ -89,15 +89,15 @@ fn hello_spin() {
 
 #[test]
 fn clock() {
-    let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/timer_ticks.s"));
+    let prog = assemble(include_str!("../../examples/timer_ticks.s"));
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
     emu.set_mmio_handler(Clock::default());
-    emu.load_image(&bin, 0);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
 
     let mut buf = tty.take_output();
     buf.make_contiguous();
@@ -172,7 +172,7 @@ fn fake_clock() {
         rts pc  
 
     "#);
-    let (bin, symbols) = assemble_with_symbols(&asm);
+    let prog = assemble(&asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -182,10 +182,10 @@ fn fake_clock() {
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
     emu.set_mmio_handler(clock);
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
     emu.reg_write_word(Reg::SP, 0o150000);
     emu.mem_write_byte(FakeClock::LKS, 0x1 << FakeClock::INT_ENB_SHIFT);
-    let start = *symbols.get("_start").unwrap();
+    let start = prog.symbols.get("_start").unwrap().val;
 
     let thread = thread::spawn(move || {
         emu.run_at(start);
@@ -209,15 +209,15 @@ fn fake_clock() {
 
 #[test]
 fn threads() {
-    let (bin, symbols) = assemble_with_symbols(include_str!("../../examples/threads.s"));
+    let prog = assemble(include_str!("../../examples/threads.s"));
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
     emu.set_mmio_handler(Clock::default());
-    emu.load_image(&bin, 0);
-    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.reg_write_word(Reg::PC, prog.symbols.get("_start").unwrap().val);
 
     for _ in 0..250_000 {
         let ret = emu.run_ins();
@@ -261,7 +261,7 @@ fn prio() {
         halt
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(&asm);
+    let prog = assemble(&asm);
 
     let clock = FakeClock::default();
     let striker = clock.get_striker();
@@ -269,8 +269,8 @@ fn prio() {
     let mut emu = Emulator::new();
     emu.set_mmio_handler(clock);
     striker.strike();
-    emu.load_image(&bin, 0);
-    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.reg_write_word(Reg::PC, prog.symbols.get("_start").unwrap().val);
 
     striker.strike();
     emu.run();
@@ -308,7 +308,7 @@ fn prio() {
         halt
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(&asm);
+    let prog = assemble(&asm);
 
     let clock = FakeClock::default();
     let striker = clock.get_striker();
@@ -316,8 +316,8 @@ fn prio() {
     let mut emu = Emulator::new();
     emu.set_mmio_handler(clock);
     striker.strike();
-    emu.load_image(&bin, 0);
-    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.reg_write_word(Reg::PC, prog.symbols.get("_start").unwrap().val);
 
     striker.strike();
     emu.run();
@@ -361,7 +361,7 @@ fn prio() {
         halt
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(&asm);
+    let prog = assemble(&asm);
 
     let clock = FakeClock::default();
     let striker = clock.get_striker();
@@ -369,8 +369,8 @@ fn prio() {
     let mut emu = Emulator::new();
     emu.set_mmio_handler(clock);
     striker.strike();
-    emu.load_image(&bin, 0);
-    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.reg_write_word(Reg::PC, prog.symbols.get("_start").unwrap().val);
 
     striker.strike();
     emu.run();
@@ -396,16 +396,16 @@ fn pipe_keyboard_spin() {
         halt
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
     let val = 0o23u8;
     tty.push_input(val);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
     assert_eq!(emu.reg_read_byte(Reg::R0), val);
 }
 
@@ -450,7 +450,7 @@ fn pipe_echo_spin() {
         rts  pc  
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -459,8 +459,8 @@ fn pipe_echo_spin() {
     
     let input = b"Hello, world!\n";
     tty.write_input(input);
-    emu.load_image(&bin, 0);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
 
     let mut buf = tty.take_output();
     buf.make_contiguous();
@@ -472,7 +472,7 @@ fn pipe_echo_spin() {
 fn pipe_echo_spin_line() {
     let asm = include_str!("../../examples/echo_spin.s");
 
-    let (bin, symbols) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -491,9 +491,9 @@ fn pipe_echo_spin_line() {
         tty.write_input(line);
         tty.push_input(b'\n');
     }
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
 
-    emu.reg_write_word(Reg::PC, *symbols.get("_start").unwrap());
+    emu.reg_write_word(Reg::PC, prog.symbols.get("_start").unwrap().val);
     for _ in 0..1_000_000 {
         let ret = emu.run_ins();
         if ret == ExecRet::Halt {
@@ -566,18 +566,18 @@ fn pipe_keyboard_interrupt() {
         .word buf
     "#;
 
-    let (bin, symbols) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
-    emu.load_image(&bin, 0);
+    emu.load_image(&prog.text, 0);
     let msg = b"foo bar baz\0";
     tty.write_input(msg);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
 
-    let buf = *symbols.get("buf").unwrap();
+    let buf = prog.symbols.get("buf").unwrap().val;
     for (i, ch) in msg.iter().enumerate() {
         assert_eq!(emu.mem_read_byte(buf + i as u16), *ch);
     }

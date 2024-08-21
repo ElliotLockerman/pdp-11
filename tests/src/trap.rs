@@ -1,15 +1,15 @@
 
-use as_lib::assemble_with_symbols;
+use as_lib::assemble;
 use emu_lib::Emulator;
 use common::asm::Reg;
 
 // Assumes "proper" halt is last ins in binary
 fn run(asm: &str) -> Emulator {
-    let (bin, sym) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, 0);
-    emu.run_at(*sym.get("_start").unwrap());
-    assert_eq!(emu.get_state().pc(), bin.len() as u16);
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
+    assert_eq!(emu.get_state().pc(), prog.text.len() as u16);
     emu
 }
 

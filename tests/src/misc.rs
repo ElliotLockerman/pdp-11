@@ -1,4 +1,4 @@
-use as_lib::{assemble, assemble_with_symbols};
+use as_lib::assemble;
 use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
@@ -6,7 +6,7 @@ use common::constants::DATA_START;
 #[test]
 #[should_panic]
 fn unaligned_a() {
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         jmp start
 
         . = 11
@@ -16,14 +16,14 @@ fn unaligned_a() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
 }
 
 #[test]
 #[should_panic]
 fn unaligned_b() {
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         jmp start
 
         .byte 0
@@ -33,13 +33,13 @@ fn unaligned_b() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
 }
 
 #[test]
 fn even() {
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         jmp start
 
         . = 10
@@ -50,12 +50,12 @@ fn even() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         jmp start
 
         . = 11
@@ -66,12 +66,12 @@ fn even() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         jmp start
 
         .word 0
@@ -82,12 +82,12 @@ fn even() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 
-    let bin = assemble(r#"
+    let prog = assemble(r#"
         jmp start
 
         .byte 0
@@ -98,10 +98,10 @@ fn even() {
         halt
     "#);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 }
 
 #[test]
@@ -115,14 +115,14 @@ fn cont() {
         mov #2, r0
         halt
     "#;
-    let (bin, symbols) = assemble_with_symbols(asm);
+    let prog = assemble(asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, 0);
-    emu.run_at(*symbols.get("_start").unwrap());
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
     assert_eq!(emu.reg_read_word(Reg::R0), 0);
     emu.cont();
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     emu.cont();
     assert_eq!(emu.reg_read_word(Reg::R0), 2);
-    assert_eq!(emu.reg_read_word(Reg::PC), bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len() as u16);
 }

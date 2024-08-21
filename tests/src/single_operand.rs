@@ -15,14 +15,14 @@ fn run(
         {ins} r0
         halt
     "#);
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.reg_write_word(Reg::R0, r0_init);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), r0_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 }
 
 #[test]
@@ -201,15 +201,15 @@ fn run_mp(
         {ins} r0
         halt
     "#);
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.reg_write_word(Reg::R0, r0_init);
     emu.get_state_mut().get_status_mut().set_flags(flags_init);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), r0_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + bin.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
 }
 
 #[test]

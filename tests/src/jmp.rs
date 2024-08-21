@@ -5,9 +5,9 @@ use common::constants::DATA_START;
 
 // asm must set r0 to 1 if the jsr wasn't successful, 2 if it was
 fn run(asm: &str) {
-    let bin = assemble(&asm);
+    let prog = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&bin, DATA_START);
+    emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     println!("pc: {:o}", emu.reg_read_word(Reg::PC));
     assert_eq!(emu.reg_read_word(Reg::R0), 2);
