@@ -8,6 +8,7 @@ use std::io::Write;
 use num_derive::{FromPrimitive, ToPrimitive};    
 use num_traits::{FromPrimitive, ToPrimitive};    
 use derive_more::{IsVariant, Unwrap};
+use delegate::delegate;
 
 
 pub trait InstrVariant<Opcode: FromPrimitive> {
@@ -972,18 +973,22 @@ pub enum Ins {
 }
 
 impl Ins {
-    pub fn num_extra(&self) -> u16 {
-        match self {
-            Ins::DoubleOperand(x) => x.num_extra(),
-            Ins::Branch(x) => x.num_extra(),
-            Ins::Jmp(x) => x.num_extra(),
-            Ins::Jsr(x) => x.num_extra(),
-            Ins::Rts(x) => x.num_extra(),
-            Ins::SingleOperand(x) => x.num_extra(),
-            Ins::Eis(x) => x.num_extra(),
-            Ins::CC(x) => x.num_extra(),
-            Ins::Misc(x) => x.num_extra(),
-            Ins::Trap(x) => x.num_extra(),
+    delegate! {
+        to match self {
+            Ins::DoubleOperand(x) => x,
+            Ins::Branch(x) => x,
+            Ins::Jmp(x) => x,
+            Ins::Jsr(x) => x,
+            Ins::Rts(x) => x,
+            Ins::SingleOperand(x) => x,
+            Ins::Eis(x) => x,
+            Ins::CC(x) => x,
+            Ins::Misc(x) => x,
+            Ins::Trap(x) => x,
+        } {
+            pub fn num_extra(&self) -> u16;
+            pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result;
+            pub fn emit(&self, out: &mut impl Write);
         }
     }
 
@@ -991,40 +996,9 @@ impl Ins {
         WORD_SIZE + WORD_SIZE * self.num_extra()
     }
 
-    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        match self {
-            Ins::DoubleOperand(x) => x.fmt_with_pc(f, pc),
-            Ins::Branch(x) => x.fmt_with_pc(f, pc),
-            Ins::Jmp(x) => x.fmt_with_pc(f, pc),
-            Ins::Jsr(x) => x.fmt_with_pc(f, pc),
-            Ins::Rts(x) => x.fmt_with_pc(f, pc),
-            Ins::SingleOperand(x) => x.fmt_with_pc(f, pc),
-            Ins::Eis(x) => x.fmt_with_pc(f, pc),
-            Ins::CC(x) => x.fmt_with_pc(f, pc),
-            Ins::Misc(x) => x.fmt_with_pc(f, pc),
-            Ins::Trap(x) => x.fmt_with_pc(f, pc),
-        }
-    }
-
     pub fn display_with_pc(&self, pc: u16) -> InsWithPc {
         InsWithPc(self, pc)
     }
-
-    pub fn emit(&self, out: &mut impl Write) {
-        match self {
-            Ins::DoubleOperand(x) => x.emit(out),
-            Ins::Branch(x) => x.emit(out),
-            Ins::Jmp(x) => x.emit(out),
-            Ins::Jsr(x) => x.emit(out),
-            Ins::Rts(x) => x.emit(out),
-            Ins::SingleOperand(x) => x.emit(out),
-            Ins::Eis(x) => x.emit(out),
-            Ins::CC(x) => x.emit(out),
-            Ins::Misc(x) => x.emit(out),
-            Ins::Trap(x) => x.emit(out),
-        }
-    }
-
 
     const DECODERS: &[Decoder] = &[
         DoubleOperandIns::decode,
