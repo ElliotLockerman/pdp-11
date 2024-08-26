@@ -354,11 +354,14 @@ impl Assembler {
         let lines = prog.split('\n');
         let parser = StmtParser::new();
 
-        let mut prog: Vec<Stmt> = lines
+        let prog: Vec<_> = lines
             .zip(1..)
-            .map(|(x,i)| {
-                parser.parse(x).unwrap_or_else(|e| panic!("Error line {}: {}", i, e))
-            })
+            .map(|(x, i)| parser.parse(x).map_err(|e| {
+                eprintln!("Error line {i}: {e}"); e
+            })).collect();
+
+        let mut prog: Vec<_> = prog.into_iter()
+            .map(|x| x.unwrap_or_else(|_| panic!("Exiting due to previous errors")))
             .filter(|x| !x.is_empty())
             .collect();
 
@@ -573,7 +576,7 @@ mod tests {
             c = 37
             mov #a, r0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        assemble(prog);
     }
 
     #[test]
