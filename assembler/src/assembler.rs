@@ -200,7 +200,7 @@ impl Assembler {
         }
     }
 
-    fn resolve_operand(&self, arg: &mut Operand, curr_addr: &mut u16, loc: u16) {
+    fn eval_operand(&self, arg: &mut Operand, curr_addr: &mut u16, loc: u16) {
         let val = match &arg.extra {
             Extra::None => return,
             Extra::Imm(expr) => {
@@ -232,7 +232,7 @@ impl Assembler {
         *curr_addr += WORD_SIZE;
     }
 
-    fn resolve_target(&self, target: &mut Target, curr_addr: u16) {
+    fn eval_target(&self, target: &mut Target, curr_addr: u16) {
         let offset = match target {
             Target::Offset(x) => *x,
             Target::Label(ref label) => {
@@ -250,7 +250,7 @@ impl Assembler {
 
     const MAX_ITER: i32 = 2;
 
-    fn resolve_and_eval(&mut self, prog: &mut [Stmt]) {
+    fn eval_prog(&mut self, prog: &mut [Stmt]) {
         for _ in 1..=Self::MAX_ITER {
             let mut addr: u16 = 0;
             for (l, stmt) in prog.iter_mut().enumerate() {
@@ -288,15 +288,15 @@ impl Assembler {
                     },
                     Cmd::Ins(ins) => {
                         match ins {
-                            Ins::Branch(ins) => self.resolve_target(&mut ins.target, addr),
+                            Ins::Branch(ins) => self.eval_target(&mut ins.target, addr),
                             Ins::DoubleOperand(ins) => {
-                                self.resolve_operand(&mut ins.src, &mut addr, loc);
-                                self.resolve_operand(&mut ins.dst, &mut addr, loc);
+                                self.eval_operand(&mut ins.src, &mut addr, loc);
+                                self.eval_operand(&mut ins.dst, &mut addr, loc);
                             },
-                            Ins::Jmp(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc),
-                            Ins::Jsr(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc),
-                            Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc),
-                            Ins::Eis(ins) => self.resolve_operand(&mut ins.operand, &mut addr, loc),
+                            Ins::Jmp(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                            Ins::Jsr(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                            Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                            Ins::Eis(ins) => self.eval_operand(&mut ins.operand, &mut addr, loc),
                             Ins::Trap(ins) => {
                                 if let Ok(val) = self.eval_expr(&ins.data, loc) {
                                     assert_eq!(val.val & !0xff, 0);
@@ -365,7 +365,7 @@ impl Assembler {
             .filter(|x| !x.is_empty())
             .collect();
 
-        self.resolve_and_eval(&mut prog);
+        self.eval_prog(&mut prog);
         self.check_resolved(&prog);
 
         for stmt in prog {
