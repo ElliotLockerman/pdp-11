@@ -173,6 +173,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "delegate",
  "derive_more",
  "num-derive",
  "num-traits",
