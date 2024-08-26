@@ -8,21 +8,24 @@ use common::asm::*;
 use common::constants::WORD_SIZE;
 
 use log::trace;
+use thiserror::Error;
+
+////////////////////////////////////////////////////////////////////////////////
 
 pub struct Program {
     pub text: Vec<u8>,
     pub symbols: HashMap<String, SymbolValue>,
 }
 
-pub fn assemble(prog: &str) -> Program {
-    Assembler::new().assemble(prog)
-}
+////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SymbolType {
     Regular,
     Label,
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -47,6 +50,8 @@ impl Mode {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Sect {
     Asect,
@@ -63,6 +68,8 @@ impl Sect {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
 #[derive(Debug, Clone, Copy)]
 pub struct Value {
     pub val: u16,
@@ -76,36 +83,53 @@ impl Value {
 }
 
 impl std::ops::Add<Value> for Value {
-    type Output = Option<Value>;
+    type Output = Result<Value, EvalError>;
     fn add(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Add, rhs.mode)?;
-        Some(Value{val: self.val.wrapping_add(rhs.val), mode})
+        let mode = Mode::op_mode(self.mode, Op::Add, rhs.mode)
+            .ok_or(EvalError::IllegalExpr(self, Op::Add, rhs))?;
+        Ok(Value{val: self.val.wrapping_add(rhs.val), mode})
     }
 }
 
 impl std::ops::Sub<Value> for Value {
-    type Output = Option<Value>;
+    type Output = Result<Value, EvalError>;
     fn sub(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Sub, rhs.mode)?;
-        Some(Value{val: self.val.wrapping_sub(rhs.val), mode})
+        let mode = Mode::op_mode(self.mode, Op::Sub, rhs.mode)
+            .ok_or(EvalError::IllegalExpr(self, Op::Sub, rhs))?;
+        Ok(Value{val: self.val.wrapping_sub(rhs.val), mode})
     }
 }
 
 impl std::ops::BitAnd<Value> for Value {
-    type Output = Option<Value>;
+    type Output = Result<Value, EvalError>;
     fn bitand(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::And, rhs.mode)?;
-        Some(Value{val: self.val & rhs.val, mode})
+        let mode = Mode::op_mode(self.mode, Op::And, rhs.mode)
+            .ok_or(EvalError::IllegalExpr(self, Op::And, rhs))?;
+        Ok(Value{val: self.val & rhs.val, mode})
     }
 }
 
 impl std::ops::BitOr<Value> for Value {
-    type Output = Option<Value>;
+    type Output = Result<Value, EvalError>;
     fn bitor(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Or, rhs.mode)?;
-        Some(Value{val: self.val | rhs.val, mode})
+        let mode = Mode::op_mode(self.mode, Op::Or, rhs.mode)
+            .ok_or(EvalError::IllegalExpr(self, Op::Or, rhs))?;
+        Ok(Value{val: self.val | rhs.val, mode})
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Debug, Error)]
+pub enum EvalError {
+    #[error("Unable to resolve symbol")]
+    SymbolUnresolved,
+
+    #[error("Illegal Expr: {0:?} {} {2:?}", .1.to_char())]
+    IllegalExpr(Value, Op, Value),
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
 pub struct SymbolValue {
@@ -129,12 +153,11 @@ impl SymbolValue {
 }
 
 
+////////////////////////////////////////////////////////////////////////////////
 
 struct Assembler {
     buf: Vec<u8>,
     symbols: HashMap<String, SymbolValue>,
-
-    iter: i32,
     sect: Sect,
 }
 
@@ -145,37 +168,27 @@ impl Assembler {
         Assembler{
             buf: Vec::new(),
             symbols: HashMap::new(),
-            iter: 0,
             sect: Sect::Asect, // TODO: default should be relocatable.
         }
     }
 
-    fn eval_atom(&self, atom: &Atom, loc: u16) -> Option<Value> {
+    fn eval_atom(&self, atom: &Atom, loc: u16) -> Result<Value, EvalError> {
         match atom {
-            Atom::Loc => Some(Value::new(loc, self.sect.mode())),
-            Atom::Val(val) => Some(Value::new(*val, Mode::Abs)),
-            Atom::SymbolRef(symbol) => {
-                let val = self.symbols.get(symbol).cloned();
-                if val.is_some() {
-                    val.map(|x| Value::new(x.val, x.mode))
-                } else if self.iter == Self::MAX_ITER {
-                    panic!("Can't resolve {}", atom.clone().unwrap_symbol_ref());
-                } else {
-                    None
-                }
-            }
+            Atom::Loc => Ok(Value::new(loc, self.sect.mode())),
+            Atom::Val(val) => Ok(Value::new(*val, Mode::Abs)),
+            Atom::SymbolRef(symbol) =>
+                self.symbols.get(symbol).cloned()
+                    .map(|x| Value::new(x.val, x.mode))
+                    .ok_or(EvalError::SymbolUnresolved),
         }
     }
 
-    fn eval_expr(&self, expr: &Expr, loc: u16) -> Option<Value> {
+    fn eval_expr(&self, expr: &Expr, loc: u16) -> Result<Value, EvalError> {
         match expr {
             Expr::Atom(atom) => self.eval_atom(atom, loc),
             Expr::Op(lhs, op, rhs) => {
-                let lhs = self.eval_expr(lhs, loc);
-                let rhs = self.eval_atom(rhs, loc);
-                let (Some(lhs), Some(rhs)) = (lhs, rhs) else {
-                    return None;
-                };
+                let lhs = self.eval_expr(lhs, loc)?;
+                let rhs = self.eval_atom(rhs, loc)?;
 
                 match op {
                     Op::Add => lhs + rhs,
@@ -192,7 +205,7 @@ impl Assembler {
             Extra::None => return,
             Extra::Imm(expr) => {
                 let val = self.eval_expr(expr, loc);
-                if let (Expr::Atom(Atom::SymbolRef(symbol)), Some(val)) = (expr, val) {
+                if let (Expr::Atom(Atom::SymbolRef(symbol)), Ok(val)) = (expr, &val) {
                     trace!("Resolving symbol \"{symbol}\" (imm) to val 0o{:o}, curr_addr: 0o{curr_addr:o}", val.val);
                 }
                 val
@@ -211,8 +224,10 @@ impl Assembler {
             }
         };
 
-        if let Some(val) = val {
-            arg.extra = Extra::Imm(Expr::Atom(Atom::Val(val.val)));
+        match val {
+            Ok(val) => arg.extra = Extra::Imm(Expr::Atom(Atom::Val(val.val))),
+            Err(EvalError::SymbolUnresolved) => (),
+            Err(e) => panic!("{e}"),
         }
         *curr_addr += WORD_SIZE;
     }
@@ -225,10 +240,8 @@ impl Assembler {
                     let dst = sym.val;
                     let addr = curr_addr as i32;
                     TryInto::<i8>::try_into((dst as i32 - addr - 2)/2).unwrap() as u8
-                } else if self.iter == Self::MAX_ITER {
-                    panic!("Label {} not found", label)
                 } else {
-                    return
+                    return;
                 }
             },
         };
@@ -238,11 +251,10 @@ impl Assembler {
     const MAX_ITER: i32 = 2;
 
     fn resolve_and_eval(&mut self, prog: &mut [Stmt]) {
-        self.iter = 0;
-        while self.iter < Self::MAX_ITER {
-            self.iter += 1;
+        for _ in 1..=Self::MAX_ITER {
             let mut addr: u16 = 0;
-            for (line, stmt) in prog.iter_mut().enumerate() {
+            for (l, stmt) in prog.iter_mut().enumerate() {
+                let line = l + 1;
 
                 if let Some(label) = &stmt.label_def {
                     let sym = SymbolValue::new(SymbolType::Label, Value::new(addr, self.sect.mode()), line);
@@ -261,9 +273,9 @@ impl Assembler {
                 let loc = addr;
                 match stmt.cmd.as_mut().unwrap() {
                     Cmd::SymbolDef(symbol, expr) => {
-                        if let Some(val) = self.eval_expr(expr, loc) {
+                        if let Ok(val) = self.eval_expr(expr, loc) {
                             let sym = SymbolValue::new(SymbolType::Regular, val, line);
-                            let existing = self.symbols.insert(symbol.clone(), sym);
+                            let existing = self.symbols.insert(symbol.clone(), sym.clone());
                             if let Some(existing) = existing {
                                 if existing.typ == SymbolType::Label {
                                     panic!("Symbol '{symbol}' on line {line} conflicts with label on line {}", existing.line);
@@ -271,6 +283,8 @@ impl Assembler {
                                 // Regular symbols are allowed to overwrite each other.
                             }
                         }
+                       
+                        
                     },
                     Cmd::Ins(ins) => {
                         match ins {
@@ -284,7 +298,7 @@ impl Assembler {
                             Ins::SingleOperand(ins) => self.resolve_operand(&mut ins.dst, &mut addr, loc),
                             Ins::Eis(ins) => self.resolve_operand(&mut ins.operand, &mut addr, loc),
                             Ins::Trap(ins) => {
-                                if let Some(val) = self.eval_expr(&ins.data, loc) {
+                                if let Ok(val) = self.eval_expr(&ins.data, loc) {
                                     assert_eq!(val.val & !0xff, 0);
                                     ins.data = Expr::Atom(Atom::Val(val.val)); 
                                 }
@@ -295,7 +309,7 @@ impl Assembler {
                     }
                     Cmd::Bytes(exprs) => {
                         for e in exprs {
-                            if let Some(val) = self.eval_expr(e, addr) {
+                            if let Ok(val) = self.eval_expr(e, addr) {
                                 *e = Expr::Atom(Atom::Val(val.val));
                             }
                             addr += 1;
@@ -303,14 +317,14 @@ impl Assembler {
                     }
                     Cmd::Words(exprs) => {
                         for e in exprs {
-                            if let Some(val) = self.eval_expr(e, addr) {
+                            if let Ok(val) = self.eval_expr(e, addr) {
                                 *e = Expr::Atom(Atom::Val(val.val));
                             }
                             addr += WORD_SIZE;
                         }
                     },
                     Cmd::LocDef(expr) => {
-                        if let Some(val) = self.eval_expr(expr, addr) {
+                        if let Ok(val) = self.eval_expr(expr, addr) {
                             assert!(val.val >= addr);
                             addr = val.val;
                             *expr = Expr::Atom(Atom::Val(addr))
@@ -323,6 +337,76 @@ impl Assembler {
                     },
                     _ => { addr += stmt.size().unwrap(); },
                 }
+            }
+        }
+    }
+
+    fn check_resolved(&self, prog: &[Stmt]) {
+        fn check_expr(expr: &Expr, line: usize) {
+            fn check_atom(atom: &Atom, line: usize) {
+                if let Atom::SymbolRef(sym) = atom {
+                    panic!("Line {line}: Symbol '{sym}' unresolved");
+                }
+            }
+
+            match expr {
+                Expr::Atom(atom) => check_atom(atom, line),
+                Expr::Op(lhs, _, rhs) => {
+                    check_expr(lhs, line);
+                    check_atom(rhs, line);
+                },
+            }
+        }
+
+        fn check_target(target: &Target, line: usize) {
+            if let Target::Label(label) = target {
+                panic!("Line {line}: Symbol '{label}' unresolved");
+            }
+        }
+
+        fn check_operand(op: &Operand, line: usize) {
+            match &op.extra {
+                Extra::None => (),
+                Extra::Imm(expr) => check_expr(expr, line),
+                Extra::Rel(expr) => check_expr(expr, line),
+            }
+        }
+
+        for (l, stmt) in prog.iter().enumerate() {
+            let line = l + 1;
+            if stmt.cmd.is_none() {
+                continue;
+            }
+            match stmt.cmd.as_ref().unwrap() {
+                Cmd::Ins(ins) => {
+                    match ins {
+                        Ins::Branch(ins) => check_target(&ins.target, line),
+                        Ins::DoubleOperand(ins) => {
+                            check_operand(&ins.src, line);
+                            check_operand(&ins.dst, line);
+                        },
+                        Ins::Jmp(ins) => check_operand(&ins.dst, line),
+                        Ins::Jsr(ins) => check_operand(&ins.dst, line),
+                        Ins::SingleOperand(ins) => check_operand(&ins.dst, line), 
+                        Ins::Eis(ins) => check_operand(&ins.operand, line), 
+                        Ins::Trap(ins) => check_expr(&ins.data, line),
+                        _ => (),
+                    }
+                },
+                Cmd::Bytes(exprs) => {
+                    for e in exprs {
+                        check_expr(e, line);
+                    }
+                },
+                Cmd::Words(exprs) => {
+                    for e in exprs {
+                        check_expr(e, line);
+                    }
+                },
+                Cmd::LocDef(expr) => {
+                    check_expr(expr, line);
+                },
+                _ => (),
             }
         }
     }
@@ -341,12 +425,18 @@ impl Assembler {
             .collect();
 
         self.resolve_and_eval(&mut prog);
+        self.check_resolved(&prog);
 
         for stmt in prog {
             stmt.emit(&mut self.buf);
         }
         Program{text: self.buf, symbols: self.symbols}
     }
+}
+
+
+pub fn assemble(prog: &str) -> Program {
+    Assembler::new().assemble(prog)
 }
 
 #[cfg(test)]
@@ -526,6 +616,7 @@ mod tests {
 
     #[test]
     fn forward_symbol() {
+        env_logger::init();
         let prog = r#"
             a = b
             b = 37

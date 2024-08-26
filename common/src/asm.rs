@@ -50,6 +50,18 @@ pub enum Op {
     Or,
 }
 
+impl Op {
+    pub fn to_char(&self) -> char {
+        use Op::*;
+        match self {
+            Add => '+',
+            Sub => '-',
+            And => '&',
+            Or => '!',
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
 pub enum Atom {
