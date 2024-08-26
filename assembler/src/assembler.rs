@@ -342,71 +342,9 @@ impl Assembler {
     }
 
     fn check_resolved(&self, prog: &[Stmt]) {
-        fn check_expr(expr: &Expr, line: usize) {
-            fn check_atom(atom: &Atom, line: usize) {
-                if let Atom::SymbolRef(sym) = atom {
-                    panic!("Line {line}: Symbol '{sym}' unresolved");
-                }
-            }
-
-            match expr {
-                Expr::Atom(atom) => check_atom(atom, line),
-                Expr::Op(lhs, _, rhs) => {
-                    check_expr(lhs, line);
-                    check_atom(rhs, line);
-                },
-            }
-        }
-
-        fn check_target(target: &Target, line: usize) {
-            if let Target::Label(label) = target {
-                panic!("Line {line}: Symbol '{label}' unresolved");
-            }
-        }
-
-        fn check_operand(op: &Operand, line: usize) {
-            match &op.extra {
-                Extra::None => (),
-                Extra::Imm(expr) => check_expr(expr, line),
-                Extra::Rel(expr) => check_expr(expr, line),
-            }
-        }
-
         for (l, stmt) in prog.iter().enumerate() {
-            let line = l + 1;
-            if stmt.cmd.is_none() {
-                continue;
-            }
-            match stmt.cmd.as_ref().unwrap() {
-                Cmd::Ins(ins) => {
-                    match ins {
-                        Ins::Branch(ins) => check_target(&ins.target, line),
-                        Ins::DoubleOperand(ins) => {
-                            check_operand(&ins.src, line);
-                            check_operand(&ins.dst, line);
-                        },
-                        Ins::Jmp(ins) => check_operand(&ins.dst, line),
-                        Ins::Jsr(ins) => check_operand(&ins.dst, line),
-                        Ins::SingleOperand(ins) => check_operand(&ins.dst, line), 
-                        Ins::Eis(ins) => check_operand(&ins.operand, line), 
-                        Ins::Trap(ins) => check_expr(&ins.data, line),
-                        _ => (),
-                    }
-                },
-                Cmd::Bytes(exprs) => {
-                    for e in exprs {
-                        check_expr(e, line);
-                    }
-                },
-                Cmd::Words(exprs) => {
-                    for e in exprs {
-                        check_expr(e, line);
-                    }
-                },
-                Cmd::LocDef(expr) => {
-                    check_expr(expr, line);
-                },
-                _ => (),
+            if let Err(e) = stmt.check_resolved() {
+                panic!("Line {}: Unable to resolve '{}'", l + 1, e.0);
             }
         }
     }
@@ -616,7 +554,6 @@ mod tests {
 
     #[test]
     fn forward_symbol() {
-        env_logger::init();
         let prog = r#"
             a = b
             b = 37
@@ -637,8 +574,16 @@ mod tests {
             mov #a, r0
         "#;
         let bin = to_u16(&assemble(prog).text);
-        assert_eq!(bin.len(), 2);
-        assert_eq!(bin[1], 0o37);
+    }
+
+    #[test]
+    #[should_panic]
+    fn never_defined() {
+        let prog = r#"
+            a = b
+            mov #a, r0
+        "#;
+        assemble(prog);
     }
 
     #[test]

@@ -83,6 +83,32 @@ impl Stmt {
             }
         }
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        if self.cmd.is_none() {
+            return Ok(());
+        }
+        match self.cmd.as_ref().unwrap() {
+            Cmd::Ins(ins) => {
+                ins.check_resolved()?;
+            },
+            Cmd::Bytes(exprs) => {
+                for e in exprs {
+                    e.check_resolved()?;
+                }
+            },
+            Cmd::Words(exprs) => {
+                for e in exprs {
+                    e.check_resolved()?;
+                }
+            },
+            Cmd::LocDef(expr) => {
+                expr.check_resolved()?;
+            },
+            _ => (),
+        }
+        Ok(())
+    }
 }
 
 
