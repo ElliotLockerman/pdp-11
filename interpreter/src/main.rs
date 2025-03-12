@@ -1,8 +1,7 @@
-
 use as_lib::{assemble, Mode};
-use emu_lib::Emulator;
-use emu_lib::io::teletype::Teletype;
 use emu_lib::io::clock::Clock;
+use emu_lib::io::teletype::Teletype;
+use emu_lib::Emulator;
 
 use clap::Parser;
 
@@ -14,14 +13,13 @@ struct Args {
     input: String,
 
     /// Symbol at which to start executing
-    #[arg(long, default_value="_start")]
+    #[arg(long, default_value = "_start")]
     start: String,
 
     /// Print symbols.
     #[arg(long)]
     dump_symbols: bool,
 }
-
 
 fn main() {
     env_logger::init();

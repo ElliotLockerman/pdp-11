@@ -1,8 +1,7 @@
-
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use emu_lib::Emulator;
 
 // asm must set r0 to 1 if the jsr wasn't successful, 2 if it was
 fn run(asm: &str) {
@@ -69,7 +68,6 @@ fn call_abs() {
     "#);
 }
 
-
 #[test]
 fn call_def() {
     run(r#"
@@ -83,7 +81,6 @@ fn call_def() {
         halt
     "#);
 }
-
 
 #[test]
 fn call_ret() {
@@ -142,5 +139,3 @@ fn call_reg() {
         jsr r1
     "#);
 }
-
-

@@ -1,13 +1,12 @@
-
 use as_lib::assemble;
-use emu_lib::{Emulator, ExecRet};
-use emu_lib::io::teletype::*;
-use emu_lib::io::clock::{Clock, FakeClock};
 use common::asm::Reg;
+use emu_lib::io::clock::{Clock, FakeClock};
+use emu_lib::io::teletype::*;
+use emu_lib::{Emulator, ExecRet};
 
+use std::io::BufRead;
 use std::sync::Arc;
 use std::thread;
-use std::io::BufRead;
 
 #[test]
 fn hello() {
@@ -108,7 +107,8 @@ fn clock() {
 #[test]
 fn fake_clock() {
     let times = 12;
-    let asm = format!(r#"
+    let asm = format!(
+        r#"
 
         LKS = 177546
 
@@ -171,7 +171,8 @@ fn fake_clock() {
         movb r0, @#TPB
         rts pc  
 
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
 
     let tty = Arc::new(PipeTty::default());
@@ -196,7 +197,7 @@ fn fake_clock() {
         striker.strike();
 
         while tty.is_out_empty() {
-            thread::yield_now(); 
+            thread::yield_now();
         }
         let val = tty.pop_output().unwrap();
         assert_eq!(val, b'.');
@@ -277,7 +278,6 @@ fn prio() {
 
     assert_eq!(emu.reg_read_word(Reg::R0), 3);
 
-
     // Check that we don't get interrupts when we raise the priority.
     let asm = r#"
         LKS = 177546
@@ -323,7 +323,6 @@ fn prio() {
     emu.run();
 
     assert_eq!(emu.reg_read_word(Reg::R0), 0);
-
 
     // Check that we get interrupts again once we lower the priority.
     let asm = r#"
@@ -456,7 +455,7 @@ fn pipe_echo_spin() {
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
-    
+
     let input = b"Hello, world!\n";
     tty.write_input(input);
     emu.load_image(&prog.text, 0);
@@ -465,7 +464,6 @@ fn pipe_echo_spin() {
     let mut buf = tty.take_output();
     buf.make_contiguous();
     assert_eq!(&buf, input);
-
 }
 
 #[test]
@@ -478,7 +476,7 @@ fn pipe_echo_spin_line() {
     let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
     emu.set_mmio_handler(teletype);
-    
+
     const LINE_LIMIT: usize = 72;
     let lines: &[Vec<u8>] = &[
         b"sadlkfa".into(),
@@ -582,4 +580,3 @@ fn pipe_keyboard_interrupt() {
         assert_eq!(emu.mem_read_byte(buf + i as u16), *ch);
     }
 }
-

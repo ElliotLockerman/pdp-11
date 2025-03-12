@@ -1,7 +1,6 @@
-
-pub mod teletype;
 pub mod clock;
 pub mod status_access;
+pub mod teletype;
 
 use crate::EmulatorState;
 
@@ -13,15 +12,17 @@ pub struct Interrupt {
 
 pub trait MMIOHandler: Send {
     fn reset(&mut self, _emu: &mut EmulatorState) {}
-    fn tick(&mut self, _emu: &mut EmulatorState) -> Option<Interrupt> { None }
+    fn tick(&mut self, _emu: &mut EmulatorState) -> Option<Interrupt> {
+        None
+    }
     fn interrupt_accepted(&mut self) {}
-    fn default_addrs(&self) -> &[u16] { &[] }
+    fn default_addrs(&self) -> &[u16] {
+        &[]
+    }
 
     fn read_byte(&mut self, emu: &mut EmulatorState, addr: u16) -> u8;
     fn read_word(&mut self, emu: &mut EmulatorState, addr: u16) -> u16;
 
-    fn write_byte(&mut self,  emu: &mut EmulatorState, addr: u16, val: u8);
-    fn write_word(&mut self,  emu: &mut EmulatorState, addr: u16, val: u16);
+    fn write_byte(&mut self, emu: &mut EmulatorState, addr: u16, val: u8);
+    fn write_word(&mut self, emu: &mut EmulatorState, addr: u16, val: u16);
 }
-
-

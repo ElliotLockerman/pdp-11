@@ -1,15 +1,13 @@
-
 use crate::constants::WORD_SIZE;
 use crate::mem::write_u16;
 
 use std::fmt;
 use std::io::Write;
 
-use num_derive::{FromPrimitive, ToPrimitive};    
-use num_traits::{FromPrimitive, ToPrimitive};    
-use derive_more::{IsVariant, Unwrap};
 use delegate::delegate;
-
+use derive_more::{IsVariant, Unwrap};
+use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
 
 pub trait InstrVariant<Opcode: FromPrimitive> {
     const OPCODE_BITS: usize;
@@ -21,14 +19,12 @@ pub trait InstrVariant<Opcode: FromPrimitive> {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Clone)]
 pub struct ResolvedError(pub String);
 
 ////////////////////////////////////////////////////////////////////////////////
-
 
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum AddrMode {
@@ -40,7 +36,6 @@ pub enum AddrMode {
     AutoDecDef,
     Index,
     IndexDef,
-
 }
 
 impl AddrMode {
@@ -72,7 +67,7 @@ impl fmt::Display for Op {
             Sub => write!(f, "-"),
             And => write!(f, "&"),
             Or => write!(f, "|"),
-            Div => write!(f, "\\/"), 
+            Div => write!(f, "\\/"),
             BitAnd => write!(f, "&"),
             BitOr => write!(f, "|"),
             LSR => write!(f, ">>"),
@@ -83,7 +78,6 @@ impl fmt::Display for Op {
         }
     }
 }
-
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
 pub enum Atom {
@@ -126,7 +120,7 @@ impl Expr {
             Expr::Op(lhs, _, rhs) => {
                 lhs.check_resolved()?;
                 rhs.check_resolved()
-            },
+            }
         }
     }
 }
@@ -147,7 +141,6 @@ impl Extra {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum Reg {
@@ -188,14 +181,14 @@ impl Operand {
     pub const MASK: u16 = (1u16 << Self::NUM_BITS) - 1;
 
     pub fn new(mode: AddrMode, reg: Reg, extra: Extra) -> Operand {
-        let ret = Operand{mode, reg, extra};
+        let ret = Operand { mode, reg, extra };
         assert!(!ret.needs_extra() || !ret.extra.is_none());
         ret
     }
 
     pub fn needs_extra(&self) -> bool {
         use AddrMode::*;
-        matches!{
+        matches! {
             (self.mode, self.reg),
             (AutoInc | AutoIncDef, Reg::PC)
                 | (Index | IndexDef, Reg::PC)
@@ -210,7 +203,10 @@ impl Operand {
             (AutoInc | AutoIncDef, Reg::PC) => self.extra = Extra::Imm(val),
             (Index | IndexDef, Reg::PC) => self.extra = Extra::Rel(val),
             (Index | IndexDef, _) => self.extra = Extra::Imm(val),
-            _ => panic!("Operand with mode {:?} and reg {:?} doesn't need extra", self.mode, self.reg),
+            _ => panic!(
+                "Operand with mode {:?} and reg {:?} doesn't need extra",
+                self.mode, self.reg
+            ),
         }
     }
 
@@ -221,7 +217,6 @@ impl Operand {
     pub fn num_extra(&self) -> u16 {
         self.has_extra() as u16
     }
-
 
     pub fn encode(&self) -> u16 {
         self.reg.to_u16().unwrap() | (self.mode.to_u16().unwrap() << Reg::NUM_BITS)
@@ -241,7 +236,11 @@ impl Operand {
         let reg = Reg::from_u16(arg & Reg::MASK).unwrap();
         let mode = AddrMode::from_u16((arg >> Reg::NUM_BITS) & AddrMode::MASK).unwrap();
 
-        let mut op = Self{mode, reg, extra: Extra::None};
+        let mut op = Self {
+            mode,
+            reg,
+            extra: Extra::None,
+        };
         if op.needs_extra() {
             op.add_extra(input[imm_idx]);
         }
@@ -262,7 +261,9 @@ impl fmt::Display for Operand {
         use AddrMode::*;
         match (self.mode, self.reg) {
             (Index, Reg::PC) => write!(f, ". + {:#o}", 2u16.wrapping_add(self.extra.unwrap_val())),
-            (IndexDef, Reg::PC) => write!(f, "@ . + {:#o}", 2u16.wrapping_add(self.extra.unwrap_val())),
+            (IndexDef, Reg::PC) => {
+                write!(f, "@ . + {:#o}", 2u16.wrapping_add(self.extra.unwrap_val()))
+            }
             (AutoInc, Reg::PC) => write!(f, "#{:#o}", self.extra.unwrap_val()),
             (AutoIncDef, Reg::PC) => write!(f, "@#{:#o}", self.extra.unwrap_val()),
 
@@ -277,7 +278,6 @@ impl fmt::Display for Operand {
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub enum Target {
@@ -297,8 +297,11 @@ impl Target {
         pc = pc.wrapping_add(2);
         match self {
             Target::Label(lbl) => write!(f, "{}", lbl),
-            Target::Offset(off) => write!(f, "{:#o}", pc.wrapping_add(((*off as i8 as i16) * 2) as u16)),
-            
+            Target::Offset(off) => write!(
+                f,
+                "{:#o}",
+                pc.wrapping_add(((*off as i8 as i16) * 2) as u16)
+            ),
         }
     }
 
@@ -316,18 +319,26 @@ impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Target::Label(lbl) => write!(f, "{}", lbl),
-            Target::Offset(off) => write!(f, ". + {:#o}", 2u16.wrapping_add(((*off as i8 as i16) * 2) as u16))
+            Target::Offset(off) => write!(
+                f,
+                ". + {:#o}",
+                2u16.wrapping_add(((*off as i8 as i16) * 2) as u16)
+            ),
         }
     }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
 macro_rules! double_operand_ins {
-    ($op:ident, $src:expr, $dst:expr) => { Ins::DoubleOperand(DoubleOperandIns{op: DoubleOperandOpcode::$op, src: $src, dst: $dst}) };
+    ($op:ident, $src:expr, $dst:expr) => {
+        Ins::DoubleOperand(DoubleOperandIns {
+            op: DoubleOperandOpcode::$op,
+            src: $src,
+            dst: $dst,
+        })
+    };
 }
 
 // Also double operand byte inpub structions
@@ -354,15 +365,12 @@ impl fmt::Display for DoubleOperandOpcode {
     }
 }
 
-
-
 #[derive(Debug, Clone)]
 pub struct DoubleOperandIns {
     pub op: DoubleOperandOpcode,
     pub src: Operand,
     pub dst: Operand,
 }
-
 
 impl InstrVariant<DoubleOperandOpcode> for DoubleOperandIns {
     const OPCODE_BITS: usize = 4;
@@ -381,8 +389,8 @@ impl DoubleOperandIns {
     }
 
     pub fn emit(&self, out: &mut impl Write) {
-        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) 
-            | (self.src.encode() << Operand::NUM_BITS) 
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS)
+            | (self.src.encode() << Operand::NUM_BITS)
             | self.dst.encode();
         write_u16(out, bin);
 
@@ -401,7 +409,7 @@ impl DoubleOperandIns {
         let src = Operand::decode(input[0] >> Operand::NUM_BITS, input, 1);
         let dst = Operand::decode(input[0], input, (src.num_extra() + 1) as usize);
 
-        Some(Ins::DoubleOperand(Self{op, src, dst}))
+        Some(Ins::DoubleOperand(Self { op, src, dst }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -420,8 +428,11 @@ impl fmt::Display for DoubleOperandIns {
 
 #[macro_export]
 macro_rules! branch_ins {
-    ($op:ident, $offset:expr) => { 
-        Ins::Branch(BranchIns{op: BranchOpcode::$op, target: Target::Label($offset)}) 
+    ($op:ident, $offset:expr) => {
+        Ins::Branch(BranchIns {
+            op: BranchOpcode::$op,
+            target: Target::Label($offset),
+        })
     };
 }
 
@@ -442,7 +453,7 @@ pub enum BranchOpcode {
     Bvc,
     Bvs,
     Bcc,
-    Bcs
+    Bcs,
 }
 
 impl fmt::Display for BranchOpcode {
@@ -479,7 +490,7 @@ impl BranchIns {
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
         let offset = Target::Offset((input[0] & Self::OFFSET_MASK) as u8);
-        Some(Ins::Branch(Self{op, target: offset}))
+        Some(Ins::Branch(Self { op, target: offset }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -501,7 +512,12 @@ impl fmt::Display for BranchIns {
 
 #[macro_export]
 macro_rules! jmp_ins {
-    ($dst:expr) => { Ins::Jmp(JmpIns{op: JmpOpcode::Jmp, dst: $dst}) };
+    ($dst:expr) => {
+        Ins::Jmp(JmpIns {
+            op: JmpOpcode::Jmp,
+            dst: $dst,
+        })
+    };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum JmpOpcode {
@@ -541,7 +557,7 @@ impl JmpIns {
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
         let dst = Operand::decode(input[0], input, 1);
-        Some(Ins::Jmp(Self{op, dst}))
+        Some(Ins::Jmp(Self { op, dst }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -550,7 +566,7 @@ impl JmpIns {
 }
 
 impl InstrVariant<JmpOpcode> for JmpIns {
-    const OPCODE_BITS: usize =  10;
+    const OPCODE_BITS: usize = 10;
 }
 
 impl fmt::Display for JmpIns {
@@ -559,12 +575,17 @@ impl fmt::Display for JmpIns {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
 macro_rules! jsr_ins {
-    ($reg:expr, $dst:expr) => { Ins::Jsr(JsrIns{op: JsrOpcode::Jsr, reg: $reg, dst: $dst}) };
+    ($reg:expr, $dst:expr) => {
+        Ins::Jsr(JsrIns {
+            op: JsrOpcode::Jsr,
+            reg: $reg,
+            dst: $dst,
+        })
+    };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum JsrOpcode {
@@ -607,7 +628,7 @@ impl JsrIns {
         let op = Self::decode_opcode(input[0])?;
         let dst = Operand::decode(input[0], input, 1);
         let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
-        Some(Ins::Jsr(Self{op, reg, dst}))
+        Some(Ins::Jsr(Self { op, reg, dst }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -629,7 +650,12 @@ impl fmt::Display for JsrIns {
 
 #[macro_export]
 macro_rules! rts_ins {
-    ($reg:expr) => { Ins::Rts(RtsIns{op: RtsOpcode::Rts, reg: $reg}) };
+    ($reg:expr) => {
+        Ins::Rts(RtsIns {
+            op: RtsOpcode::Rts,
+            reg: $reg,
+        })
+    };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum RtsOpcode {
@@ -665,10 +691,10 @@ impl RtsIns {
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
         let reg = Reg::from_u16(input[0] & Reg::MASK).unwrap();
-        Some(Ins::Rts(Self{op, reg}))
+        Some(Ins::Rts(Self { op, reg }))
     }
 
-    pub fn check_resolved(&self) -> Result<(), ResolvedError>{
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
         // No expr to check
         Ok(())
     }
@@ -686,11 +712,14 @@ impl fmt::Display for RtsIns {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 #[macro_export]
 macro_rules! single_operand_ins {
-    ($op:ident,  $dst:expr) => { Ins::SingleOperand(SingleOperandIns{op: SingleOperandOpcode::$op, dst: $dst}) };
+    ($op:ident,  $dst:expr) => {
+        Ins::SingleOperand(SingleOperandIns {
+            op: SingleOperandOpcode::$op,
+            dst: $dst,
+        })
+    };
 }
 
 // Also rotates, single operand byte inpub structions
@@ -757,13 +786,12 @@ impl SingleOperandIns {
         if self.dst.has_extra() {
             write_u16(out, self.dst.extra.unwrap_val());
         }
-
     }
 
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
         let dst = Operand::decode(input[0], input, 1);
-        Some(Ins::SingleOperand(Self{op, dst}))
+        Some(Ins::SingleOperand(Self { op, dst }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -787,7 +815,13 @@ impl fmt::Display for SingleOperandIns {
 
 #[macro_export]
 macro_rules! eis_ins {
-    ($op:ident,  $reg:expr, $dst:expr) => { Ins::Eis(EisIns{op: EisOpcode::$op, reg: $reg, operand: $dst}) };
+    ($op:ident,  $reg:expr, $dst:expr) => {
+        Ins::Eis(EisIns {
+            op: EisOpcode::$op,
+            reg: $reg,
+            operand: $dst,
+        })
+    };
 }
 
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
@@ -827,7 +861,7 @@ impl EisIns {
         if self.op == EisOpcode::Div {
             assert_eq!(reg & 0x1, 0, "Division reg must be even");
         }
-        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) 
+        let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS)
             | (reg << Operand::NUM_BITS)
             | self.operand.encode();
         write_u16(out, bin);
@@ -840,7 +874,7 @@ impl EisIns {
         let op = Self::decode_opcode(input[0])?;
         let operand = Operand::decode(input[0], input, 1);
         let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
-        Some(Ins::Eis(Self{op, reg, operand}))
+        Some(Ins::Eis(Self { op, reg, operand }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -858,14 +892,13 @@ impl fmt::Display for EisIns {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
-
-
 
 #[macro_export]
 macro_rules! cc_ins {
-    ($op:ident) => { Ins::CC(CCIns{op: CCOpcode::$op}) };
+    ($op:ident) => {
+        Ins::CC(CCIns { op: CCOpcode::$op })
+    };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum CCOpcode {
@@ -907,7 +940,7 @@ impl CCIns {
 
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
-        Some(Ins::CC(Self{op}))
+        Some(Ins::CC(Self { op }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -926,12 +959,15 @@ impl fmt::Display for CCIns {
     }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_export]
 macro_rules! misc_ins {
-    ($op:ident) => { Ins::Misc(MiscIns{op: MiscOpcode::$op}) };
+    ($op:ident) => {
+        Ins::Misc(MiscIns {
+            op: MiscOpcode::$op,
+        })
+    };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum MiscOpcode {
@@ -941,11 +977,10 @@ pub enum MiscOpcode {
     // Actually part of traps, but 16 bits
     Rti = 2, // Return from interrupt
     Iox,     // I/O executive routine, no defined mnemonic
-    Iot, 
+    Iot,
 
     // Back to Misc proper
     Reset = 5,
-
 }
 
 impl fmt::Display for MiscOpcode {
@@ -953,7 +988,6 @@ impl fmt::Display for MiscOpcode {
         write!(f, "{}", format!("{:?}", self).to_lowercase())
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct MiscIns {
@@ -975,7 +1009,7 @@ impl MiscIns {
 
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
-        Some(Ins::Misc(Self{op}))
+        Some(Ins::Misc(Self { op }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -998,7 +1032,12 @@ impl fmt::Display for MiscIns {
 
 #[macro_export]
 macro_rules! trap_ins {
-    ($op:ident, $data:expr) => { Ins::Trap(TrapIns{op: TrapOpcode::$op, data:$data }) };
+    ($op:ident, $data:expr) => {
+        Ins::Trap(TrapIns {
+            op: TrapOpcode::$op,
+            data: $data,
+        })
+    };
 }
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum TrapOpcode {
@@ -1038,7 +1077,10 @@ impl TrapIns {
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
         let data = input[0] & Self::DATA_MASK;
-        Some(Ins::Trap(Self{op, data: Expr::Atom(Atom::Val(data))}))
+        Some(Ins::Trap(Self {
+            op,
+            data: Expr::Atom(Atom::Val(data)),
+        }))
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
@@ -1057,7 +1099,6 @@ impl fmt::Display for TrapIns {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
 
 #[derive(Debug, Clone)]
 pub enum Ins {
@@ -1113,7 +1154,7 @@ impl Ins {
         CCIns::decode,
         MiscIns::decode,
         TrapIns::decode,
-    ]; 
+    ];
 
     pub fn decode(input: &[u16]) -> Option<Ins> {
         for decoder in Self::DECODERS {
@@ -1153,6 +1194,4 @@ impl<'a> fmt::Display for InsWithPc<'a> {
     }
 }
 
-
 type Decoder = fn(&[u16]) -> Option<Ins>;
-

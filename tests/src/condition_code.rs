@@ -1,25 +1,26 @@
+use crate::flags::{check_flags, C, N, V, Z};
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{C, V, Z, N, check_flags};
+use emu_lib::Emulator;
 
-fn run(
-    ins: &str,
-    flags_init: u16,
-    flags_exp: u16,
-) {
-    let asm = format!(r#"
+fn run(ins: &str, flags_init: u16, flags_exp: u16) {
+    let asm = format!(
+        r#"
         {ins}
         halt
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.get_state_mut().get_status_mut().set_flags(flags_init);
     emu.run_at(DATA_START);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -83,5 +84,3 @@ fn sen() {
     run("sen", Z | C | V, N | V | Z | C);
     run("sen", N | V | Z | C, N | V | Z | C);
 }
-
-

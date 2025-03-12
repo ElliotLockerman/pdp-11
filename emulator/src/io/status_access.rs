@@ -1,6 +1,5 @@
-
-use crate::{EmulatorState, Status};
 use crate::io::MMIOHandler;
+use crate::{EmulatorState, Status};
 
 // Accesss for processor status word through MMIO
 #[derive(Default, Clone, Copy)]
@@ -25,7 +24,7 @@ impl MMIOHandler for StatusAccess {
         }
     }
 
-    fn write_word(&mut self,  state: &mut EmulatorState, addr: u16, val: u16) {
+    fn write_word(&mut self, state: &mut EmulatorState, addr: u16, val: u16) {
         assert_eq!(addr, Self::ADDR);
         assert_eq!(val & !0xff, 0);
         state.set_status(Status::from_raw(val));
@@ -43,5 +42,3 @@ impl MMIOHandler for StatusAccess {
         &[Self::ADDR]
     }
 }
-
-

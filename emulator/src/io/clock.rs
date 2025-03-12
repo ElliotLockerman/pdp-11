@@ -1,9 +1,8 @@
-use crate::EmulatorState;
 use crate::io::{Interrupt, MMIOHandler};
+use crate::EmulatorState;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-
 
 pub struct Clock {
     interrupt_enable: bool,
@@ -22,7 +21,6 @@ impl Default for Clock {
 }
 
 impl Clock {
-
     pub const LKS: u16 = 0o177546;
     pub const LKS_UPPER: u16 = Self::LKS + 1;
     pub const ADDRS: &[u16] = &[Self::LKS];
@@ -69,7 +67,10 @@ impl MMIOHandler for Clock {
         }
 
         if self.clock && self.interrupt_enable {
-            Some(Interrupt{prio: Self::PRIO, vector: Self::VECTOR})
+            Some(Interrupt {
+                prio: Self::PRIO,
+                vector: Self::VECTOR,
+            })
         } else {
             None
         }
@@ -95,8 +96,8 @@ impl MMIOHandler for Clock {
         }
     }
 
-    fn write_word(&mut self,  emu: &mut EmulatorState, addr: u16, val: u16) {
-       self.write_byte(emu, addr, val as u8);
+    fn write_word(&mut self, emu: &mut EmulatorState, addr: u16, val: u16) {
+        self.write_byte(emu, addr, val as u8);
     }
 
     fn default_addrs(&self) -> &[u16] {
@@ -140,7 +141,6 @@ pub struct FakeClock {
 }
 
 impl FakeClock {
-    
     pub const LKS: u16 = Clock::LKS;
     pub const LKS_UPPER: u16 = Clock::LKS_UPPER;
     pub const INT_ENB_SHIFT: u8 = Clock::INT_ENB_SHIFT;
@@ -171,7 +171,10 @@ impl MMIOHandler for FakeClock {
 
     fn tick(&mut self, _emu: &mut EmulatorState) -> Option<Interrupt> {
         if self.striker.read_clock() && self.interrupt_enable {
-            Some(Interrupt{prio: Clock::PRIO, vector: Clock::VECTOR})
+            Some(Interrupt {
+                prio: Clock::PRIO,
+                vector: Clock::VECTOR,
+            })
         } else {
             None
         }
@@ -197,12 +200,11 @@ impl MMIOHandler for FakeClock {
         }
     }
 
-    fn write_word(&mut self,  emu: &mut EmulatorState, addr: u16, val: u16) {
-       self.write_byte(emu, addr, val as u8);
+    fn write_word(&mut self, emu: &mut EmulatorState, addr: u16, val: u16) {
+        self.write_byte(emu, addr, val as u8);
     }
 
     fn default_addrs(&self) -> &[u16] {
         &[Self::LKS]
     }
 }
-

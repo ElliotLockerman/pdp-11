@@ -1,7 +1,6 @@
-
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
+use emu_lib::Emulator;
 
 // Assumes "proper" halt is last ins in binary
 fn run(asm: &str) -> Emulator {
@@ -125,7 +124,6 @@ fn emt_rti() {
     assert_eq!(emu.reg_read_word(Reg::R1), 0o4);
 }
 
-
 #[test]
 fn trap() {
     let asm = r#"
@@ -173,7 +171,6 @@ fn trap() {
     let emu = run(asm);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o4);
 }
-
 
 #[test]
 fn trap_rti() {
@@ -238,5 +235,3 @@ fn trap_rti() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o1);
     assert_eq!(emu.reg_read_word(Reg::R1), 0o4);
 }
-
-

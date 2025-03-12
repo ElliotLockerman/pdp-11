@@ -1,14 +1,14 @@
-
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use emu_lib::Emulator;
 
 use std::assert_matches::assert_matches;
 
 #[test]
 fn looop() {
-    let prog = assemble(r#"
+    let prog = assemble(
+        r#"
         clr r0
     loop:
         inc r0
@@ -16,17 +16,22 @@ fn looop() {
         bne loop
 
         halt
-    "#);
+    "#,
+    );
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o12, "r0");
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
 fn strcpy() {
-    let prog = assemble(r#"
+    let prog = assemble(
+        r#"
         br start
     out:
         . = . + 16
@@ -48,24 +53,22 @@ fn strcpy() {
     done:
         clrb (r1)
         halt
-    "#);
+    "#,
+    );
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(0);
 
     let expected = b"  hello, world!\0";
     for byte_idx in 2u16..=15 {
-        assert_eq!(
-            emu.mem_read_byte(byte_idx),
-            expected[byte_idx as usize]
-        );
+        assert_eq!(emu.mem_read_byte(byte_idx), expected[byte_idx as usize]);
     }
 }
 
-
 #[test]
 fn fib() {
-    let prog = assemble(r#"
+    let prog = assemble(
+        r#"
     br start
 
     out:
@@ -122,8 +125,8 @@ fn fib() {
 
     done2:
         halt
-    "#);
-
+    "#,
+    );
 
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
@@ -205,7 +208,7 @@ fn unsigned_mul() {
     let mut run = |lhs, rhs| {
         emu.reg_write_word(Reg::R0, lhs);
         emu.reg_write_word(Reg::R1, rhs);
-         
+
         emu.run_at(DATA_START);
 
         let lower = emu.reg_read_word(Reg::R0);
@@ -231,8 +234,12 @@ fn unsigned_mul() {
     run(u16::MAX, u16::MAX);
     run(u16::MAX, u16::MAX);
 
-    let lhs: &[u16] = &[40165, 3211, 12898, 63636, 8366, 64413, 1698, 34815, 21398, 32909];
-    let rhs: &[u16] = &[23273, 61041, 26275, 57783, 11729, 55426, 55264, 46246, 61796, 55239];
+    let lhs: &[u16] = &[
+        40165, 3211, 12898, 63636, 8366, 64413, 1698, 34815, 21398, 32909,
+    ];
+    let rhs: &[u16] = &[
+        23273, 61041, 26275, 57783, 11729, 55426, 55264, 46246, 61796, 55239,
+    ];
     for l in lhs {
         for r in rhs {
             run(*l, *r);
@@ -400,7 +407,8 @@ fn byte_queue() {
 
     buf:
         . = . + BUF_LEN
-    "#.to_owned();
+    "#
+    .to_owned();
 
     let prog = assemble(&(harness + queue));
 
@@ -415,10 +423,7 @@ fn byte_queue() {
 
     let pop = |emu: &mut Emulator| -> (u16, u16) {
         emu.run_at(prog.symbols.get("call_pop").unwrap().val);
-        (
-            emu.reg_read_word(Reg::R0),
-            emu.reg_read_word(Reg::R1),
-        )
+        (emu.reg_read_word(Reg::R0), emu.reg_read_word(Reg::R1))
     };
 
     let len = |emu: &mut Emulator| -> u16 {
@@ -491,6 +496,4 @@ fn byte_queue() {
         assert_eq!(len(&mut emu), count + 1 - i);
         assert_eq!(empty(&mut emu), (i == count + 1) as u16);
     }
-
 }
-

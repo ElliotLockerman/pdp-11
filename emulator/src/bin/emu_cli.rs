@@ -1,10 +1,8 @@
-
-use emu_lib::Emulator;
-use emu_lib::io::teletype::Teletype;
 use emu_lib::io::clock::Clock;
+use emu_lib::io::teletype::Teletype;
+use emu_lib::Emulator;
 
 use clap::Parser;
-
 
 /// PDP-11 Emulator
 #[derive(Parser)]
@@ -13,11 +11,9 @@ struct Args {
     bin: String,
 
     /// Address at which to start executing.
-    #[arg(long, default_value_t=0)]
+    #[arg(long, default_value_t = 0)]
     start: u16,
 }
-
-
 
 fn main() {
     env_logger::init();
@@ -33,5 +29,3 @@ fn main() {
 
     emu.run_at(opt.start);
 }
-
-

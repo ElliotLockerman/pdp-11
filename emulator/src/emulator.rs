@@ -1,22 +1,21 @@
-
+use crate::io::status_access::StatusAccess;
+use crate::io::Interrupt;
+use crate::EmulatorState;
+use crate::MMIOHandler;
+use crate::Status;
 use common::asm::*;
 use common::constants::*;
-use crate::MMIOHandler;
-use crate::io::Interrupt;
-use crate::io::status_access::StatusAccess;
-use crate::EmulatorState;
-use crate::Status;
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::ops::{BitOr, BitAnd};
-use std::sync::{Arc, Mutex};
-use std::cmp::Ordering;
+use std::ops::{BitAnd, BitOr};
 use std::sync::atomic::{self, AtomicBool};
+use std::sync::{Arc, Mutex};
 
-use log::{debug, trace};
-use num_traits::{ToPrimitive, FromPrimitive};
 use delegate::delegate;
+use log::{debug, trace};
+use num_traits::{FromPrimitive, ToPrimitive};
 
 static SHOULD_QUIT: AtomicBool = AtomicBool::new(false);
 
@@ -75,8 +74,6 @@ enum ResolvedOperand {
     Mem(u16),
 }
 
-
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExecRet {
     Ok,
@@ -84,7 +81,6 @@ pub enum ExecRet {
     Wait,
     Quit,
 }
-
 
 pub struct Emulator {
     state: EmulatorState,
@@ -130,16 +126,25 @@ impl Emulator {
                 self.interrupt(inter.vector);
             }
         }
-        
+
         if self.waiting {
             return ExecRet::Wait;
         }
 
         let ins = self.decode();
-        debug!("PC: 0o{:o}: {}", self.state.pc(), ins.display_with_pc(self.state.pc()));
+        debug!(
+            "PC: 0o{:o}: {}",
+            self.state.pc(),
+            ins.display_with_pc(self.state.pc())
+        );
         self.reg_write_word(Reg::PC, self.state.pc() + 2);
 
-        if matches!(ins, Ins::Misc(MiscIns{op: MiscOpcode::Wait})) {
+        if matches!(
+            ins,
+            Ins::Misc(MiscIns {
+                op: MiscOpcode::Wait
+            })
+        ) {
             self.waiting = true;
             return ExecRet::Wait;
         }
@@ -153,7 +158,7 @@ impl Emulator {
     }
 
     fn tick_devices(&mut self) -> Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)> {
-        let mut interrupt: Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)>  = None;
+        let mut interrupt: Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)> = None;
         for dev in self.mmio_handlers.values_mut() {
             if let Some(inter) = dev.lock().unwrap().tick(&mut self.state) {
                 if let Some(max) = &interrupt {
@@ -188,11 +193,11 @@ impl Emulator {
         }
     }
 
-    pub fn set_mmio_handler_for<M, I>(&mut self, handler: M, addrs: I) 
-    where 
+    pub fn set_mmio_handler_for<M, I>(&mut self, handler: M, addrs: I)
+    where
         M: MMIOHandler + 'static,
-        I: IntoIterator<Item = u16> {
-
+        I: IntoIterator<Item = u16>,
+    {
         let handler = Arc::new(Mutex::new(handler));
         for addr in addrs.into_iter() {
             self.register_handler(handler.clone(), addr);
@@ -213,9 +218,7 @@ impl Emulator {
         assert!(prev.is_none(), "Duplicate MMIOHandler for {addr:o}");
     }
 
-
     ///////////////////////////////////////////////////////////////////////////
-
 
     pub fn mem_read_byte(&mut self, addr: u16) -> u8 {
         if addr >= MMIO_START {
@@ -231,7 +234,10 @@ impl Emulator {
     pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                handler.lock().unwrap().write_byte(&mut self.state, addr, val);
+                handler
+                    .lock()
+                    .unwrap()
+                    .write_byte(&mut self.state, addr, val);
                 return;
             }
             panic!("Invalid MMIO register {}", addr);
@@ -253,10 +259,16 @@ impl Emulator {
     }
 
     pub fn mem_write_word(&mut self, addr: u16, val: u16) {
-        assert!(addr & 1 == 0, "Word write of {val:#o} to {addr:#o} not aligned");
+        assert!(
+            addr & 1 == 0,
+            "Word write of {val:#o} to {addr:#o} not aligned"
+        );
         if addr >= MMIO_START {
             if let Some(handler) = self.mmio_handlers.get_mut(&addr) {
-                handler.lock().unwrap().write_word(&mut self.state, addr, val);
+                handler
+                    .lock()
+                    .unwrap()
+                    .write_word(&mut self.state, addr, val);
                 return;
             }
             panic!("Invalid MMIO register {}", addr);
@@ -348,11 +360,11 @@ impl Emulator {
             size = Size::Word;
         }
         let mut val = self.reg_read_word(reg);
-        if !inc { 
+        if !inc {
             val = val.wrapping_sub(size.bytes());
         }
         let ret = val;
-        if inc { 
+        if inc {
             val = val.wrapping_add(size.bytes());
         }
         self.reg_write_word(reg, val);
@@ -396,7 +408,7 @@ impl Emulator {
                 let addr = self.exec_auto(arg.reg, true, Size::Word);
                 self.debug_check_extra_addr(arg, addr);
                 self.mem_read_word(addr)
-            },
+            }
             AddrMode::AutoDec => {
                 let addr = self.exec_auto(arg.reg, false, size);
                 self.debug_check_extra_addr(arg, addr);
@@ -406,23 +418,22 @@ impl Emulator {
                 let addr = self.exec_auto(arg.reg, false, Size::Word);
                 self.debug_check_extra_addr(arg, addr);
                 self.mem_read_word(addr)
-            },
+            }
             AddrMode::Index => {
                 let reg_val = self.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
                 Self::debug_check_extra_val(arg, imm);
                 reg_val.wrapping_add(imm)
-            },
+            }
             AddrMode::IndexDef => {
                 let reg_val = self.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
                 Self::debug_check_extra_val(arg, imm);
                 self.mem_read_word(reg_val.wrapping_add(imm))
-            },
+            }
         };
-
 
         ResolvedOperand::Mem(loc)
     }
@@ -448,7 +459,14 @@ impl Emulator {
     }
 
     // TODO: combine these?
-    fn do_bitwise(&mut self, src: &Operand, op: fn(u32, u32) -> u32, dst: &Operand, size: Size, discard: bool) {
+    fn do_bitwise(
+        &mut self,
+        src: &Operand,
+        op: fn(u32, u32) -> u32,
+        dst: &Operand,
+        size: Size,
+        discard: bool,
+    ) {
         let src = self.resolve(src, size);
         let src_val = self.read_resolved_widen(src, size);
         let dst = self.resolve(dst, size);
@@ -502,7 +520,6 @@ impl Emulator {
         self.write_resolved_narrow(dst, res, size);
     }
 
-
     // NB: args are swapped compared to sub!
     fn do_cmp(&mut self, src: &Operand, dst: &Operand, size: Size) {
         let src = self.resolve(src, size);
@@ -529,21 +546,23 @@ impl Emulator {
             Bic => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Word, false),
             Bit => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Word, true),
 
-            Add => self.do_add(&ins.src, &ins.dst, Size::Word) ,
+            Add => self.do_add(&ins.src, &ins.dst, Size::Word),
 
             MovB => self.do_mov(&ins.src, &ins.dst, Size::Byte),
-            CmpB => self.do_cmp(&ins.src,  &ins.dst, Size::Byte),
+            CmpB => self.do_cmp(&ins.src, &ins.dst, Size::Byte),
             BisB => self.do_bitwise(&ins.src, u32::bitor, &ins.dst, Size::Byte, false),
             BicB => self.do_bitwise(&ins.src, not_and, &ins.dst, Size::Byte, false),
             BitB => self.do_bitwise(&ins.src, u32::bitand, &ins.dst, Size::Byte, true),
 
-            Sub => self.do_sub(&ins.src, &ins.dst, Size::Word) ,
+            Sub => self.do_sub(&ins.src, &ins.dst, Size::Word),
         }
     }
 
     fn exec_misc_ins(&mut self, ins: &MiscIns) -> ExecRet {
         match ins.op {
-            MiscOpcode::Halt => { return ExecRet::Halt; },
+            MiscOpcode::Halt => {
+                return ExecRet::Halt;
+            }
             MiscOpcode::Rti => self.exec_rti_ins(),
             _ => panic!(
                 "Instruction {ins:?} (0o{:o}) at pc 0o{:o} not yet implemented",
@@ -577,15 +596,13 @@ impl Emulator {
             BranchOpcode::Blos => c || z,
         };
 
-
         if taken {
             let off = (ins.target.unwrap_offset() as i8) * 2;
             let pc = self.state.pc();
             let pc = pc.wrapping_add(off as i16 as u16);
-            self.reg_write_word(Reg::PC,  pc);
+            self.reg_write_word(Reg::PC, pc);
         }
     }
-
 
     fn exec_jmp_ins(&mut self, ins: &JmpIns) {
         assert_eq!(ins.op, JmpOpcode::Jmp);
@@ -599,7 +616,7 @@ impl Emulator {
         assert_eq!(new_pc & 0x1, 0);
 
         trace!("PC: 0o{:o}: JMP to 0o{new_pc:o}", self.state.pc());
-        self.reg_write_word(Reg::PC,  new_pc);
+        self.reg_write_word(Reg::PC, new_pc);
     }
 
     fn push_word(&mut self, val: u16) {
@@ -627,7 +644,7 @@ impl Emulator {
         assert_eq!(new_pc & 0x1, 0);
         let old_val = self.reg_read_word(ins.reg);
         self.push_word(old_val);
-        
+
         self.reg_write_word(ins.reg, self.state.pc());
         self.reg_write_word(Reg::PC, new_pc);
     }
@@ -636,13 +653,17 @@ impl Emulator {
         assert_eq!(ins.op, RtsOpcode::Rts);
         let new_pc = self.reg_read_word(ins.reg);
         self.reg_write_word(Reg::PC, new_pc);
-        
+
         let old_val = self.pop_word();
         self.reg_write_word(ins.reg, old_val);
     }
 
     fn exec_single_operand_ins(&mut self, ins: &SingleOperandIns) {
-        let size = if ins.is_byte() { Size::Byte } else { Size::Word };
+        let size = if ins.is_byte() {
+            Size::Byte
+        } else {
+            Size::Word
+        };
         let dst = self.resolve(&ins.dst, Size::Word);
         use SingleOperandOpcode::*;
         match ins.op {
@@ -657,14 +678,14 @@ impl Emulator {
                 self.set_negative((res >> 7) & 0x1 == 1);
                 self.set_carry(false);
                 self.set_overflow(false);
-            },
+            }
             Clr | ClrB => {
                 self.write_resolved_narrow(dst, 0, size);
                 self.set_zero(true);
                 self.set_negative(false);
                 self.set_carry(false);
                 self.set_overflow(false);
-            },
+            }
             Inc | IncB => {
                 let val = self.read_resolved_widen(dst, size);
                 let (res, _) = val.overflowing_add(1);
@@ -674,8 +695,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
                 self.set_overflow(val == (size.mask() >> 1));
-                
-            },
+            }
             Dec | DecB => {
                 let val = self.read_resolved_widen(dst, size);
                 let (res, _) = val.overflowing_sub(1);
@@ -685,7 +705,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 // Carry not affected
                 self.set_overflow(val == size.smallest_signed());
-            },
+            }
             Neg | NegB => {
                 let val = self.read_resolved_widen(dst, size);
                 let res = (!val).wrapping_add(1);
@@ -695,7 +715,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 self.set_carry(res & size.mask() != 0);
                 self.set_overflow(val == size.smallest_signed());
-            },
+            }
             Tst | TstB => {
                 let val = self.read_resolved_widen(dst, size);
                 let (res, _) = 0u32.overflowing_sub(val);
@@ -704,7 +724,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 self.set_carry(false);
                 self.set_overflow(false);
-            },
+            }
             Com | ComB => {
                 let val = self.read_resolved_widen(dst, size);
                 let res = !val;
@@ -714,7 +734,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 self.set_carry(true);
                 self.set_overflow(false);
-            },
+            }
             Adc | AdcB => {
                 let carry = self.get_carry();
                 let val = self.read_resolved_widen(dst, size);
@@ -725,7 +745,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 self.set_carry(val == size.mask() && carry);
                 self.set_overflow(val == size.largest_signed() && carry);
-            },
+            }
             Sbc | SbcB => {
                 let carry = self.get_carry();
                 let val = self.read_resolved_widen(dst, size);
@@ -736,7 +756,7 @@ impl Emulator {
                 self.set_negative(size.sign_bit(res) != 0);
                 self.set_carry(!((res & size.mask()) == 0 && carry));
                 self.set_overflow(res == size.smallest_signed());
-            },
+            }
             Ror | RorB => {
                 let val = self.read_resolved_widen(dst, size);
                 let carry = self.get_carry() as u32;
@@ -750,7 +770,7 @@ impl Emulator {
 
                 let n = self.get_negative() as u32;
                 self.set_overflow((n ^ new_carry) != 0);
-            },
+            }
             Rol | RolB => {
                 let val = self.read_resolved_widen(dst, size);
                 let carry = self.get_carry() as u32;
@@ -764,7 +784,7 @@ impl Emulator {
 
                 let n = self.get_negative() as u32;
                 self.set_overflow((n ^ new_carry) != 0);
-            },
+            }
             Asr => {
                 let val = self.read_resolved_word(dst);
                 let new_carry = val & 0x1;
@@ -777,7 +797,7 @@ impl Emulator {
 
                 let n = self.get_negative() as u16;
                 self.set_overflow((n ^ new_carry) != 0);
-            },
+            }
             AsrB => {
                 let val = self.read_resolved_byte(dst);
                 let new_carry = val & 0x1;
@@ -790,7 +810,7 @@ impl Emulator {
 
                 let n = self.get_negative() as u8;
                 self.set_overflow((n ^ new_carry) != 0);
-            },
+            }
             Asl | AslB => {
                 let val = self.read_resolved_widen(dst, size);
                 let res = val << 1;
@@ -803,7 +823,7 @@ impl Emulator {
 
                 let n = self.get_negative() as u32;
                 self.set_overflow((n ^ new_carry) != 0);
-            },
+            }
         }
     }
 
@@ -846,7 +866,7 @@ impl Emulator {
                     let upper_reg = Reg::from_u16(reg_num + 1).unwrap();
                     self.reg_write_word(upper_reg, (res >> u16::BITS) as u16);
                 }
-            },
+            }
             Div => {
                 let reg_num = ins.reg.to_u16().unwrap();
                 assert_eq!(reg_num & 0x1, 0);
@@ -863,10 +883,10 @@ impl Emulator {
                     }
 
                     let res = i16::try_from(quot);
-                    self.set_negative(quot < 0); 
-                    self.set_zero(quot == 0); 
+                    self.set_negative(quot < 0);
+                    self.set_zero(quot == 0);
                     self.set_overflow(src_val == 0 || res.is_err());
-                    self.set_carry(false); 
+                    self.set_carry(false);
 
                     if let Ok(q) = res {
                         // "instruction is aborted" if result can't find in 15 bits
@@ -877,10 +897,9 @@ impl Emulator {
                     }
                 } else {
                     self.set_overflow(true);
-                    self.set_carry(true); 
+                    self.set_carry(true);
                 }
-                
-            },
+            }
             Ash => {
                 const SIG_BITS: u16 = 6;
                 const NONSIG_BITS: u16 = (u16::BITS as u16) - SIG_BITS;
@@ -896,34 +915,31 @@ impl Emulator {
                     Ordering::Greater => {
                         // Left
                         let carry = if shift < i16::BITS as i16 {
-                            ((reg_val >> (i16::BITS  as i16 - shift)) & 0x1) != 0
+                            ((reg_val >> (i16::BITS as i16 - shift)) & 0x1) != 0
                         } else {
                             false
                         };
                         let new_val = reg_val << shift;
                         (new_val, carry)
-                    },
-                    Ordering::Equal => {
-                        (reg_val, false)
-                    },
+                    }
+                    Ordering::Equal => (reg_val, false),
                     Ordering::Less => {
                         // Right
                         shift *= -1;
                         let carry = ((reg_val >> (shift - 1)) & 0x1) != 0;
                         let new_val = ((reg_val as i16) >> shift) as u16;
                         (new_val, carry)
-                    },
+                    }
                 };
                 self.reg_write_word(ins.reg, new_val);
 
                 self.set_negative(Size::Word.sign_bit(new_val as u32) != 0);
                 self.set_zero(new_val == 0);
                 self.set_overflow(
-                    (Size::Word.sign_bit(reg_val as u32) != 0) != self.get_negative()
+                    (Size::Word.sign_bit(reg_val as u32) != 0) != self.get_negative(),
                 );
                 self.set_carry(carry);
-                
-            },
+            }
             Ashc => {
                 const SIG_BITS: u16 = 6;
                 const NONSIG_BITS: u16 = (u16::BITS as u16) - SIG_BITS;
@@ -952,17 +968,15 @@ impl Emulator {
                         };
                         let new_val = wide_val << shift;
                         (new_val, carry)
-                    },
-                    Ordering::Equal => {
-                        (wide_val, false)
-                    },
+                    }
+                    Ordering::Equal => (wide_val, false),
                     Ordering::Less => {
                         // Right
                         shift *= -1;
                         let carry = ((wide_val >> (shift - 1)) & 0x1) != 0;
                         let new_val = ((wide_val as i32) >> shift) as u32;
                         (new_val, carry)
-                    },
+                    }
                 };
                 self.reg_write_word(ins.reg, (new_val & ((0x1u32 << u16::BITS) - 1)) as u16);
                 self.reg_write_word(reg_upper, (new_val >> u16::BITS) as u16);
@@ -970,11 +984,10 @@ impl Emulator {
                 self.set_negative(((new_val >> (u32::BITS - 1)) & 0x1) != 0);
                 self.set_zero(new_val == 0);
                 self.set_overflow(
-                    (((wide_val >> (u32::BITS - 1)) & 0x1) != 0) != self.get_negative()
+                    (((wide_val >> (u32::BITS - 1)) & 0x1) != 0) != self.get_negative(),
                 );
                 self.set_carry(carry);
-
-            },
+            }
             Xor => unreachable!(),
         }
     }
@@ -1022,16 +1035,18 @@ impl Emulator {
 
     fn exec(&mut self, ins: &Ins) -> ExecRet {
         match ins {
-            Ins::DoubleOperand(ins) =>  self.exec_double_operand_ins(ins),
+            Ins::DoubleOperand(ins) => self.exec_double_operand_ins(ins),
             Ins::Branch(ins) => self.exec_branch_ins(ins),
-            Ins::Jmp(ins) =>  self.exec_jmp_ins(ins),
-            Ins::Jsr(ins) =>  self.exec_jsr_ins(ins),
-            Ins::Rts(ins) =>  self.exec_rts_ins(ins),
-            Ins::SingleOperand(ins) =>  self.exec_single_operand_ins(ins),
+            Ins::Jmp(ins) => self.exec_jmp_ins(ins),
+            Ins::Jsr(ins) => self.exec_jsr_ins(ins),
+            Ins::Rts(ins) => self.exec_rts_ins(ins),
+            Ins::SingleOperand(ins) => self.exec_single_operand_ins(ins),
             Ins::Eis(ins) => self.exec_eis_ins(ins),
-            Ins::CC(ins) =>  self.exec_cc_ins(ins),
-            Ins::Misc(ins) => { return self.exec_misc_ins(ins); },
-            Ins::Trap(ins) =>  self.exec_trap_ins(ins),
+            Ins::CC(ins) => self.exec_cc_ins(ins),
+            Ins::Misc(ins) => {
+                return self.exec_misc_ins(ins);
+            }
+            Ins::Trap(ins) => self.exec_trap_ins(ins),
         }
 
         ExecRet::Ok
@@ -1069,7 +1084,7 @@ mod tests {
     fn mov_reg_reg() {
         let bin = &[
             0o10001, // mov r0, r1
-            0, // halt
+            0,       // halt
         ];
         let bin = as_byte_slice(bin);
 
@@ -1087,7 +1102,7 @@ mod tests {
         let val = 0xabcd;
         let bin = &[
             0o12700, val, // mov #0xabcd, r0
-            0,            // halt
+            0,   // halt
         ];
         let bin = as_byte_slice(bin);
 
@@ -1097,13 +1112,13 @@ mod tests {
         emu.run_at(DATA_START);
         assert_eq!(emu.reg_read_word(Reg::R0), val);
     }
-    
+
     #[test]
     fn add() {
         let bin = &[
-            0o5000,    // mov #0, r0
-            0x65c0, 1, // add #1, r0
-            0x0000     // halt
+            0o5000, // mov #0, r0
+            0x65c0, 1,      // add #1, r0
+            0x0000, // halt
         ];
         let bin = as_byte_slice(bin);
 
@@ -1118,14 +1133,13 @@ mod tests {
     fn autoinc() {
         let arr = DATA_START + 18;
         let bin = &[
-            0o12700, arr,   // mov  #arr, r0
-            0o62720, 0o1,   // add  #1, (r0)+
-            0o62720, 0o1,   // add  #1, (r0)+
-            0o62720, 0o1,   // add  #1, (r0)+
-            0o0,            // halt
-
-        // arr:
-            0o1, 0o2, 0o3   // .word 1 2 3
+            0o12700, arr, // mov  #arr, r0
+            0o62720, 0o1, // add  #1, (r0)+
+            0o62720, 0o1, // add  #1, (r0)+
+            0o62720, 0o1, // add  #1, (r0)+
+            0o0, // halt
+            // arr:
+            0o1, 0o2, 0o3, // .word 1 2 3
         ];
         let bin = as_byte_slice(bin);
 
@@ -1143,14 +1157,12 @@ mod tests {
     #[test]
     fn looop() {
         let bin = &[
-            0o12700, 0,     // mov #0, r0
-            0o12701, 10,    // mov #10, r1
-
-            0o62700, 1,     // add #1, r0
-            0o162701, 1,    // sub #1, r1
-            0o1373,         // bne -10
-
-            0               // halt
+            0o12700, 0, // mov #0, r0
+            0o12701, 10, // mov #10, r1
+            0o62700, 1, // add #1, r0
+            0o162701, 1,      // sub #1, r1
+            0o1373, // bne -10
+            0,      // halt
         ];
         let bin = as_byte_slice(bin);
 
@@ -1164,21 +1176,23 @@ mod tests {
     #[test]
     fn call() {
         let bin: &[u16] = &[
-            0o12701, 0o0,   // mov #0, r1
-            0o12702, 0o0,   // mov #0, r2
-            0o407,          // br start
-
-            0o12702, 0o2,   // mov #2, r2 ; shouldn't be executed
-
-        // fun:
-            0o12701, 0o1,   // mov #1, r1
-            0o207,          // rts pc
-
-            0o12702, 0o2,   // mov #2, r2 ; shouldn't be executed
-
-        // start:
-            0o4737, DATA_START + 0o16,   // jsr pc, fun
-            0o0                          // halt
+            0o12701,
+            0o0, // mov #0, r1
+            0o12702,
+            0o0,   // mov #0, r2
+            0o407, // br start
+            0o12702,
+            0o2, // mov #2, r2 ; shouldn't be executed
+            // fun:
+            0o12701,
+            0o1,   // mov #1, r1
+            0o207, // rts pc
+            0o12702,
+            0o2, // mov #2, r2 ; shouldn't be executed
+            // start:
+            0o4737,
+            DATA_START + 0o16, // jsr pc, fun
+            0o0,               // halt
         ];
         let bin = as_byte_slice(bin);
 
@@ -1189,10 +1203,8 @@ mod tests {
         assert_eq!(emu.reg_read_word(Reg::R1), 1);
         assert_eq!(emu.reg_read_word(Reg::R2), 0);
     }
-
 }
 
 fn not_and(src: u32, dst: u32) -> u32 {
     !src & dst
 }
-

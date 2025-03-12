@@ -1,9 +1,8 @@
-
 use common::asm::{Reg, NUM_REGS};
 use common::mem::as_word_slice;
 
-use num_traits::ToPrimitive;
 use log::trace;
+use num_traits::ToPrimitive;
 
 #[derive(Default, Debug)]
 pub struct Status(u16);
@@ -24,7 +23,6 @@ impl Status {
 
     const PRIO: u16 = 5;
     const PRIO_MASK: u16 = 0x7;
-
 
     pub fn new() -> Status {
         Default::default()
@@ -104,8 +102,6 @@ impl Status {
     }
 }
 
-
-
 // This is separate so a mutable borrow can be passed to the MMIO handlers.
 pub struct EmulatorState {
     num_ins: usize,
@@ -178,13 +174,13 @@ impl EmulatorState {
         self.reg_read_word(Reg::PC)
     }
 
-    // Returns next instruction and word after for 
+    // Returns next instruction and word after for
     pub fn next_ins(&self) -> &[u16] {
         let pc = self.pc() as usize;
         if pc & 0x1 != 0 {
             panic!("PC 0o{pc:o} not aligned");
         }
-        let mem = &self.mem.as_slice()[pc..pc+6];
+        let mem = &self.mem.as_slice()[pc..pc + 6];
         as_word_slice(mem)
     }
 
@@ -206,4 +202,3 @@ impl Default for EmulatorState {
         Self::new()
     }
 }
-

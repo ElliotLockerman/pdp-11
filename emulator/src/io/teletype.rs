@@ -1,18 +1,17 @@
-
-use std::io::{stdout, Write};
-use std::sync::{Arc, Mutex, atomic::AtomicU32, atomic::Ordering};
-use std::collections::VecDeque;
-use std::time::Duration;
 use std::ascii;
+use std::collections::VecDeque;
+use std::io::{stdout, Write};
+use std::sync::{atomic::AtomicU32, atomic::Ordering, Arc, Mutex};
+use std::time::Duration;
 
-use crate::EmulatorState;
 use crate::io::{Interrupt, MMIOHandler};
+use crate::EmulatorState;
 
-use log::error;
+use crossterm::cursor;
+use crossterm::event::{poll, read, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal;
-use crossterm::event::{poll, read, Event, KeyCode, KeyModifiers};
-use crossterm::cursor;
+use log::error;
 
 pub trait Tty: Send + Sync {
     fn handle_output(&self, val: u8);
@@ -63,8 +62,9 @@ impl StdIo {
             return None;
         };
 
-        if (event.code == KeyCode::Char('c') || event.code == KeyCode::Char('d')) 
-            && (event.modifiers.contains(KeyModifiers::CONTROL)) {
+        if (event.code == KeyCode::Char('c') || event.code == KeyCode::Char('d'))
+            && (event.modifiers.contains(KeyModifiers::CONTROL))
+        {
             crate::emulator::quit();
             return None;
         }
@@ -98,9 +98,7 @@ impl Drop for StdIo {
     }
 }
 
-
 impl Tty for StdIo {
-
     fn handle_output(&self, val: u8) {
         let mut stdout = stdout().lock();
 
@@ -113,7 +111,8 @@ impl Tty for StdIo {
                 stdout,
                 cursor::MoveToNextLine(1),
                 terminal::ScrollUp(scroll)
-            ).unwrap();
+            )
+            .unwrap();
         } else {
             write!(stdout, "{}", ascii::Char::from_u8(val).unwrap()).unwrap();
             stdout.flush().unwrap();
@@ -130,7 +129,6 @@ impl Tty for StdIo {
         val
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -177,7 +175,6 @@ impl Tty for PipeTty {
         self.in_buf.lock().unwrap().pop_front()
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -247,8 +244,6 @@ impl Teletype {
     #[allow(dead_code)]
     const KEY_VECTOR: u16 = 0o60;
 
-
-
     #[allow(unused)]
     const TPS_READY_MASK: u8 = 0x1 << Self::TPS_READY_SHIFT;
 
@@ -261,7 +256,7 @@ impl Teletype {
     }
 
     pub fn new(device: Arc<dyn Tty>) -> Self {
-        Teletype{
+        Teletype {
             device,
 
             tps_maintenance_control: false,
@@ -278,10 +273,10 @@ impl Teletype {
 
     fn tps_write(&mut self, val: u8) {
         self.tps_maintenance_control = (val & Self::TPS_MAINT_MASK) != 0;
-        let were_enabled = self.tps_interrupt_enabled; 
+        let were_enabled = self.tps_interrupt_enabled;
         self.tps_interrupt_enabled = (val & Self::TPS_INT_ENB_MASK) != 0;
         if were_enabled && !self.tps_interrupt_enabled {
-            // If printer interrupts are disabled while tps_ready, clear this flag 
+            // If printer interrupts are disabled while tps_ready, clear this flag
             // so when printer interrupts are reenabled, a new interrupt is fired.
             // (Not clear if this is the actual hardware behavior, but it seems
             // reasonable enough).
@@ -327,7 +322,6 @@ impl Teletype {
 }
 
 impl MMIOHandler for Teletype {
-
     fn tick(&mut self, _: &mut EmulatorState) -> Option<Interrupt> {
         if self.tps_maintenance_control {
             todo!()
@@ -343,14 +337,19 @@ impl MMIOHandler for Teletype {
 
         // Keyboard gets priority.
         if self.device.input_available() && self.tks_interrupt_enabled {
-
             self.keyboard_interrupted = true;
-            return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::KEY_VECTOR});
+            return Some(Interrupt {
+                prio: Self::PRINT_PRIO,
+                vector: Self::KEY_VECTOR,
+            });
         }
 
         if self.tps_ready && self.tps_interrupt_enabled & !self.printer_interrupt_accepted {
             self.printer_interrupted = true;
-            return Some(Interrupt{prio: Self::PRINT_PRIO, vector: Self::PRINT_VECTOR});
+            return Some(Interrupt {
+                prio: Self::PRINT_PRIO,
+                vector: Self::PRINT_VECTOR,
+            });
         }
 
         None
@@ -385,8 +384,8 @@ impl MMIOHandler for Teletype {
         }
     }
 
-    fn write_word(&mut self,  emu: &mut EmulatorState, addr: u16, val: u16) {
-       self.write_byte(emu, addr, val as u8);
+    fn write_word(&mut self, emu: &mut EmulatorState, addr: u16, val: u16) {
+        self.write_byte(emu, addr, val as u8);
     }
 
     fn interrupt_accepted(&mut self) {

@@ -1,11 +1,9 @@
-
 use std::fs::File;
 use std::io::Write;
 
 use as_lib::assemble;
 
 use clap::Parser;
-
 
 /// PDP-11 Assembler
 #[derive(Parser)]
@@ -30,4 +28,3 @@ fn main() {
     let mut out = File::create(outname).unwrap();
     out.write_all(prog.text.as_slice()).unwrap();
 }
-

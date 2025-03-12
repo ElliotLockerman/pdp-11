@@ -1,20 +1,17 @@
+use crate::flags::{check_flags, C, N, V, Z};
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{C, V, Z, N, check_flags};
+use emu_lib::Emulator;
 
 // Because each test is run on a fresh emulator, unaffected flags will be false
-fn run(
-    ins: &str,
-    r0_init: u16,
-    r0_exp: u16,
-    flags_exp: u16,
-) {
-    let asm = format!(r#"
+fn run(ins: &str, r0_init: u16, r0_exp: u16, flags_exp: u16) {
+    let asm = format!(
+        r#"
         {ins} r0
         halt
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
@@ -22,7 +19,10 @@ fn run(
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), r0_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -73,7 +73,6 @@ fn tst() {
     run("tst", 0o107001, 0o107001, 0);
 }
 
-
 #[test]
 fn com() {
     run("com", 0o0, 0o177777, N | C);
@@ -81,7 +80,6 @@ fn com() {
     run("com", 0o133333, 0o044444, C);
     run("com", 0o134343, 0o043434, C);
 }
-
 
 #[test]
 fn swab() {
@@ -190,17 +188,13 @@ fn aslb() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // multiprecision
-fn run_mp(
-    ins: &str,
-    r0_init: u16,
-    r0_exp: u16,
-    flags_init: u16,
-    flags_exp: u16,
-) {
-    let asm = format!(r#"
+fn run_mp(ins: &str, r0_init: u16, r0_exp: u16, flags_init: u16, flags_exp: u16) {
+    let asm = format!(
+        r#"
         {ins} r0
         halt
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
@@ -209,7 +203,10 @@ fn run_mp(
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), r0_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -251,7 +248,6 @@ fn ror() {
     run_mp("ror", 0o177777, 0o077777, 0, C | V);
     run_mp("ror", 0o177777, 0o177777, C, C | N);
 }
-
 
 #[test]
 fn rol() {
@@ -325,5 +321,3 @@ fn rolb() {
     run_mp("rolb", 0xaaff, 0xaafe, 0, N | C);
     run_mp("rolb", 0xaaff, 0xaaff, C, C | N);
 }
-
-

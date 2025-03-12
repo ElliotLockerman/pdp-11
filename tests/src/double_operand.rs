@@ -1,21 +1,17 @@
+use crate::flags::{check_flags, C, N, V, Z};
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{C, V, Z, N, check_flags};
+use emu_lib::Emulator;
 
 // Because each test is run on a fresh emulator, unaffected flags will be false
-fn run(
-    ins: &str,
-    r0_init: u16,
-    r1_init: u16,
-    r1_exp: u16,
-    flags_exp: u16,
-) {
-    let asm = format!(r#"
+fn run(ins: &str, r0_init: u16, r1_init: u16, r1_exp: u16, flags_exp: u16) {
+    let asm = format!(
+        r#"
         {ins} r0, r1
         halt
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
@@ -25,9 +21,11 @@ fn run(
     assert_eq!(emu.reg_read_word(Reg::R0), r0_init);
     assert_eq!(emu.reg_read_word(Reg::R1), r1_exp);
     check_flags(&emu, flags_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
-
 
 #[test]
 fn mov() {
@@ -142,4 +140,3 @@ fn bitb() {
     run("bitb", 0o200, 0o200, 0o200, N);
     run("bitb", 0o100000, 0o100000, 0o100000, Z);
 }
-

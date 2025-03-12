@@ -1,12 +1,9 @@
-
 use lalrpop_util::lalrpop_mod;
 
 pub mod assembler;
-pub mod ir;
 pub mod helpers;
+pub mod ir;
 
 lalrpop_mod!(grammar, "/grammar.rs");
 
-pub use assembler::{assemble, Program, SymbolValue, SymbolType, Value, Mode};
-
-
+pub use assembler::{assemble, Mode, Program, SymbolType, SymbolValue, Value};

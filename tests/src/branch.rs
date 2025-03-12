@@ -1,11 +1,12 @@
+use crate::flags::{C, N, V, Z};
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use crate::flags::{C, V, Z, N};
+use emu_lib::Emulator;
 
 fn run(ins: &str, flags: u16, should_take: bool) {
-    let asm = format!(r#"
+    let asm = format!(
+        r#"
         {ins} taken
 
         mov #1, r0
@@ -14,7 +15,8 @@ fn run(ins: &str, flags: u16, should_take: bool) {
     taken:
         mov #2, r0
         halt
-    "#);
+    "#
+    );
 
     let prog = assemble(&asm);
     let mut emu = Emulator::new();

@@ -1,25 +1,30 @@
-
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use emu_lib::Emulator;
 
 #[test]
 fn literal_to_abs() {
-    let prog = assemble(r#"
+    let prog = assemble(
+        r#"
         mov #0753, @#020
         halt
-    "#);
+    "#,
+    );
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.mem_read_word(0o20), 0o753);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
 fn double_autoinc() {
-    let prog = assemble(r#"
+    let prog = assemble(
+        r#"
         mov #arr_a, r0
         mov #arr_b, r1
 
@@ -35,7 +40,8 @@ fn double_autoinc() {
         .word 01, 02
     arr_b:
         .word 07, 07
-    "#);
+    "#,
+    );
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(0);
@@ -45,7 +51,8 @@ fn double_autoinc() {
 
 #[test]
 fn index_autoinc() {
-    let prog = assemble(r#"
+    let prog = assemble(
+        r#"
         mov #arr_a, r0
         mov #arr_b, r1
 
@@ -61,7 +68,8 @@ fn index_autoinc() {
         .word 00, 00, 01, 02
     arr_b:
         .word 07, 07
-    "#);
+    "#,
+    );
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(0);

@@ -1,4 +1,3 @@
-
 use std::io::Write;
 
 use bytemuck::cast_slice;
@@ -16,4 +15,3 @@ pub fn write_u16(out: &mut impl Write, word: u16) {
     let upper = (word >> u8::BITS) as u8;
     out.write_all(&[lower, upper]).unwrap();
 }
-

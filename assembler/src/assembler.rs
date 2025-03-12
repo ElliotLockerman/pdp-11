@@ -1,9 +1,8 @@
- 
 use std::collections::HashMap;
 use std::convert::TryInto;
 
-use crate::ir::*;
 use crate::grammar::StmtParser;
+use crate::ir::*;
 use common::asm::*;
 use common::constants::WORD_SIZE;
 
@@ -32,11 +31,11 @@ pub enum SymbolType {
 pub enum Mode {
     Undef,
     UndefExt,
-    Abs, // Relocatable
+    Abs,  // Relocatable
     Text, // Relocatable
     Data, // Relocatable
-    Bss, // Relocatable
-    Ext, // External absolute, text, data or bss
+    Bss,  // Relocatable
+    Ext,  // External absolute, text, data or bss
     Reg,
 }
 
@@ -61,8 +60,10 @@ impl Mode {
             (Text, Op::Sub, Text) => Abs,
             (Data, Op::Sub, Data) => Abs,
             (Bss, Op::Sub, Bss) => Abs,
-            
-            _ => { return None; },
+
+            _ => {
+                return None;
+            }
         })
     }
 }
@@ -96,43 +97,67 @@ pub struct Value {
 
 impl Value {
     fn new(val: u16, mode: Mode) -> Self {
-        Value{val, mode}
+        Value { val, mode }
     }
 }
 
 impl std::ops::Add<Value> for Value {
     type Output = Result<Value, EvalError>;
     fn add(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Add, rhs.mode)
-            .ok_or(EvalError::IllegalExpr(self, Op::Add, rhs))?;
-        Ok(Value{val: self.val.wrapping_add(rhs.val), mode})
+        let mode = Mode::op_mode(self.mode, Op::Add, rhs.mode).ok_or(EvalError::IllegalExpr(
+            self,
+            Op::Add,
+            rhs,
+        ))?;
+        Ok(Value {
+            val: self.val.wrapping_add(rhs.val),
+            mode,
+        })
     }
 }
 
 impl std::ops::Sub<Value> for Value {
     type Output = Result<Value, EvalError>;
     fn sub(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Sub, rhs.mode)
-            .ok_or(EvalError::IllegalExpr(self, Op::Sub, rhs))?;
-        Ok(Value{val: self.val.wrapping_sub(rhs.val), mode})
+        let mode = Mode::op_mode(self.mode, Op::Sub, rhs.mode).ok_or(EvalError::IllegalExpr(
+            self,
+            Op::Sub,
+            rhs,
+        ))?;
+        Ok(Value {
+            val: self.val.wrapping_sub(rhs.val),
+            mode,
+        })
     }
 }
 
 impl std::ops::BitAnd<Value> for Value {
     type Output = Result<Value, EvalError>;
     fn bitand(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::And, rhs.mode)
-            .ok_or(EvalError::IllegalExpr(self, Op::And, rhs))?;
-        Ok(Value{val: self.val & rhs.val, mode})
+        let mode = Mode::op_mode(self.mode, Op::And, rhs.mode).ok_or(EvalError::IllegalExpr(
+            self,
+            Op::And,
+            rhs,
+        ))?;
+        Ok(Value {
+            val: self.val & rhs.val,
+            mode,
+        })
     }
 }
 
 impl std::ops::BitOr<Value> for Value {
     type Output = Result<Value, EvalError>;
     fn bitor(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Or, rhs.mode)
-            .ok_or(EvalError::IllegalExpr(self, Op::Or, rhs))?;
-        Ok(Value{val: self.val | rhs.val, mode})
+        let mode = Mode::op_mode(self.mode, Op::Or, rhs.mode).ok_or(EvalError::IllegalExpr(
+            self,
+            Op::Or,
+            rhs,
+        ))?;
+        Ok(Value {
+            val: self.val | rhs.val,
+            mode,
+        })
     }
 }
 
@@ -160,16 +185,15 @@ pub struct SymbolValue {
 
 impl SymbolValue {
     fn new(typ: SymbolType, val: Value, line: usize) -> SymbolValue {
-        Self{
+        Self {
             typ,
             val: val.val,
             mode: val.mode,
             sect: None,
-            line
+            line,
         }
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -179,11 +203,9 @@ struct Assembler {
     sect: Sect,
 }
 
-
 impl Assembler {
-
     fn new() -> Assembler {
-        Assembler{
+        Assembler {
             buf: Vec::new(),
             symbols: HashMap::new(),
             sect: Sect::Text,
@@ -194,10 +216,12 @@ impl Assembler {
         match atom {
             Atom::Loc => Ok(Value::new(loc, self.sect.mode())),
             Atom::Val(val) => Ok(Value::new(*val, Mode::Abs)),
-            Atom::SymbolRef(symbol) =>
-                self.symbols.get(symbol).cloned()
-                    .map(|x| Value::new(x.val, x.mode))
-                    .ok_or(EvalError::SymbolUnresolved),
+            Atom::SymbolRef(symbol) => self
+                .symbols
+                .get(symbol)
+                .cloned()
+                .map(|x| Value::new(x.val, x.mode))
+                .ok_or(EvalError::SymbolUnresolved),
         }
     }
 
@@ -215,7 +239,7 @@ impl Assembler {
                     Op::Or => lhs | rhs,
                     _ => todo!(),
                 }
-            },
+            }
         }
     }
 
@@ -258,11 +282,11 @@ impl Assembler {
                 if let Some(sym) = self.symbols.get(label) {
                     let dst = sym.val;
                     let addr = curr_addr as i32;
-                    TryInto::<i8>::try_into((dst as i32 - addr - 2)/2).unwrap() as u8
+                    TryInto::<i8>::try_into((dst as i32 - addr - 2) / 2).unwrap() as u8
                 } else {
                     return;
                 }
-            },
+            }
         };
         *target = Target::Offset(offset);
     }
@@ -276,8 +300,12 @@ impl Assembler {
                 let line = l + 1;
 
                 if let Some(label) = &stmt.label_def {
-                    let sym = SymbolValue::new(SymbolType::Label, Value::new(addr, self.sect.mode()), line);
-                    let existing = self.symbols.insert(label.clone(), sym); 
+                    let sym = SymbolValue::new(
+                        SymbolType::Label,
+                        Value::new(addr, self.sect.mode()),
+                        line,
+                    );
+                    let existing = self.symbols.insert(label.clone(), sym);
                     if let Some(existing) = existing {
                         if existing.line != line {
                             panic!("Label '{label}' on line {line} conflicts with previous definition on line {}", existing.line);
@@ -302,26 +330,26 @@ impl Assembler {
                                 // Regular symbols are allowed to overwrite each other.
                             }
                         }
-                       
-                        
-                    },
+                    }
                     Cmd::Ins(ins) => {
                         match ins {
                             Ins::Branch(ins) => self.eval_target(&mut ins.target, addr),
                             Ins::DoubleOperand(ins) => {
                                 self.eval_operand(&mut ins.src, &mut addr, loc);
                                 self.eval_operand(&mut ins.dst, &mut addr, loc);
-                            },
+                            }
                             Ins::Jmp(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
                             Ins::Jsr(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
-                            Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                            Ins::SingleOperand(ins) => {
+                                self.eval_operand(&mut ins.dst, &mut addr, loc)
+                            }
                             Ins::Eis(ins) => self.eval_operand(&mut ins.operand, &mut addr, loc),
                             Ins::Trap(ins) => {
                                 if let Ok(val) = self.eval_expr(&ins.data, loc) {
                                     assert_eq!(val.val & !0xff, 0);
-                                    ins.data = Expr::Atom(Atom::Val(val.val)); 
+                                    ins.data = Expr::Atom(Atom::Val(val.val));
                                 }
-                            },
+                            }
                             _ => (),
                         }
                         addr += WORD_SIZE;
@@ -341,20 +369,22 @@ impl Assembler {
                             }
                             addr += WORD_SIZE;
                         }
-                    },
+                    }
                     Cmd::LocDef(expr) => {
                         if let Ok(val) = self.eval_expr(expr, addr) {
                             assert!(val.val >= addr);
                             addr = val.val;
                             *expr = Expr::Atom(Atom::Val(addr))
                         }
-                    },
+                    }
                     Cmd::Even => {
                         if addr & 0x1 != 0 {
                             addr += 1;
                         }
-                    },
-                    _ => { addr += stmt.size().unwrap(); },
+                    }
+                    _ => {
+                        addr += stmt.size().unwrap();
+                    }
                 }
             }
         }
@@ -369,17 +399,21 @@ impl Assembler {
     }
 
     fn assemble(mut self, prog: &str) -> Program {
-
         let lines = prog.split('\n');
         let parser = StmtParser::new();
 
         let prog: Vec<_> = lines
             .zip(1..)
-            .map(|(x, i)| parser.parse(x).map_err(|e| {
-                eprintln!("Error line {i}: {e}"); e
-            })).collect();
+            .map(|(x, i)| {
+                parser.parse(x).map_err(|e| {
+                    eprintln!("Error line {i}: {e}");
+                    e
+                })
+            })
+            .collect();
 
-        let mut prog: Vec<_> = prog.into_iter()
+        let mut prog: Vec<_> = prog
+            .into_iter()
             .map(|x| x.unwrap_or_else(|_| panic!("Exiting due to previous errors")))
             .filter(|x| !x.is_empty())
             .collect();
@@ -390,10 +424,12 @@ impl Assembler {
         for stmt in prog {
             stmt.emit(&mut self.buf);
         }
-        Program{text: self.buf, symbols: self.symbols}
+        Program {
+            text: self.buf,
+            symbols: self.symbols,
+        }
     }
 }
-
 
 pub fn assemble(prog: &str) -> Program {
     Assembler::new().assemble(prog)
@@ -678,7 +714,6 @@ mod tests {
         assert_eq!(bin[0], 0o4);
     }
 
-
     #[test]
     #[should_panic] // The manual says to truncate, I've chosen not to.
     fn expr_byte_overflow() {
@@ -753,7 +788,6 @@ mod tests {
         assert_eq!(bin[2], 0o6);
     }
 
-
     #[test]
     fn period_assign() {
         let prog = r#"
@@ -827,42 +861,44 @@ mod tests {
     #[test]
     #[should_panic]
     fn label_redef_0() {
-        assemble(r#"
+        assemble(
+            r#"
         label:
         label:
-        "#);
+        "#,
+        );
     }
 
     #[test]
     #[should_panic]
     fn label_redef_1() {
-        assemble(r#"
+        assemble(
+            r#"
         label:
         label = 1
-        "#);
+        "#,
+        );
     }
 
     #[test]
     #[should_panic]
     fn label_redef_2() {
-        assemble(r#"
+        assemble(
+            r#"
         label = 1
         label:
-        "#);
+        "#,
+        );
     }
 
     #[test]
     fn label_redef_3() {
-        let prog = assemble(r#"
+        let prog = assemble(
+            r#"
         label = 1
         label = 2
-        "#);
+        "#,
+        );
         assert_eq!(prog.symbols.get("label").unwrap().val, 2);
     }
 }
-
-
-
-
-
-

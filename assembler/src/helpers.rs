@@ -1,4 +1,3 @@
-
 pub fn parse_int(s: &str, base: u32) -> u16 {
     let neg = s.starts_with('-');
     let offset = neg as usize;

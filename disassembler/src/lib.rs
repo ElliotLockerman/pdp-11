@@ -1,10 +1,8 @@
-
-use common::mem::as_word_slice;
-use common::constants::{WORD_SIZE, MAX_INS_WORDS};
 use common::asm::Ins;
+use common::constants::{MAX_INS_WORDS, WORD_SIZE};
+use common::mem::as_word_slice;
 
 use std::fmt;
-
 
 fn write_oct_words(f: &mut fmt::Formatter, vals: &[u16]) -> fmt::Result {
     for i in 0..MAX_INS_WORDS {
@@ -21,14 +19,11 @@ fn write_oct_words(f: &mut fmt::Formatter, vals: &[u16]) -> fmt::Result {
     Ok(())
 }
 
-
-
 pub struct Disassembled {
     pub addr: u16,
     pub repr: Vec<u16>,
     pub ins: Option<Ins>,
 }
-
 
 impl fmt::Display for Disassembled {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -44,7 +39,6 @@ impl fmt::Display for Disassembled {
     }
 }
 
-
 pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
     assert!(bin.len() <= (u16::MAX as usize) + 1);
     let mut out = vec![];
@@ -53,7 +47,7 @@ pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
         let upper = usize::min(addr + 3 * WORD_SIZE as usize, bin.len());
         let ins = Ins::decode(as_word_slice(&bin[addr..upper]));
         let size = ins.as_ref().map(|x| x.size()).unwrap_or(WORD_SIZE) as usize;
-        out.push(Disassembled{
+        out.push(Disassembled {
             addr: addr as u16,
             repr: as_word_slice(&bin[addr..addr + size]).into(),
             ins,
@@ -63,5 +57,3 @@ pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
 
     out
 }
-
-

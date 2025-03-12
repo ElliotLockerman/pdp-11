@@ -1,9 +1,7 @@
-
 use std::convert::TryInto;
 
 use common::asm::*;
 use common::mem::write_u16;
-
 
 // Args are src, dst
 #[derive(Debug)]
@@ -18,7 +16,6 @@ pub enum Cmd {
     LocDef(Expr),
 }
 
-
 #[derive(Debug)]
 pub struct Stmt {
     pub label_def: Option<String>,
@@ -26,7 +23,7 @@ pub struct Stmt {
 }
 impl Stmt {
     pub fn new(label_def: Option<String>, cmd: Option<Cmd>) -> Stmt {
-        Stmt{label_def, cmd}
+        Stmt { label_def, cmd }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -65,7 +62,7 @@ impl Stmt {
                     for e in exprs {
                         write_u16(buf, e.unwrap_val());
                     }
-                },
+                }
                 Cmd::Ascii(a) => buf.extend(a),
                 Cmd::Ins(ins) => ins.emit(buf),
                 Cmd::SymbolDef(_, _) => (),
@@ -73,8 +70,7 @@ impl Stmt {
                     let addr = addr.unwrap_val();
                     assert!(addr as usize >= buf.len());
                     buf.resize(addr as usize, 0);
-                    
-                },
+                }
                 Cmd::Even => {
                     if buf.len() & 0x1 == 1 {
                         buf.push(0);
@@ -91,24 +87,22 @@ impl Stmt {
         match self.cmd.as_ref().unwrap() {
             Cmd::Ins(ins) => {
                 ins.check_resolved()?;
-            },
+            }
             Cmd::Bytes(exprs) => {
                 for e in exprs {
                     e.check_resolved()?;
                 }
-            },
+            }
             Cmd::Words(exprs) => {
                 for e in exprs {
                     e.check_resolved()?;
                 }
-            },
+            }
             Cmd::LocDef(expr) => {
                 expr.check_resolved()?;
-            },
+            }
             _ => (),
         }
         Ok(())
     }
 }
-
-

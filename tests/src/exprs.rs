@@ -1,25 +1,31 @@
 use as_lib::assemble;
-use emu_lib::Emulator;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use emu_lib::Emulator;
 
 fn eval_word(expr: &str, r0_exp: u16) {
-    let asm = format!(r#"
+    let asm = format!(
+        r#"
         SYM = {expr}
         mov #SYM, r0
         halt
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), r0_exp);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 fn eval_byte(expr: &str, exp: u8) {
     // Go through memory to avoid sign-extension for movb to reg
-    let asm = format!(r#"
+    let asm = format!(
+        r#"
         SYM = {expr}
         movb    #SYM, data
         movb    data, r0
@@ -27,16 +33,26 @@ fn eval_byte(expr: &str, exp: u8) {
         halt
     data:
         .byte 0, 0
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), exp as i8 as i16 as u16);
     assert_eq!(emu.reg_read_word(Reg::R1), exp as u16);
-    assert_eq!(emu.mem_read_byte(DATA_START + prog.text.len() as u16 - 2), exp);
-    assert_eq!(emu.mem_read_word(DATA_START + prog.text.len() as u16 - 2), exp as u16);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16 - 2);
+    assert_eq!(
+        emu.mem_read_byte(DATA_START + prog.text.len() as u16 - 2),
+        exp
+    );
+    assert_eq!(
+        emu.mem_read_word(DATA_START + prog.text.len() as u16 - 2),
+        exp as u16
+    );
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16 - 2
+    );
 }
 
 #[test]
@@ -50,7 +66,8 @@ fn literal() {
     eval_byte(r"177", 0o177);
     eval_byte(r"377", 0o377);
 
-    let asm = format!(r#"
+    let asm = format!(
+        r#"
         SYM = -1
         ; Go through memory to avoid sign-extension for movb to reg
         movb    #SYM, data
@@ -59,17 +76,22 @@ fn literal() {
         halt
     data:
         .word 0
-    "#);
+    "#
+    );
     let prog = assemble(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o177777);
     assert_eq!(emu.reg_read_word(Reg::R1), 0o377);
-    assert_eq!(emu.mem_read_word(DATA_START + prog.text.len() as u16 - 2), 0o377);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16 - 2);
-
-
+    assert_eq!(
+        emu.mem_read_word(DATA_START + prog.text.len() as u16 - 2),
+        0o377
+    );
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16 - 2
+    );
 }
 
 #[test]
@@ -136,7 +158,6 @@ fn compound() {
     eval_word(r"1 & 2 + 1", 0o1);
 }
 
-
 #[test]
 fn malformed() {
     use std::panic::catch_unwind;
@@ -177,7 +198,6 @@ fn array_len() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o14);
     assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len() as u16);
 
-
     let asm = r#"
         br start
 
@@ -195,8 +215,10 @@ fn array_len() {
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o14);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
-
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -216,7 +238,10 @@ fn relocation() {
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.mem_read_word(DATA_START + 0o2), 0o66);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 
     let asm = r#"
         br start
@@ -291,7 +316,6 @@ fn decreasing() {
     assemble(&asm);
 }
 
-
 #[test]
 fn reloc_label_reads() {
     let asm = r#"
@@ -325,8 +349,10 @@ fn reloc_label_reads() {
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o333);
     assert_eq!(emu.reg_read_word(Reg::R1), 0o100);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
-
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 
     let asm = r#"
         loc = 100
@@ -342,7 +368,10 @@ fn reloc_label_reads() {
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o123);
     assert_eq!(emu.reg_read_word(Reg::R1), 0o100);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -360,7 +389,10 @@ fn update_symbol() {
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(emu.reg_read_word(Reg::R1), 0o101);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -381,7 +413,10 @@ fn forward() {
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o27);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }
 
 #[test]
@@ -401,5 +436,8 @@ fn double_forward() {
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o27);
-    assert_eq!(emu.reg_read_word(Reg::PC), DATA_START + prog.text.len() as u16);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len() as u16
+    );
 }

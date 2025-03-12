@@ -1,6 +1,5 @@
-
-use disassembler::{Disassembled, disassemble};
 use common::constants::WORD_SIZE;
+use disassembler::{disassemble, Disassembled};
 
 use std::ops::Range;
 
@@ -24,9 +23,9 @@ fn remove_long_zeros(disassembly: &mut Vec<Disassembled>) {
                 range_start = Some(i);
             }
         } else if let Some(start) = range_start {
-            ranges.push(Range{start, end: i});
+            ranges.push(Range { start, end: i });
             range_start = None;
-        }       
+        }
     }
 
     for range in ranges.iter().rev() {
@@ -36,7 +35,6 @@ fn remove_long_zeros(disassembly: &mut Vec<Disassembled>) {
         }
     }
 }
-
 
 fn main() {
     env_logger::init();
