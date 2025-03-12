@@ -1,5 +1,5 @@
 
-use as_lib::assemble;
+use as_lib::{assemble, Mode};
 use emu_lib::Emulator;
 use emu_lib::io::teletype::Teletype;
 use emu_lib::io::clock::Clock;
@@ -45,5 +45,6 @@ fn main() {
     let Some(start) = prog.symbols.get(&opt.start) else {
         panic!("Start symbol {} not found", opt.start);
     };
+    assert!(start.mode == Mode::Abs);
     emu.run_at(start.val);
 }

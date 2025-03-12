@@ -24,6 +24,11 @@ pub trait InstrVariant<Opcode: FromPrimitive> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+#[derive(Debug, Clone)]
+pub struct ResolvedError(pub String);
+
+////////////////////////////////////////////////////////////////////////////////
+
 
 #[derive(Debug, Clone, Copy, FromPrimitive, ToPrimitive, PartialEq, Eq)]
 pub enum AddrMode {
@@ -51,12 +56,34 @@ pub enum Op {
     Or,
 }
 
+impl Op {
+    pub fn to_char(&self) -> char {
+        use Op::*;
+        match self {
+            Add => '+',
+            Sub => '-',
+            And => '&',
+            Or => '!',
+        }
+    }
+}
+
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
 pub enum Atom {
     Loc,
     Val(u16),
     SymbolRef(String),
+}
+
+impl Atom {
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        if let Atom::SymbolRef(sym) = self {
+            Err(ResolvedError(sym.clone()))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[derive(Debug, Clone, IsVariant, Unwrap)]
@@ -75,6 +102,16 @@ impl Expr {
             panic!("unwrap_val() called on non-Val Expr::Atom");
         };
         *val
+    }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        match self {
+            Expr::Atom(atom) => atom.check_resolved(),
+            Expr::Op(lhs, _, rhs) => {
+                lhs.check_resolved()?;
+                rhs.check_resolved()
+            },
+        }
     }
 }
 
@@ -194,6 +231,14 @@ impl Operand {
         }
         op
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        match &self.extra {
+            Extra::None => Ok(()),
+            Extra::Imm(expr) => expr.check_resolved(),
+            Extra::Rel(expr) => expr.check_resolved(),
+        }
+    }
 }
 
 impl fmt::Display for Operand {
@@ -238,6 +283,14 @@ impl Target {
             Target::Label(lbl) => write!(f, "{}", lbl),
             Target::Offset(off) => write!(f, "{:#o}", pc.wrapping_add(((*off as i8 as i16) * 2) as u16)),
             
+        }
+    }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        if let Target::Label(label) = self {
+            Err(ResolvedError(label.clone()))
+        } else {
+            Ok(())
         }
     }
 }
@@ -334,6 +387,11 @@ impl DoubleOperandIns {
 
         Some(Ins::DoubleOperand(Self{op, src, dst}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.src.check_resolved()?;
+        self.dst.check_resolved()
+    }
 }
 
 impl fmt::Display for DoubleOperandIns {
@@ -407,6 +465,10 @@ impl BranchIns {
         let offset = Target::Offset((input[0] & Self::OFFSET_MASK) as u8);
         Some(Ins::Branch(Self{op, target: offset}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.target.check_resolved()
+    }
 }
 
 impl InstrVariant<BranchOpcode> for BranchIns {
@@ -464,6 +526,10 @@ impl JmpIns {
         let op = Self::decode_opcode(input[0])?;
         let dst = Operand::decode(input[0], input, 1);
         Some(Ins::Jmp(Self{op, dst}))
+    }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.dst.check_resolved()
     }
 }
 
@@ -527,6 +593,10 @@ impl JsrIns {
         let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
         Some(Ins::Jsr(Self{op, reg, dst}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.dst.check_resolved()
+    }
 }
 
 impl InstrVariant<JsrOpcode> for JsrIns {
@@ -580,6 +650,11 @@ impl RtsIns {
         let op = Self::decode_opcode(input[0])?;
         let reg = Reg::from_u16(input[0] & Reg::MASK).unwrap();
         Some(Ins::Rts(Self{op, reg}))
+    }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError>{
+        // No expr to check
+        Ok(())
     }
 }
 
@@ -674,6 +749,10 @@ impl SingleOperandIns {
         let dst = Operand::decode(input[0], input, 1);
         Some(Ins::SingleOperand(Self{op, dst}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.dst.check_resolved()
+    }
 }
 
 impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
@@ -747,6 +826,10 @@ impl EisIns {
         let reg = Reg::from_u16((input[0] >> Operand::NUM_BITS) & Reg::MASK).unwrap();
         Some(Ins::Eis(Self{op, reg, operand}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.operand.check_resolved()
+    }
 }
 
 impl InstrVariant<EisOpcode> for EisIns {
@@ -809,6 +892,11 @@ impl CCIns {
     fn decode(input: &[u16]) -> Option<Ins> {
         let op = Self::decode_opcode(input[0])?;
         Some(Ins::CC(Self{op}))
+    }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        // No expr to check
+        Ok(())
     }
 }
 
@@ -873,6 +961,11 @@ impl MiscIns {
         let op = Self::decode_opcode(input[0])?;
         Some(Ins::Misc(Self{op}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        // No expr to check
+        Ok(())
+    }
 }
 
 impl InstrVariant<MiscOpcode> for MiscIns {
@@ -931,6 +1024,10 @@ impl TrapIns {
         let data = input[0] & Self::DATA_MASK;
         Some(Ins::Trap(Self{op, data: Expr::Atom(Atom::Val(data))}))
     }
+
+    pub fn check_resolved(&self) -> Result<(), ResolvedError> {
+        self.data.check_resolved()
+    }
 }
 
 impl InstrVariant<TrapOpcode> for TrapIns {
@@ -977,6 +1074,7 @@ impl Ins {
             pub fn num_extra(&self) -> u16;
             pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result;
             pub fn emit(&self, out: &mut impl Write);
+            pub fn check_resolved(&self) -> Result<(), ResolvedError>;
         }
     }
 

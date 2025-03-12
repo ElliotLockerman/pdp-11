@@ -7,6 +7,6 @@ pub mod helpers;
 
 lalrpop_mod!(grammar, "/grammar.rs");
 
-pub use assembler::{assemble, Program, SymbolValue, SymbolType};
+pub use assembler::{assemble, Program, SymbolValue, SymbolType, Value, Mode};
 
 
