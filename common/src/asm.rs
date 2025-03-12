@@ -1,5 +1,5 @@
 use crate::constants::WORD_SIZE;
-use crate::mem::write_u16;
+use crate::mem::WriteU16;
 
 use std::fmt;
 use std::io::Write;
@@ -392,14 +392,14 @@ impl DoubleOperandIns {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS)
             | (self.src.encode() << Operand::NUM_BITS)
             | self.dst.encode();
-        write_u16(out, bin);
+        out.write_u16(bin);
 
         if self.src.has_extra() {
-            write_u16(out, self.src.extra.unwrap_val());
+            out.write_u16(self.src.extra.unwrap_val());
         }
 
         if self.dst.has_extra() {
-            write_u16(out, self.dst.extra.unwrap_val());
+            out.write_u16(self.dst.extra.unwrap_val());
         }
     }
 
@@ -484,7 +484,7 @@ impl BranchIns {
     pub fn emit(&self, out: &mut impl Write) {
         let offset = self.target.unwrap_offset();
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | (offset as u16);
-        write_u16(out, bin);
+        out.write_u16(bin);
     }
 
     fn decode(input: &[u16]) -> Option<Ins> {
@@ -548,9 +548,9 @@ impl JmpIns {
 
     pub fn emit(&self, out: &mut impl Write) {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.dst.encode();
-        write_u16(out, bin);
+        out.write_u16(bin);
         if self.dst.has_extra() {
-            write_u16(out, self.dst.extra.unwrap_val());
+            out.write_u16(self.dst.extra.unwrap_val());
         }
     }
 
@@ -619,9 +619,9 @@ impl JsrIns {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS)
             | (self.reg.to_u16().unwrap() << Operand::NUM_BITS)
             | self.dst.encode();
-        write_u16(out, bin);
+        out.write_u16(bin);
         if self.dst.has_extra() {
-            write_u16(out, self.dst.extra.unwrap_val());
+            out.write_u16(self.dst.extra.unwrap_val());
         }
     }
     fn decode(input: &[u16]) -> Option<Ins> {
@@ -685,7 +685,7 @@ impl RtsIns {
 
     pub fn emit(&self, out: &mut impl Write) {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.reg.to_u16().unwrap();
-        write_u16(out, bin);
+        out.write_u16(bin);
     }
 
     fn decode(input: &[u16]) -> Option<Ins> {
@@ -782,9 +782,9 @@ impl SingleOperandIns {
 
     pub fn emit(&self, out: &mut impl Write) {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS) | self.dst.encode();
-        write_u16(out, bin);
+        out.write_u16(bin);
         if self.dst.has_extra() {
-            write_u16(out, self.dst.extra.unwrap_val());
+            out.write_u16(self.dst.extra.unwrap_val());
         }
     }
 
@@ -864,9 +864,9 @@ impl EisIns {
         let bin = (self.op.to_u16().unwrap() << Self::LOWER_BITS)
             | (reg << Operand::NUM_BITS)
             | self.operand.encode();
-        write_u16(out, bin);
+        out.write_u16(bin);
         if self.operand.has_extra() {
-            write_u16(out, self.operand.extra.unwrap_val());
+            out.write_u16(self.operand.extra.unwrap_val());
         }
     }
 
@@ -935,7 +935,7 @@ impl CCIns {
     }
 
     pub fn emit(&self, out: &mut impl Write) {
-        write_u16(out, self.op.to_u16().unwrap());
+        out.write_u16(self.op.to_u16().unwrap());
     }
 
     fn decode(input: &[u16]) -> Option<Ins> {
@@ -1004,7 +1004,7 @@ impl MiscIns {
     }
 
     pub fn emit(&self, out: &mut impl Write) {
-        write_u16(out, self.op.to_u16().unwrap());
+        out.write_u16(self.op.to_u16().unwrap());
     }
 
     fn decode(input: &[u16]) -> Option<Ins> {
@@ -1071,7 +1071,7 @@ impl TrapIns {
     pub fn emit(&self, out: &mut impl Write) {
         let data = self.data.unwrap_val();
         assert_eq!(data & !0xff, 0);
-        write_u16(out, (self.op.to_u16().unwrap() << Self::LOWER_BITS) | data);
+        out.write_u16((self.op.to_u16().unwrap() << Self::LOWER_BITS) | data);
     }
 
     fn decode(input: &[u16]) -> Option<Ins> {

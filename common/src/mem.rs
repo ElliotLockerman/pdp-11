@@ -10,8 +10,16 @@ pub fn as_byte_slice(input: &[u16]) -> &[u8] {
     cast_slice(input)
 }
 
-pub fn write_u16(out: &mut impl Write, word: u16) {
-    let lower = word as u8;
-    let upper = (word >> u8::BITS) as u8;
-    out.write_all(&[lower, upper]).unwrap();
+////////////////////////////////////////////////////////////////////////////////
+
+pub trait WriteU16 {
+    fn write_u16(&mut self, val: u16);
+}
+
+impl<T: Write> WriteU16 for T {
+    fn write_u16(&mut self, val: u16) {
+        let lower = val as u8;
+        let upper = (val >> u8::BITS) as u8;
+        self.write_all(&[lower, upper]).unwrap();
+    }
 }

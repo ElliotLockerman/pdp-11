@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use common::asm::*;
-use common::mem::write_u16;
+use common::mem::WriteU16;
 
 // Args are src, dst
 #[derive(Debug)]
@@ -60,7 +60,7 @@ impl Stmt {
                 }
                 Cmd::Words(exprs) => {
                     for e in exprs {
-                        write_u16(buf, e.unwrap_val());
+                        buf.write_u16(e.unwrap_val());
                     }
                 }
                 Cmd::Ascii(a) => buf.extend(a),
