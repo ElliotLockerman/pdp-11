@@ -54,16 +54,32 @@ pub enum Op {
     Sub,
     And,
     Or,
+    Div,
+    BitAnd,
+    BitOr,
+    LSR, // Logical Shift Right
+    LSL, // Logical Shift Left
+    Mod,
+    OrNot, // a!b is a or (not b)
+    Carot, // Value of first operand, type of second.
 }
 
-impl Op {
-    pub fn to_char(&self) -> char {
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Op::*;
         match self {
-            Add => '+',
-            Sub => '-',
-            And => '&',
-            Or => '!',
+            Add => write!(f, "+"),
+            Sub => write!(f, "-"),
+            And => write!(f, "&"),
+            Or => write!(f, "|"),
+            Div => write!(f, "\\/"), 
+            BitAnd => write!(f, "&"),
+            BitOr => write!(f, "|"),
+            LSR => write!(f, ">>"),
+            LSL => write!(f, "<<"),
+            Mod => write!(f, "%"),
+            OrNot => write!(f, "!"),
+            Carot => write!(f, "^"),
         }
     }
 }

@@ -45,6 +45,6 @@ fn main() {
     let Some(start) = prog.symbols.get(&opt.start) else {
         panic!("Start symbol {} not found", opt.start);
     };
-    assert!(start.mode == Mode::Abs);
+    assert!(start.mode == Mode::Text);
     emu.run_at(start.val);
 }

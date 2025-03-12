@@ -27,26 +27,43 @@ pub enum SymbolType {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// The Unix v6 manual calls this a "type".
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
-    Abs,
-    Relc,
-    Ext,
+    Undef,
+    UndefExt,
+    Abs, // Relocatable
+    Text, // Relocatable
+    Data, // Relocatable
+    Bss, // Relocatable
+    Ext, // External absolute, text, data or bss
+    Reg,
 }
 
 impl Mode {
     // Returns None if illegal.
     pub fn op_mode(lhs: Mode, op: Op, rhs: Mode) -> Option<Mode> {
         use Mode::*;
-        match (lhs, op, rhs) {
-            (Relc, Op::Sub, Relc) => Some(Abs), // Iff same section.
-            (Abs, _, Abs) => Some(Abs),
-            (Relc, _, Abs) => Some(Relc),
-            (Abs, Op::Add, Relc) => Some(Relc),
-            (Ext, _, Abs) => Some(Ext),
-            (Abs, Op::Add, Ext) => Some(Ext),
-            _ => None,
-        }
+        Some(match (lhs, op, rhs) {
+            (Undef, _, _) => Undef,
+            (_, _, Undef) => Undef,
+            (Abs, _, Abs) => Abs,
+
+            (UndefExt, Op::Add, Abs) => UndefExt,
+            (Text, Op::Add, Abs) => Text,
+            (Data, Op::Add, Abs) => Data,
+            (Bss, Op::Add, Abs) => Bss,
+
+            (Text, Op::Sub, Abs) => Text,
+            (Data, Op::Sub, Abs) => Data,
+            (Bss, Op::Sub, Abs) => Bss,
+
+            (Text, Op::Sub, Text) => Abs,
+            (Data, Op::Sub, Data) => Abs,
+            (Bss, Op::Sub, Bss) => Abs,
+            
+            _ => { return None; },
+        })
     }
 }
 
@@ -54,16 +71,17 @@ impl Mode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Sect {
-    Asect,
-    CsectUn,
-    CsectSym(String),
+    Text,
+    Data,
+    Bss,
 }
 
 impl Sect {
     fn mode(&self) -> Mode {
         match self {
-            Sect::Asect => Mode::Abs,
-            _ => Mode::Relc,
+            Sect::Text => Mode::Text,
+            Sect::Data => Mode::Data,
+            Sect::Bss => Mode::Bss,
         }
     }
 }
@@ -125,7 +143,7 @@ pub enum EvalError {
     #[error("Unable to resolve symbol")]
     SymbolUnresolved,
 
-    #[error("Illegal Expr: {0:?} {} {2:?}", .1.to_char())]
+    #[error("Illegal Expr: {0:?} {} {2:?}", .1)]
     IllegalExpr(Value, Op, Value),
 }
 
@@ -168,7 +186,7 @@ impl Assembler {
         Assembler{
             buf: Vec::new(),
             symbols: HashMap::new(),
-            sect: Sect::Asect, // TODO: default should be relocatable.
+            sect: Sect::Text,
         }
     }
 
@@ -195,6 +213,7 @@ impl Assembler {
                     Op::Sub => lhs - rhs,
                     Op::And => lhs & rhs,
                     Op::Or => lhs | rhs,
+                    _ => todo!(),
                 }
             },
         }
@@ -212,7 +231,7 @@ impl Assembler {
             },
             Extra::Rel(expr) => {
                 self.eval_expr(expr, loc).map(|val| {
-                    assert!(val.mode == self.sect.mode());
+                    assert!(val.mode == Mode::Abs || val.mode == self.sect.mode());
 
                     let off = (val.val as i32 - *curr_addr as i32 - 2) as u16;
 
@@ -839,29 +858,6 @@ mod tests {
         label = 2
         "#);
         assert_eq!(prog.symbols.get("label").unwrap().val, 2);
-    }
-
-    #[test]
-    fn mode_arith() {
-        use super::Mode::{self, *};
-        use super::Op::*;
-
-        // From PAL-11 4-4
-        assert_eq!(Mode::op_mode(Ext, Sub, Abs), Some(Ext));
-        assert_eq!(Mode::op_mode(Abs, Add, Ext), Some(Ext));
-
-        assert_eq!(Mode::op_mode(Relc, Add, Abs), Some(Relc));
-        assert_eq!(Mode::op_mode(Abs, Add, Relc), Some(Relc));
-        assert_eq!(Mode::op_mode(Abs, Add, Relc), Some(Relc));
-        assert_eq!(Mode::op_mode(Relc, Sub, Abs), Some(Relc));
-        assert_eq!(Mode::op_mode(Abs, Add, Relc), Some(Relc));
-
-        assert_eq!(Mode::op_mode(Relc, Sub, Relc), Some(Abs));
-
-        assert_eq!(Mode::op_mode(Ext, Add, Relc), None);
-        assert_eq!(Mode::op_mode(Relc, Add, Relc), None);
-        assert_eq!(Mode::op_mode(Abs, Sub, Relc), None);
-        assert_eq!(Mode::op_mode(Relc, And, Relc), None);
     }
 }
 
