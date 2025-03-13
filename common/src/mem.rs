@@ -54,13 +54,21 @@ impl IsEven for u16 {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait ToU16 {
-    fn to_u16(self) -> u16;
+// A panicking version.
+pub trait ToU16P {
+    fn to_u16p(self) -> u16;
 }
 
-impl ToU16 for usize {
-    fn to_u16(self) -> u16 {
-        assert!(self <= u16::MAX as usize);
+impl ToU16P for usize {
+    fn to_u16p(self) -> u16 {
+        assert!(self <= u16::MAX as Self);
+        self as u16
+    }
+}
+
+impl ToU16P for u32 {
+    fn to_u16p(self) -> u16 {
+        assert!(self <= u16::MAX as Self);
         self as u16
     }
 }

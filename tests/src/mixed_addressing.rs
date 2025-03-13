@@ -1,6 +1,7 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use common::mem::ToU16P;
 use emu_lib::Emulator;
 
 #[test]
@@ -17,7 +18,7 @@ fn literal_to_abs() {
     assert_eq!(emu.mem_read_word(0o20), 0o753);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 

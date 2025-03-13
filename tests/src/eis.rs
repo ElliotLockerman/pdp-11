@@ -1,7 +1,8 @@
-use crate::flags::{check_flags, C, N, V, Z};
+use crate::flags::{C, N, V, Z, check_flags};
 use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use common::mem::ToU16P;
 use emu_lib::Emulator;
 
 #[test]
@@ -20,12 +21,15 @@ fn mul_full() {
         emu.reg_write_word(Reg::R2, r2_init);
         emu.run_at(DATA_START);
         assert_eq!(emu.reg_read_word(Reg::R0), result_exp as u16);
-        assert_eq!(emu.reg_read_word(Reg::R1), (result_exp >> u16::BITS) as u16);
+        assert_eq!(
+            emu.reg_read_word(Reg::R1),
+            (result_exp >> u16::BITS).to_u16p()
+        );
         assert_eq!(emu.reg_read_word(Reg::R2), r2_init);
         check_flags(&emu, flags_exp);
         assert_eq!(
             emu.reg_read_word(Reg::PC),
-            DATA_START + prog.text.len() as u16
+            DATA_START + prog.text.len().to_u16p()
         );
     }
 
@@ -69,7 +73,7 @@ fn mul_lower() {
         check_flags(&emu, flags_exp);
         assert_eq!(
             emu.reg_read_word(Reg::PC),
-            DATA_START + prog.text.len() as u16
+            DATA_START + prog.text.len().to_u16p()
         );
     }
 
@@ -109,7 +113,7 @@ fn div() {
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, dividend as u16);
-        emu.reg_write_word(Reg::R1, (dividend >> u16::BITS) as u16);
+        emu.reg_write_word(Reg::R1, (dividend >> u16::BITS).to_u16p());
         emu.reg_write_word(Reg::R2, divisor);
         emu.run_at(DATA_START);
         assert_eq!(emu.reg_read_word(Reg::R0), quot_exp, "quot");
@@ -118,7 +122,7 @@ fn div() {
         check_flags(&emu, flags_exp);
         assert_eq!(
             emu.reg_read_word(Reg::PC),
-            DATA_START + prog.text.len() as u16
+            DATA_START + prog.text.len().to_u16p()
         );
     }
 
@@ -134,7 +138,7 @@ fn div() {
         i32::MIN as u32,
         1,
         i32::MIN as u16,
-        ((i32::MIN as u32) >> u16::BITS) as u16,
+        ((i32::MIN as u32) >> u16::BITS).to_u16p(),
         N | V,
     );
 }
@@ -159,7 +163,7 @@ fn ash() {
         check_flags(&emu, flags_exp);
         assert_eq!(
             emu.reg_read_word(Reg::PC),
-            DATA_START + prog.text.len() as u16
+            DATA_START + prog.text.len().to_u16p()
         );
     }
 
@@ -194,7 +198,7 @@ fn ashc() {
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, shift as u16);
         emu.reg_write_word(Reg::R2, val as u16);
-        emu.reg_write_word(Reg::R3, ((val as u32) >> u16::BITS) as u16);
+        emu.reg_write_word(Reg::R3, ((val as u32) >> u16::BITS).to_u16p());
         emu.run_at(DATA_START);
         assert_eq!(emu.reg_read_word(Reg::R0), shift as u16, "shift (after)");
         let out_lower = emu.reg_read_word(Reg::R2) as u32;
@@ -207,7 +211,7 @@ fn ashc() {
         check_flags(&emu, flags_exp);
         assert_eq!(
             emu.reg_read_word(Reg::PC),
-            DATA_START + prog.text.len() as u16
+            DATA_START + prog.text.len().to_u16p()
         );
     }
 
@@ -251,7 +255,7 @@ fn xor() {
         check_flags(&emu, flags_exp);
         assert_eq!(
             emu.reg_read_word(Reg::PC),
-            DATA_START + prog.text.len() as u16
+            DATA_START + prog.text.len().to_u16p()
         );
     }
 

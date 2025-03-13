@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use common::mem::{IsEven, ReadU16, ToU16, WriteU16};
+use common::mem::{IsEven, ReadU16, ToU16P, WriteU16};
 
 pub struct Symbol {}
 
@@ -81,15 +81,15 @@ impl Aout {
 
     pub fn write_to(&self, writer: &mut impl Write) {
         assert!(self.entry_point.is_even());
-        assert!(self.entry_point < self.text.len().to_u16());
+        assert!(self.entry_point < self.text.len().to_u16p());
 
         writer.write_u16(Self::MAGIC);
-        writer.write_u16(self.text.len().to_u16());
-        writer.write_u16(self.data.len().to_u16());
-        writer.write_u16(self.bss.len().to_u16());
+        writer.write_u16(self.text.len().to_u16p());
+        writer.write_u16(self.data.len().to_u16p());
+        writer.write_u16(self.bss.len().to_u16p());
 
         assert_eq!(self.symbol_table.len(), 0);
-        writer.write_u16(self.symbol_table.len().to_u16() * Symbol::BYTES);
+        writer.write_u16(self.symbol_table.len().to_u16p() * Symbol::BYTES);
         writer.write_u16(self.entry_point);
         writer.write_u16(0); // Unused.
         writer.write_u16(0); // "Relocation bits suppressed" flag, not yet implemented.

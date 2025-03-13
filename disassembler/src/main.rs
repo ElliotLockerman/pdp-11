@@ -1,6 +1,6 @@
 use aout::Aout;
 use common::constants::WORD_SIZE;
-use disassembler::{disassemble, Disassembled};
+use disassembler::{Disassembled, disassemble};
 
 use std::ops::Range;
 

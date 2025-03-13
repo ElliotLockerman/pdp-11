@@ -1,14 +1,14 @@
 use std::ascii;
 use std::collections::VecDeque;
-use std::io::{stdout, Write};
-use std::sync::{atomic::AtomicU32, atomic::Ordering, Arc, Mutex};
+use std::io::{Write, stdout};
+use std::sync::{Arc, Mutex, atomic::AtomicU32, atomic::Ordering};
 use std::time::Duration;
 
-use crate::io::{Interrupt, MMIOHandler};
 use crate::EmulatorState;
+use crate::io::{Interrupt, MMIOHandler};
 
 use crossterm::cursor;
-use crossterm::event::{poll, read, Event, KeyCode, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers, poll, read};
 use crossterm::execute;
 use crossterm::terminal;
 use log::error;

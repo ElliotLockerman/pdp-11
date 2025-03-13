@@ -1,6 +1,7 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::{DATA_START, WORD_SIZE};
+use common::mem::ToU16P;
 use emu_lib::Emulator;
 
 #[test]
@@ -17,7 +18,7 @@ fn literal_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -32,7 +33,7 @@ fn literal_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o12);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -74,7 +75,7 @@ fn regs() {
     assert_eq!(emu.reg_read_word(Reg::SP), 0o1000);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -92,7 +93,7 @@ fn neg_literal_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), -0o1i16 as u16);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -107,7 +108,7 @@ fn neg_literal_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), -0o12i16 as u16);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -125,7 +126,7 @@ fn literal_read_byte() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -144,7 +145,7 @@ fn char_literal_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0x61);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -163,7 +164,7 @@ fn char_literal_read_byte() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0x61);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -182,7 +183,7 @@ fn literal_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -201,7 +202,7 @@ fn absolute_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o321);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -231,7 +232,7 @@ fn indirect_read() {
     assert_eq!(emu.reg_read_word(Reg::R1), 0o321);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -248,7 +249,7 @@ fn indirect_read() {
     assert_eq!(emu.reg_read_word(Reg::R1), 0o321);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -265,7 +266,7 @@ fn indirect_read() {
     assert_eq!(emu.reg_read_word(Reg::R1), 0o177777);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -283,7 +284,7 @@ fn indirect_read() {
     assert_eq!(emu.reg_read_word(Reg::R1), 0o177777);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -303,7 +304,7 @@ fn indirect_write() {
     assert_eq!(emu.mem_read_word(0o100), 0o20);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -320,7 +321,7 @@ fn indirect_write() {
     assert_eq!(emu.mem_read_word(0o100), 0o20);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -337,7 +338,7 @@ fn indirect_write() {
     assert_eq!(emu.mem_read_word(0o100), 0o420);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -386,7 +387,7 @@ fn autoinc_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o102);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -404,7 +405,7 @@ fn autoinc_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o101);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -422,7 +423,7 @@ fn autoinc_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o101);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -443,7 +444,7 @@ fn autoinc_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o102);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -461,7 +462,7 @@ fn autoinc_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o101);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -482,7 +483,7 @@ fn autodec_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -500,7 +501,7 @@ fn autodec_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -521,7 +522,7 @@ fn autodec_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -539,7 +540,7 @@ fn autodec_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -561,7 +562,7 @@ fn autoinc_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o102);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -580,7 +581,7 @@ fn autoinc_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o102);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -602,7 +603,7 @@ fn autoinc_def_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o102);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -621,7 +622,7 @@ fn autoinc_def_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o102);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -643,7 +644,7 @@ fn autodec_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -662,7 +663,7 @@ fn autodec_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -684,7 +685,7 @@ fn autodec_def_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -703,7 +704,7 @@ fn autodec_def_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -727,7 +728,7 @@ fn index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -750,7 +751,7 @@ fn index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -772,7 +773,7 @@ fn index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -793,7 +794,7 @@ fn index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -817,7 +818,7 @@ fn neg_index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o106);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -840,7 +841,7 @@ fn neg_index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o106);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -861,7 +862,7 @@ fn neg_index_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o103);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -885,7 +886,7 @@ fn index_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -906,7 +907,7 @@ fn index_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -928,7 +929,7 @@ fn index_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -947,7 +948,7 @@ fn index_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -969,7 +970,7 @@ fn index_def_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -988,7 +989,7 @@ fn index_def_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o100);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -1008,7 +1009,7 @@ fn relative_label_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -1025,7 +1026,7 @@ fn relative_label_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -1043,7 +1044,7 @@ fn relative_label_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + offset + prog.text.len() as u16
+        DATA_START + offset + prog.text.len().to_u16p()
     );
 }
 
@@ -1064,7 +1065,7 @@ fn relative_label_write() {
     assert_eq!(emu.mem_read_word(DATA_START), 0o012);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -1082,7 +1083,7 @@ fn relative_label_write() {
     assert_eq!(emu.mem_read_word(DATA_START), 0o7412);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -1101,7 +1102,7 @@ fn relative_label_write() {
     assert_eq!(emu.mem_read_word(DATA_START + offset), 0o7412);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 + offset
+        DATA_START + prog.text.len().to_u16p() + offset
     );
 }
 
@@ -1121,7 +1122,7 @@ fn immediate_label_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 6);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1142,7 +1143,7 @@ fn relative_def_label_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o66);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 
     let prog = assemble_raw(
@@ -1160,7 +1161,7 @@ fn relative_def_label_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1182,7 +1183,7 @@ fn relative_def_label_write() {
     assert_eq!(emu.mem_read_word(0o410), 0o33);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 
     let prog = assemble_raw(
@@ -1201,7 +1202,7 @@ fn relative_def_label_write() {
     assert_eq!(emu.mem_read_word(0o414), 0o7400);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1220,7 +1221,7 @@ fn relative_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o66);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 
     let prog = assemble_raw(
@@ -1236,7 +1237,7 @@ fn relative_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1256,7 +1257,7 @@ fn relative_write() {
     assert_eq!(emu.mem_read_word(DATA_START + 0o12), 0o11);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 
     let prog = assemble_raw(
@@ -1272,7 +1273,7 @@ fn relative_write() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1292,7 +1293,7 @@ fn relative_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o66);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 
     let prog = assemble_raw(
@@ -1310,7 +1311,7 @@ fn relative_def_read() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1331,7 +1332,7 @@ fn relative_def_write() {
     assert_eq!(emu.mem_read_word(0o410), 0o33);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 
     let prog = assemble_raw(
@@ -1349,7 +1350,7 @@ fn relative_def_write() {
     assert_eq!(emu.mem_read_word(0o414), 0o7400);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16 - WORD_SIZE
+        DATA_START + prog.text.len().to_u16p() - WORD_SIZE
     );
 }
 
@@ -1370,7 +1371,7 @@ fn cmp_literal_index() {
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);
-    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len().to_u16p());
 
     let asm = r#"
         . = 400
@@ -1387,5 +1388,5 @@ fn cmp_literal_index() {
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);
-    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len().to_u16p());
 }

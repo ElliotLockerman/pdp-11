@@ -1,4 +1,4 @@
-use common::asm::{Reg, NUM_REGS};
+use common::asm::{NUM_REGS, Reg};
 use common::mem::as_word_slice;
 
 use log::trace;

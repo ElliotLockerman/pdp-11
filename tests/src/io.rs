@@ -1,5 +1,6 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
+use common::mem::ToU16P;
 use emu_lib::io::clock::{Clock, FakeClock};
 use emu_lib::io::teletype::*;
 use emu_lib::{Emulator, ExecRet};
@@ -577,6 +578,6 @@ fn pipe_keyboard_interrupt() {
 
     let buf = prog.symbols.get("buf").unwrap().val;
     for (i, ch) in msg.iter().enumerate() {
-        assert_eq!(emu.mem_read_byte(buf + i as u16), *ch);
+        assert_eq!(emu.mem_read_byte(buf + i.to_u16p()), *ch);
     }
 }

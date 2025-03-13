@@ -1,6 +1,7 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
+use common::mem::ToU16P;
 use emu_lib::Emulator;
 
 #[test]
@@ -61,7 +62,7 @@ fn even() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -82,7 +83,7 @@ fn even() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -103,7 +104,7 @@ fn even() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 
     let prog = assemble_raw(
@@ -124,7 +125,7 @@ fn even() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -148,5 +149,5 @@ fn cont() {
     assert_eq!(emu.reg_read_word(Reg::R0), 1);
     emu.cont();
     assert_eq!(emu.reg_read_word(Reg::R0), 2);
-    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len() as u16);
+    assert_eq!(emu.reg_read_word(Reg::PC), prog.text.len().to_u16p());
 }

@@ -1,5 +1,5 @@
-use emu_lib::emulator_state::Status;
 use emu_lib::Emulator;
+use emu_lib::emulator_state::Status;
 
 pub const C: u16 = Status::C;
 pub const V: u16 = Status::V;

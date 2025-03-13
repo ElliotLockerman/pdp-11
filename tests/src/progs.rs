@@ -1,6 +1,7 @@
 use as_lib::{assemble, assemble_raw};
 use common::asm::Reg;
 use common::constants::DATA_START;
+use common::mem::ToU16P;
 use emu_lib::Emulator;
 
 use std::assert_matches::assert_matches;
@@ -24,7 +25,7 @@ fn looop() {
     assert_eq!(emu.reg_read_word(Reg::R0), 0o12, "r0");
     assert_eq!(
         emu.reg_read_word(Reg::PC),
-        DATA_START + prog.text.len() as u16
+        DATA_START + prog.text.len().to_u16p()
     );
 }
 
@@ -59,7 +60,7 @@ fn strcpy() {
     emu.run_at(aout.entry_point);
 
     let expected = b"hello, world!\0";
-    for byte_idx in 0u16..(expected.len() as u16) {
+    for byte_idx in 0u16..(expected.len().to_u16p()) {
         assert_eq!(emu.mem_read_byte(byte_idx), expected[byte_idx as usize]);
     }
 }

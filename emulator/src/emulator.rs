@@ -1,8 +1,8 @@
-use crate::io::status_access::StatusAccess;
-use crate::io::Interrupt;
 use crate::EmulatorState;
 use crate::MMIOHandler;
 use crate::Status;
+use crate::io::Interrupt;
+use crate::io::status_access::StatusAccess;
 use aout::Aout;
 use common::asm::*;
 use common::constants::*;
@@ -162,13 +162,14 @@ impl Emulator {
         let mut interrupt: Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)> = None;
         for dev in self.mmio_handlers.values_mut() {
             if let Some(inter) = dev.lock().unwrap().tick(&mut self.state) {
-                match &interrupt { Some(max) => {
-                    if inter.prio > max.1.prio {
-                        interrupt = Some((dev.clone(), inter))
+                match &interrupt {
+                    Some(max) => {
+                        if inter.prio > max.1.prio {
+                            interrupt = Some((dev.clone(), inter))
+                        }
                     }
-                } _ => {
-                    interrupt = Some((dev.clone(), inter))
-                }}
+                    _ => interrupt = Some((dev.clone(), inter)),
+                }
             }
         }
         interrupt
@@ -1020,7 +1021,9 @@ impl Emulator {
 
         let new_pc = self.mem_read_word(vector);
         let new_ps = self.mem_read_word(vector + 2);
-        debug!("Interrupt; saving pc {old_pc:#o} and ps {old_ps:#o}; loading pc {new_pc:#o}, ps {new_ps:#o}");
+        debug!(
+            "Interrupt; saving pc {old_pc:#o} and ps {old_ps:#o}; loading pc {new_pc:#o}, ps {new_ps:#o}"
+        );
         self.reg_write_word(Reg::PC, new_pc);
         self.state.set_status(Status::from_raw(new_ps));
     }

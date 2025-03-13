@@ -1,5 +1,6 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
+use common::mem::ToU16P;
 use emu_lib::Emulator;
 
 // Assumes "proper" halt is last ins in binary
@@ -8,7 +9,7 @@ fn run(asm: &str) -> Emulator {
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);
-    assert_eq!(emu.get_state().pc(), prog.text.len() as u16);
+    assert_eq!(emu.get_state().pc(), prog.text.len().to_u16p());
     emu
 }
 

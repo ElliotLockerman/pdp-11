@@ -1,7 +1,7 @@
 use as_lib::assemble;
+use emu_lib::Emulator;
 use emu_lib::io::clock::Clock;
 use emu_lib::io::teletype::Teletype;
-use emu_lib::Emulator;
 
 use clap::Parser;
 

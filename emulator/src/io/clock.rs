@@ -1,8 +1,8 @@
-use crate::io::{Interrupt, MMIOHandler};
 use crate::EmulatorState;
+use crate::io::{Interrupt, MMIOHandler};
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub struct Clock {
     interrupt_enable: bool,
