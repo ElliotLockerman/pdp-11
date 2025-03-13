@@ -1,8 +1,8 @@
 use common::asm::{NUM_REGS, Reg};
-use common::mem::as_word_slice;
 
 use log::trace;
 use num_traits::ToPrimitive;
+use bytemuck::cast_slice;
 
 #[derive(Default, Debug)]
 pub struct Status(u16);
@@ -181,7 +181,7 @@ impl EmulatorState {
             panic!("PC 0o{pc:o} not aligned");
         }
         let mem = &self.mem.as_slice()[pc..pc + 6];
-        as_word_slice(mem)
+        cast_slice(mem)
     }
 
     pub fn set_status(&mut self, status: Status) {

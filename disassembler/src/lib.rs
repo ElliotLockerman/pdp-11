@@ -1,8 +1,9 @@
 use common::asm::Ins;
 use common::constants::{MAX_INS_WORDS, WORD_SIZE};
-use common::mem::as_word_slice;
 
 use std::fmt;
+
+use bytemuck::cast_slice;
 
 fn write_oct_words(f: &mut fmt::Formatter, vals: &[u16]) -> fmt::Result {
     for i in 0..MAX_INS_WORDS {
@@ -45,11 +46,11 @@ pub fn disassemble(bin: &[u8]) -> Vec<Disassembled> {
     let mut addr: usize = 0;
     while addr < bin.len() {
         let upper = usize::min(addr + 3 * WORD_SIZE as usize, bin.len());
-        let ins = Ins::decode(as_word_slice(&bin[addr..upper]));
+        let ins = Ins::decode(cast_slice(&bin[addr..upper]));
         let size = ins.as_ref().map(|x| x.size()).unwrap_or(WORD_SIZE) as usize;
         out.push(Disassembled {
             addr: addr as u16,
-            repr: as_word_slice(&bin[addr..addr + size]).into(),
+            repr: cast_slice(&bin[addr..addr + size]).into(),
             ins,
         });
         addr += size;
