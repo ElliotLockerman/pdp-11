@@ -8,5 +8,6 @@ members = [
     "aout",
     "tests",
 ]
-resolver = "2"
+
+package.edition = "2024"
 

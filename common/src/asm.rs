@@ -332,7 +332,7 @@ impl fmt::Display for Target {
 
 #[macro_export]
 macro_rules! double_operand_ins {
-    ($op:ident, $src:expr, $dst:expr) => {
+    ($op:ident, $src:expr_2021, $dst:expr_2021) => {
         Ins::DoubleOperand(DoubleOperandIns {
             op: DoubleOperandOpcode::$op,
             src: $src,
@@ -428,7 +428,7 @@ impl fmt::Display for DoubleOperandIns {
 
 #[macro_export]
 macro_rules! branch_ins {
-    ($op:ident, $offset:expr) => {
+    ($op:ident, $offset:expr_2021) => {
         Ins::Branch(BranchIns {
             op: BranchOpcode::$op,
             target: Target::Label($offset),
@@ -512,7 +512,7 @@ impl fmt::Display for BranchIns {
 
 #[macro_export]
 macro_rules! jmp_ins {
-    ($dst:expr) => {
+    ($dst:expr_2021) => {
         Ins::Jmp(JmpIns {
             op: JmpOpcode::Jmp,
             dst: $dst,
@@ -579,7 +579,7 @@ impl fmt::Display for JmpIns {
 
 #[macro_export]
 macro_rules! jsr_ins {
-    ($reg:expr, $dst:expr) => {
+    ($reg:expr_2021, $dst:expr_2021) => {
         Ins::Jsr(JsrIns {
             op: JsrOpcode::Jsr,
             reg: $reg,
@@ -650,7 +650,7 @@ impl fmt::Display for JsrIns {
 
 #[macro_export]
 macro_rules! rts_ins {
-    ($reg:expr) => {
+    ($reg:expr_2021) => {
         Ins::Rts(RtsIns {
             op: RtsOpcode::Rts,
             reg: $reg,
@@ -714,7 +714,7 @@ impl fmt::Display for RtsIns {
 
 #[macro_export]
 macro_rules! single_operand_ins {
-    ($op:ident,  $dst:expr) => {
+    ($op:ident,  $dst:expr_2021) => {
         Ins::SingleOperand(SingleOperandIns {
             op: SingleOperandOpcode::$op,
             dst: $dst,
@@ -815,7 +815,7 @@ impl fmt::Display for SingleOperandIns {
 
 #[macro_export]
 macro_rules! eis_ins {
-    ($op:ident,  $reg:expr, $dst:expr) => {
+    ($op:ident,  $reg:expr_2021, $dst:expr_2021) => {
         Ins::Eis(EisIns {
             op: EisOpcode::$op,
             reg: $reg,
@@ -1032,7 +1032,7 @@ impl fmt::Display for MiscIns {
 
 #[macro_export]
 macro_rules! trap_ins {
-    ($op:ident, $data:expr) => {
+    ($op:ident, $data:expr_2021) => {
         Ins::Trap(TrapIns {
             op: TrapOpcode::$op,
             data: $data,

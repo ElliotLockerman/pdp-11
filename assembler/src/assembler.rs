@@ -279,7 +279,7 @@ impl Assembler {
     fn eval_target(&self, target: &mut Target, curr_addr: u16) {
         let offset = match target {
             Target::Offset(x) => *x,
-            Target::Label(ref label) => {
+            &mut Target::Label(ref label) => {
                 if let Some(sym) = self.symbols.get(label) {
                     let dst = sym.val;
                     let addr = curr_addr as i32;

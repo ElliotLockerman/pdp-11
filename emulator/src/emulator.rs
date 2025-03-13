@@ -162,13 +162,13 @@ impl Emulator {
         let mut interrupt: Option<(Arc<Mutex<dyn MMIOHandler>>, Interrupt)> = None;
         for dev in self.mmio_handlers.values_mut() {
             if let Some(inter) = dev.lock().unwrap().tick(&mut self.state) {
-                if let Some(max) = &interrupt {
+                match &interrupt { Some(max) => {
                     if inter.prio > max.1.prio {
                         interrupt = Some((dev.clone(), inter))
                     }
-                } else {
+                } _ => {
                     interrupt = Some((dev.clone(), inter))
-                }
+                }}
             }
         }
         interrupt

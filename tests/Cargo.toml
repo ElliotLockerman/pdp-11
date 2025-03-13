@@ -2,8 +2,8 @@
 name = "tests"
 version = "0.1.0"
 authors = ["Elliot Lockerman <elliot@lockerman.info>"]
-edition = "2021"
 publish = false
+edition.workspace = true
 
 [dev-dependencies]
 assembler = { path = "../assembler" }
