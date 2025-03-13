@@ -1,4 +1,4 @@
-use as_lib::assemble_raw;
+use as_lib::{assemble, assemble_raw};
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -30,16 +30,15 @@ fn looop() {
 
 #[test]
 fn strcpy() {
-    let prog = assemble_raw(
+    let aout = assemble(
         r#"
-        br start
     out:
         . = . + 16
     in:
         .asciz "hello, world!"
 
         .even
-    start:
+    _start:
         mov #in, r0
         mov #out, r1
         
@@ -56,21 +55,19 @@ fn strcpy() {
     "#,
     );
     let mut emu = Emulator::new();
-    emu.load_image(&prog.text, 0);
-    emu.run_at(0);
+    emu.load_aout(&aout);
+    emu.run_at(aout.entry_point);
 
-    let expected = b"  hello, world!\0";
-    for byte_idx in 2u16..=15 {
+    let expected = b"hello, world!\0";
+    for byte_idx in 0u16..(expected.len() as u16) {
         assert_eq!(emu.mem_read_byte(byte_idx), expected[byte_idx as usize]);
     }
 }
 
 #[test]
 fn fib() {
-    let prog = assemble_raw(
+    let aout = assemble(
         r#"
-    br start
-
     out:
     .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
     out_end = .
@@ -108,7 +105,7 @@ fn fib() {
         rts pc
 
 
-    start:
+    _start:
         mov #150000, sp
         mov #0, r1
         mov #out, r3
@@ -129,8 +126,8 @@ fn fib() {
     );
 
     let mut emu = Emulator::new();
-    emu.load_image(&prog.text, 0);
-    emu.run_at(0);
+    emu.load_aout(&aout);
+    emu.run_at(aout.entry_point);
 
     fn fib(i: u16) -> u16 {
         match i {
@@ -141,7 +138,7 @@ fn fib() {
     }
 
     for i in 0..10 {
-        assert_eq!(emu.mem_read_word(i * 2 + 2), fib(i));
+        assert_eq!(emu.mem_read_word(i * 2), fib(i));
     }
 }
 
@@ -201,15 +198,15 @@ fn unsigned_mul() {
         mov (sp)+, r2
         rts pc
     "#;
-    let prog = assemble_raw(&asm);
+    let aout = assemble(&asm);
     let mut emu = Emulator::new();
-    emu.load_image(&prog.text, DATA_START);
+    emu.load_aout(&aout);
 
     let mut run = |lhs, rhs| {
         emu.reg_write_word(Reg::R0, lhs);
         emu.reg_write_word(Reg::R1, rhs);
 
-        emu.run_at(DATA_START);
+        emu.run_at(aout.entry_point);
 
         let lower = emu.reg_read_word(Reg::R0);
         let upper = emu.reg_read_word(Reg::R1);
