@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use common::mem::{IsEven, ReadU16, WriteU16, ToU16};
+use common::mem::{IsEven, ReadU16, ToU16, WriteU16};
 
 pub struct Symbol {}
 
@@ -64,7 +64,6 @@ impl Aout {
 
         let mut bss = vec![0u8; bss_size as usize];
         reader.read_exact(&mut bss).unwrap();
-
 
         // Make sure we read the whole file.
         let mut buf = [0u8; 1];

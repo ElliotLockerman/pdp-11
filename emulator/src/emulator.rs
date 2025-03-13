@@ -3,9 +3,9 @@ use crate::io::Interrupt;
 use crate::EmulatorState;
 use crate::MMIOHandler;
 use crate::Status;
+use aout::Aout;
 use common::asm::*;
 use common::constants::*;
-use aout::Aout;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;

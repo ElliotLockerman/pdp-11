@@ -1,7 +1,7 @@
+use aout::Aout;
 use emu_lib::io::clock::Clock;
 use emu_lib::io::teletype::Teletype;
 use emu_lib::Emulator;
-use aout::Aout;
 
 use clap::Parser;
 

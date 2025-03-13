@@ -64,4 +64,3 @@ impl ToU16 for usize {
         self as u16
     }
 }
-

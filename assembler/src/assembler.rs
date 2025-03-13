@@ -3,9 +3,9 @@ use std::convert::TryInto;
 
 use crate::grammar::StmtParser;
 use crate::ir::*;
+use aout::Aout;
 use common::asm::*;
 use common::constants::WORD_SIZE;
-use aout::Aout;
 
 use log::trace;
 use thiserror::Error;
