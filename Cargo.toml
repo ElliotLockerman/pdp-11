@@ -5,6 +5,7 @@ members = [
     "emulator",
     "interpreter",
     "disassembler",
+    "aout",
     "tests",
 ]
 resolver = "2"

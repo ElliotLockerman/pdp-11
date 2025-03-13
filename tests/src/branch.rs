@@ -1,5 +1,5 @@
 use crate::flags::{C, N, V, Z};
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -18,7 +18,7 @@ fn run(ins: &str, flags: u16, should_take: bool) {
     "#
     );
 
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.get_state_mut().get_status_mut().set_flags(flags);
@@ -200,5 +200,5 @@ fn far_br() {
             halt
     "#;
 
-    assemble(&asm);
+    assemble_raw(&asm);
 }

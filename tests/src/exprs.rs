@@ -1,4 +1,4 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -11,7 +11,7 @@ fn eval_word(expr: &str, r0_exp: u16) {
         halt
     "#
     );
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -35,7 +35,7 @@ fn eval_byte(expr: &str, exp: u8) {
         .byte 0, 0
     "#
     );
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -78,7 +78,7 @@ fn literal() {
         .word 0
     "#
     );
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -162,7 +162,7 @@ fn compound() {
 fn malformed() {
     use std::panic::catch_unwind;
     fn fail(asm: &str) {
-        if let Ok(_) = catch_unwind(|| assemble(asm)) {
+        if let Ok(_) = catch_unwind(|| assemble_raw(asm)) {
             panic!("Failure: was supposed to panic");
         }
     }
@@ -191,7 +191,7 @@ fn array_len() {
         mov #len, r0
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);
@@ -210,7 +210,7 @@ fn array_len() {
         mov len, r0
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -233,7 +233,7 @@ fn relocation() {
         mov #66, val 
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -253,7 +253,7 @@ fn relocation() {
         mov #66, val 
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run();
@@ -272,7 +272,7 @@ fn relocation() {
         mov #66, val 
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(DATA_START);
@@ -296,7 +296,7 @@ fn period_unchanged() {
         mov #66, val 
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(DATA_START);
@@ -313,7 +313,7 @@ fn decreasing() {
         . = 1
         . = 0
     "#;
-    assemble(&asm);
+    assemble_raw(&asm);
 }
 
 #[test]
@@ -325,7 +325,7 @@ fn reloc_label_reads() {
         mov #loc, r1
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.mem_write_word(0o100, 0o123);
@@ -341,7 +341,7 @@ fn reloc_label_reads() {
         mov #loc, r1
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.mem_write_word(0o100, 0o123);
@@ -360,7 +360,7 @@ fn reloc_label_reads() {
         mov #loc, r1
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.mem_write_word(0o100, 0o123);
@@ -383,7 +383,7 @@ fn update_symbol() {
         mov #sym, r1
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -408,7 +408,7 @@ fn forward() {
         mov elem, r0
         halt
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);
@@ -431,7 +431,7 @@ fn double_forward() {
             .word 0, 0, 27, 0
 
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);

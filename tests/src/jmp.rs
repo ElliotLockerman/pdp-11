@@ -1,11 +1,11 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
 
 // asm must set r0 to 1 if the jsr wasn't successful, 2 if it was
 fn run(asm: &str) {
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.run_at(DATA_START);

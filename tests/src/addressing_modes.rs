@@ -1,11 +1,11 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::{DATA_START, WORD_SIZE};
 use emu_lib::Emulator;
 
 #[test]
 fn literal_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #1, r0
         halt
@@ -20,7 +20,7 @@ fn literal_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #10., r0
         halt
@@ -38,7 +38,7 @@ fn literal_read() {
 
 #[test]
 fn regs() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         clr r0
 
@@ -80,7 +80,7 @@ fn regs() {
 
 #[test]
 fn neg_literal_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #-1, r0
         halt
@@ -95,7 +95,7 @@ fn neg_literal_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #-10., r0
         halt
@@ -113,7 +113,7 @@ fn neg_literal_read() {
 
 #[test]
 fn literal_read_byte() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         movb #1, r0
         halt
@@ -131,7 +131,7 @@ fn literal_read_byte() {
 
 #[test]
 fn char_literal_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #177777, r0
         mov #'a, r0
@@ -150,7 +150,7 @@ fn char_literal_read() {
 
 #[test]
 fn char_literal_read_byte() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #177777, r0
         movb    #'a, r0
@@ -170,7 +170,7 @@ fn char_literal_read_byte() {
 #[test]
 #[should_panic]
 fn literal_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov r0, #1
         halt
@@ -188,7 +188,7 @@ fn literal_write() {
 
 #[test]
 fn absolute_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov @#20, r0
         halt
@@ -208,7 +208,7 @@ fn absolute_read() {
 #[test]
 #[should_panic]
 fn large_literal() {
-    assemble(
+    assemble_raw(
         r#"
         mov #10000000000, r0
     "#,
@@ -217,7 +217,7 @@ fn large_literal() {
 
 #[test]
 fn indirect_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov @r0, r1
@@ -234,7 +234,7 @@ fn indirect_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov (r0), r1
@@ -251,7 +251,7 @@ fn indirect_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    (r0), r1
@@ -268,7 +268,7 @@ fn indirect_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         loc = 100
         mov     #loc, r0
@@ -289,7 +289,7 @@ fn indirect_read() {
 
 #[test]
 fn indirect_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov #20, @r0
@@ -306,7 +306,7 @@ fn indirect_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov #20, (r0)
@@ -323,7 +323,7 @@ fn indirect_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    #20, (r0)
@@ -344,7 +344,7 @@ fn indirect_write() {
 #[test]
 #[should_panic]
 fn unaligned() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #101, r0
         mov @r0, r1
@@ -356,7 +356,7 @@ fn unaligned() {
     emu.mem_write_word(0o100, 0o321);
     emu.run_at(DATA_START);
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #101, r0
         mov #20, @r0
@@ -371,7 +371,7 @@ fn unaligned() {
 
 #[test]
 fn autoinc_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov (r0)+, r1
@@ -389,7 +389,7 @@ fn autoinc_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    (r0)+, r1
@@ -407,7 +407,7 @@ fn autoinc_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    (r0)+, r1
@@ -428,7 +428,7 @@ fn autoinc_read() {
 
 #[test]
 fn autoinc_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov #20, (r0)+
@@ -446,7 +446,7 @@ fn autoinc_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    #20, (r0)+
@@ -467,7 +467,7 @@ fn autoinc_write() {
 
 #[test]
 fn autodec_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #102, r0
         mov -(r0), r1
@@ -485,7 +485,7 @@ fn autodec_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #101, r0
         movb    -(r0), r1
@@ -506,7 +506,7 @@ fn autodec_read() {
 
 #[test]
 fn autodec_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #102, r0
         mov #20, -(r0)
@@ -524,7 +524,7 @@ fn autodec_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #101, r0
         movb    #20, -(r0)
@@ -545,7 +545,7 @@ fn autodec_write() {
 
 #[test]
 fn autoinc_def_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov @(r0)+, r1
@@ -564,7 +564,7 @@ fn autoinc_def_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    @(r0)+, r1
@@ -586,7 +586,7 @@ fn autoinc_def_read() {
 
 #[test]
 fn autoinc_def_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov #7720, @(r0)+
@@ -605,7 +605,7 @@ fn autoinc_def_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    #20, @(r0)+
@@ -627,7 +627,7 @@ fn autoinc_def_write() {
 
 #[test]
 fn autodec_def_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #102, r0
         mov @-(r0), r1
@@ -646,7 +646,7 @@ fn autodec_def_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #102, r0
         movb    @-(r0), r1
@@ -668,7 +668,7 @@ fn autodec_def_read() {
 
 #[test]
 fn autodec_def_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #102, r0
         mov #7720, @-(r0)
@@ -687,7 +687,7 @@ fn autodec_def_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #102, r0
         movb    #20, @-(r0)
@@ -709,7 +709,7 @@ fn autodec_def_write() {
 
 #[test]
 fn index_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov 2(r0), r1
@@ -730,7 +730,7 @@ fn index_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         FIELD_A = 2
         FIELD_B = 4
@@ -753,7 +753,7 @@ fn index_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         FIELD_A = 2
         mov #100, r0
@@ -775,7 +775,7 @@ fn index_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    1(r0), r1
@@ -799,7 +799,7 @@ fn index_read() {
 
 #[test]
 fn neg_index_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #106, r0
         mov -4(r0), r1
@@ -820,7 +820,7 @@ fn neg_index_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         FIELD_A = -2
         FIELD_B = -4
@@ -843,7 +843,7 @@ fn neg_index_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #103, r0
         movb    -2(r0), r1
@@ -867,7 +867,7 @@ fn neg_index_read() {
 
 #[test]
 fn index_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov #1, 2(r0)
@@ -888,7 +888,7 @@ fn index_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    #20, 2(r0)
@@ -912,7 +912,7 @@ fn index_write() {
 
 #[test]
 fn index_def_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov @2(r0), r1
@@ -931,7 +931,7 @@ fn index_def_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    @2(r0), r1
@@ -953,7 +953,7 @@ fn index_def_read() {
 
 #[test]
 fn index_def_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #100, r0
         mov #11, @2(r0)
@@ -972,7 +972,7 @@ fn index_def_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov     #100, r0
         movb    #11, @2(r0)
@@ -994,7 +994,7 @@ fn index_def_write() {
 
 #[test]
 fn relative_label_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 012
@@ -1011,7 +1011,7 @@ fn relative_label_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 0533
@@ -1028,7 +1028,7 @@ fn relative_label_read() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 012
@@ -1049,7 +1049,7 @@ fn relative_label_read() {
 
 #[test]
 fn relative_label_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 07777
@@ -1067,7 +1067,7 @@ fn relative_label_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 07777
@@ -1085,7 +1085,7 @@ fn relative_label_write() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 07777
@@ -1107,7 +1107,7 @@ fn relative_label_write() {
 
 #[test]
 fn immediate_label_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #label, r0
         halt
@@ -1127,7 +1127,7 @@ fn immediate_label_read() {
 
 #[test]
 fn relative_def_label_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 0410
@@ -1145,7 +1145,7 @@ fn relative_def_label_read() {
         DATA_START + prog.text.len() as u16 - WORD_SIZE
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 0410
@@ -1166,7 +1166,7 @@ fn relative_def_label_read() {
 
 #[test]
 fn relative_def_label_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 0410
@@ -1185,7 +1185,7 @@ fn relative_def_label_write() {
         DATA_START + prog.text.len() as u16 - WORD_SIZE
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 0414
@@ -1207,7 +1207,7 @@ fn relative_def_label_write() {
 
 #[test]
 fn relative_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov 06, r0
         halt
@@ -1223,7 +1223,7 @@ fn relative_read() {
         DATA_START + prog.text.len() as u16 - WORD_SIZE
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         movb 06, r0
         halt
@@ -1242,7 +1242,7 @@ fn relative_read() {
 
 #[test]
 fn relative_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #11, r0
         mov r0, 012
@@ -1259,7 +1259,7 @@ fn relative_write() {
         DATA_START + prog.text.len() as u16 - WORD_SIZE
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         movb 06, r0
         halt
@@ -1278,7 +1278,7 @@ fn relative_write() {
 
 #[test]
 fn relative_def_read() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         .word 0410
         mov @00, r0
@@ -1295,7 +1295,7 @@ fn relative_def_read() {
         DATA_START + prog.text.len() as u16 - WORD_SIZE
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     label:
         .word 0410
@@ -1316,7 +1316,7 @@ fn relative_def_read() {
 
 #[test]
 fn relative_def_write() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         .word 0410
         mov #33, r0
@@ -1334,7 +1334,7 @@ fn relative_def_write() {
         DATA_START + prog.text.len() as u16 - WORD_SIZE
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         .word 0414
         mov     #0, r0
@@ -1366,7 +1366,7 @@ fn cmp_literal_index() {
         halt
     "#;
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);
@@ -1383,7 +1383,7 @@ fn cmp_literal_index() {
         halt
     "#;
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);

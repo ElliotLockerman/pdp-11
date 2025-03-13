@@ -16,6 +16,7 @@ lalrpop = "0.20.2"
 
 [dependencies]
 common = { path = "../common" }
+aout = { path = "../aout" }
 lalrpop-util = { version = "0.20.2", features = ["lexer", "unicode"] }
 log = "0.4.22"
 num-derive = "0.4.2"

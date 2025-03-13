@@ -1,6 +1,7 @@
 use emu_lib::io::clock::Clock;
 use emu_lib::io::teletype::Teletype;
 use emu_lib::Emulator;
+use aout::Aout;
 
 use clap::Parser;
 
@@ -9,10 +10,6 @@ use clap::Parser;
 struct Args {
     /// Binary to execute
     bin: String,
-
-    /// Address at which to start executing.
-    #[arg(long, default_value_t = 0)]
-    start: u16,
 }
 
 fn main() {
@@ -24,8 +21,8 @@ fn main() {
     emu.set_mmio_handler(Teletype::default());
     emu.set_mmio_handler(Clock::default());
 
-    let buf = std::fs::read(opt.bin).unwrap();
-    emu.load_image(buf.as_slice(), 0);
-
-    emu.run_at(opt.start);
+    let mut file = std::fs::File::open(opt.bin).unwrap();
+    let aout = Aout::read_from(&mut file);
+    emu.load_aout(&aout);
+    emu.run_at(aout.entry_point);
 }

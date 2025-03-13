@@ -1,4 +1,4 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -6,7 +6,7 @@ use emu_lib::Emulator;
 #[test]
 #[should_panic]
 fn unaligned_a() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         jmp start
 
@@ -25,7 +25,7 @@ fn unaligned_a() {
 #[test]
 #[should_panic]
 fn unaligned_b() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         jmp start
 
@@ -43,7 +43,7 @@ fn unaligned_b() {
 
 #[test]
 fn even() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         jmp start
 
@@ -64,7 +64,7 @@ fn even() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         jmp start
 
@@ -85,7 +85,7 @@ fn even() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         jmp start
 
@@ -106,7 +106,7 @@ fn even() {
         DATA_START + prog.text.len() as u16
     );
 
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         jmp start
 
@@ -139,7 +139,7 @@ fn cont() {
         mov #2, r0
         halt
     "#;
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);

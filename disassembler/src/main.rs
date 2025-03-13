@@ -1,5 +1,6 @@
 use common::constants::WORD_SIZE;
 use disassembler::{disassemble, Disassembled};
+use aout::Aout;
 
 use std::ops::Range;
 
@@ -40,8 +41,11 @@ fn main() {
     env_logger::init();
 
     let args = Args::parse();
-    let bin = std::fs::read(args.bin).unwrap();
-    let mut disassembly = disassemble(&bin);
+    let mut file = std::fs::File::open(args.bin).unwrap();
+    let aout = Aout::read_from(&mut file);
+    assert_eq!(aout.data.len(), 0);
+    assert_eq!(aout.bss.len(), 0);
+    let mut disassembly = disassemble(&aout.text);
 
     remove_long_zeros(&mut disassembly);
 

@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::Write;
 
 use as_lib::assemble;
 
@@ -26,5 +25,5 @@ fn main() {
 
     let outname = opt.output.as_deref().unwrap_or("a.out");
     let mut out = File::create(outname).unwrap();
-    out.write_all(prog.text.as_slice()).unwrap();
+    prog.write_to(&mut out);
 }

@@ -1,4 +1,4 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -7,7 +7,7 @@ use std::assert_matches::assert_matches;
 
 #[test]
 fn looop() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         clr r0
     loop:
@@ -30,7 +30,7 @@ fn looop() {
 
 #[test]
 fn strcpy() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         br start
     out:
@@ -67,7 +67,7 @@ fn strcpy() {
 
 #[test]
 fn fib() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
     br start
 
@@ -201,7 +201,7 @@ fn unsigned_mul() {
         mov (sp)+, r2
         rts pc
     "#;
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
 
@@ -410,7 +410,7 @@ fn byte_queue() {
     "#
     .to_owned();
 
-    let prog = assemble(&(harness + queue));
+    let prog = assemble_raw(&(harness + queue));
 
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);

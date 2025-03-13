@@ -1,4 +1,4 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use emu_lib::io::clock::{Clock, FakeClock};
 use emu_lib::io::teletype::*;
@@ -10,7 +10,7 @@ use std::thread;
 
 #[test]
 fn hello() {
-    let prog = assemble(include_str!("../../examples/hello.s"));
+    let prog = assemble_raw(include_str!("../../examples/hello.s"));
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -71,7 +71,7 @@ fn hello_spin() {
         rts pc  
     "#;
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -88,7 +88,7 @@ fn hello_spin() {
 
 #[test]
 fn clock() {
-    let prog = assemble(include_str!("../../examples/timer_ticks.s"));
+    let prog = assemble_raw(include_str!("../../examples/timer_ticks.s"));
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -173,7 +173,7 @@ fn fake_clock() {
 
     "#
     );
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -210,7 +210,7 @@ fn fake_clock() {
 
 #[test]
 fn threads() {
-    let prog = assemble(include_str!("../../examples/threads.s"));
+    let prog = assemble_raw(include_str!("../../examples/threads.s"));
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -262,7 +262,7 @@ fn prio() {
         halt
     "#;
 
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
 
     let clock = FakeClock::default();
     let striker = clock.get_striker();
@@ -308,7 +308,7 @@ fn prio() {
         halt
     "#;
 
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
 
     let clock = FakeClock::default();
     let striker = clock.get_striker();
@@ -360,7 +360,7 @@ fn prio() {
         halt
     "#;
 
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
 
     let clock = FakeClock::default();
     let striker = clock.get_striker();
@@ -395,7 +395,7 @@ fn pipe_keyboard_spin() {
         halt
     "#;
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -449,7 +449,7 @@ fn pipe_echo_spin() {
         rts  pc  
     "#;
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -470,7 +470,7 @@ fn pipe_echo_spin() {
 fn pipe_echo_spin_line() {
     let asm = include_str!("../../examples/echo_spin.s");
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -564,7 +564,7 @@ fn pipe_keyboard_interrupt() {
         .word buf
     "#;
 
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());

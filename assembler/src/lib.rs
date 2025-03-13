@@ -6,4 +6,4 @@ pub mod ir;
 
 lalrpop_mod!(grammar, "/grammar.rs");
 
-pub use assembler::{assemble, Mode, Program, SymbolType, SymbolValue, Value};
+pub use assembler::{assemble, assemble_raw, Mode, Program, SymbolType, SymbolValue, Value};

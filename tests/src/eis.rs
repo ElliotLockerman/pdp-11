@@ -1,5 +1,5 @@
 use crate::flags::{check_flags, C, N, V, Z};
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -13,7 +13,7 @@ fn mul_full() {
             halt
         "#
         );
-        let prog = assemble(&asm);
+        let prog = assemble_raw(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, r0_init);
@@ -58,7 +58,7 @@ fn mul_lower() {
             mul r4, r3
             halt
         "#;
-        let prog = assemble(&asm);
+        let prog = assemble_raw(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R3, r3_init);
@@ -93,7 +93,7 @@ fn mul_lower() {
 #[test]
 #[should_panic]
 fn div_odd() {
-    assemble("div r2, r1");
+    assemble_raw("div r2, r1");
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn div() {
             halt
         "#
         );
-        let prog = assemble(&asm);
+        let prog = assemble_raw(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, dividend as u16);
@@ -148,7 +148,7 @@ fn ash() {
             halt
         "#
         );
-        let prog = assemble(&asm);
+        let prog = assemble_raw(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, shift as u16);
@@ -189,7 +189,7 @@ fn ashc() {
             halt
         "#
         );
-        let prog = assemble(&asm);
+        let prog = assemble_raw(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, shift as u16);
@@ -240,7 +240,7 @@ fn xor() {
             xor r1, r0
             halt
         "#;
-        let prog = assemble(&asm);
+        let prog = assemble_raw(&asm);
         let mut emu = Emulator::new();
         emu.load_image(&prog.text, DATA_START);
         emu.reg_write_word(Reg::R0, r0_init);

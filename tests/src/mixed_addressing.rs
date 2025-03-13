@@ -1,11 +1,11 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
 
 #[test]
 fn literal_to_abs() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #0753, @#020
         halt
@@ -23,7 +23,7 @@ fn literal_to_abs() {
 
 #[test]
 fn double_autoinc() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #arr_a, r0
         mov #arr_b, r1
@@ -51,7 +51,7 @@ fn double_autoinc() {
 
 #[test]
 fn index_autoinc() {
-    let prog = assemble(
+    let prog = assemble_raw(
         r#"
         mov #arr_a, r0
         mov #arr_b, r1

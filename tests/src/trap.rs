@@ -1,10 +1,10 @@
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use emu_lib::Emulator;
 
 // Assumes "proper" halt is last ins in binary
 fn run(asm: &str) -> Emulator {
-    let prog = assemble(asm);
+    let prog = assemble_raw(asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, 0);
     emu.run_at(prog.symbols.get("_start").unwrap().val);

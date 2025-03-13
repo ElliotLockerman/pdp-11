@@ -12,6 +12,7 @@ name = "emu_cli"
 
 [dependencies]
 common = { path = "../common" }
+aout = { path = "../aout" }
 log = "0.4.22"
 num-derive = "0.4.2"
 num-traits = "0.2.14"

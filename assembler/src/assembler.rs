@@ -5,6 +5,7 @@ use crate::grammar::StmtParser;
 use crate::ir::*;
 use common::asm::*;
 use common::constants::WORD_SIZE;
+use aout::Aout;
 
 use log::trace;
 use thiserror::Error;
@@ -431,13 +432,24 @@ impl Assembler {
     }
 }
 
-pub fn assemble(prog: &str) -> Program {
+pub fn assemble(prog: &str) -> Aout {
+    let prog = Assembler::new().assemble(prog);
+    let start = prog.symbols.get("_start").expect("_start not found");
+    let mut aout = Aout::empty();
+    aout.text = prog.text;
+    aout.entry_point = start.val;
+    aout
+}
+
+// For testing
+pub fn assemble_raw(prog: &str) -> Program {
     Assembler::new().assemble(prog)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::assemble;
+    use super::assemble_raw;
+
     fn to_u16(arr: &Vec<u8>) -> Vec<u16> {
         assert_eq!(arr.len() % 2, 0);
         let mut out = Vec::new();
@@ -450,7 +462,7 @@ mod tests {
     #[test]
     fn halt() {
         let prog = "halt";
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0);
     }
@@ -458,7 +470,7 @@ mod tests {
     #[test]
     fn mov_reg_reg() {
         let prog = "mov r0, r1";
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o10001);
     }
@@ -466,7 +478,7 @@ mod tests {
     #[test]
     fn mov_mem_mem() {
         let prog = "mov (r0)+, -(r1)";
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o12041);
     }
@@ -476,7 +488,7 @@ mod tests {
         let prog = r#"
             label:
                 br label"#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o000777);
     }
@@ -486,42 +498,42 @@ mod tests {
         let prog = r#"
             .word 0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o0);
 
         let prog = r#"
             .word 7
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o7);
 
         let prog = r#"
             .word 17
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o17);
 
         let prog = r#"
             .word 0.
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0);
 
         let prog = r#"
             .word 7.
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 7);
 
         let prog = r#"
             .word 17.
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 17);
     }
@@ -531,42 +543,42 @@ mod tests {
         let prog = r#"
             .word -0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o0);
 
         let prog = r#"
             .word -7
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], -0o7i16 as u16);
 
         let prog = r#"
             .word 17
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o17);
 
         let prog = r#"
             .word 0.
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0);
 
         let prog = r#"
             .word 7.
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 7);
 
         let prog = r#"
             .word 17.
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 17);
     }
@@ -577,7 +589,7 @@ mod tests {
         let prog = r#"
             .byte 400
         "#;
-        assemble(prog).text;
+        assemble_raw(prog).text;
     }
 
     #[test]
@@ -586,7 +598,7 @@ mod tests {
         let prog = r#"
             .word 200000
         "#;
-        assemble(prog).text;
+        assemble_raw(prog).text;
     }
 
     #[test]
@@ -594,7 +606,7 @@ mod tests {
         let prog = r#"
             .byte 'A
         "#;
-        let bin = assemble(prog).text;
+        let bin = assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0x41);
     }
@@ -605,7 +617,7 @@ mod tests {
             SYM = 37
             mov #SYM, r0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[1], 0o37);
     }
@@ -617,7 +629,7 @@ mod tests {
             b = 37
             mov #a, r0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[1], 0o37);
     }
@@ -631,7 +643,7 @@ mod tests {
             c = 37
             mov #a, r0
         "#;
-        assemble(prog);
+        assemble_raw(prog);
     }
 
     #[test]
@@ -641,7 +653,7 @@ mod tests {
             a = b
             mov #a, r0
         "#;
-        assemble(prog);
+        assemble_raw(prog);
     }
 
     #[test]
@@ -650,7 +662,7 @@ mod tests {
             a = 37
             .byte a
         "#;
-        let bin = assemble(prog).text;
+        let bin = assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o37);
     }
@@ -661,7 +673,7 @@ mod tests {
             a = 777
             .word a
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o777);
     }
@@ -671,21 +683,21 @@ mod tests {
         let prog = r#"
             .word 2 + 1
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o3);
 
         let prog = r#"
             .word 1 + 1 ! 2
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o2);
 
         let prog = r#"
             .word 1 ! 2 + 1
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o4);
     }
@@ -695,21 +707,21 @@ mod tests {
         let prog = r#"
             .byte 2 + 1
         "#;
-        let bin = &assemble(prog).text;
+        let bin = &assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o3);
 
         let prog = r#"
             .byte 1 + 1 ! 2
         "#;
-        let bin = &assemble(prog).text;
+        let bin = &assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o2);
 
         let prog = r#"
             .byte 1 ! 2 + 1
         "#;
-        let bin = &assemble(prog).text;
+        let bin = &assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o4);
     }
@@ -720,7 +732,7 @@ mod tests {
         let prog = r#"
             .byte 377 + 1
         "#;
-        let bin = &assemble(prog).text;
+        let bin = &assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o0);
     }
@@ -731,7 +743,7 @@ mod tests {
             FIELD_A = 2 + 2
             mov FIELD_A(r0), r1
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[1], 0o4);
 
@@ -739,7 +751,7 @@ mod tests {
             FIELD_A = 4
             mov FIELD_A + 2(r0), r1
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[1], 0o6);
     }
@@ -749,14 +761,14 @@ mod tests {
         let prog = r#"
             .word .
         "#;
-        let bin = &assemble(prog).text;
+        let bin = &assemble_raw(prog).text;
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[0], 0o0);
 
         let prog = r#"
             .word ., .
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 2);
         assert_eq!(bin[0], 0o0);
         assert_eq!(bin[1], 0o2);
@@ -765,7 +777,7 @@ mod tests {
             clr r0
             mov #., r0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[2], 0o2);
 
@@ -774,7 +786,7 @@ mod tests {
             loc = .
             .word loc
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[2], 0o4);
 
@@ -783,7 +795,7 @@ mod tests {
             .word loc
             loc = .
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[2], 0o6);
     }
@@ -793,14 +805,14 @@ mod tests {
         let prog = r#"
             . = 12
         "#;
-        let bin = &assemble(prog).text;
+        let bin = &assemble_raw(prog).text;
         assert_eq!(bin.len(), 10);
 
         let prog = r#"
             . = 2
             mov #., r0
         "#;
-        let bin = to_u16(&assemble(prog).text);
+        let bin = to_u16(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[2], 2);
     }
@@ -810,58 +822,58 @@ mod tests {
         let prog = r#"
             .byte 0
         "#;
-        let bin = assemble(prog).text;
+        let bin = assemble_raw(prog).text;
         assert_eq!(bin.len(), 1);
 
         let prog = r#"
             .byte 0
             .even
         "#;
-        let bin = assemble(prog).text;
+        let bin = assemble_raw(prog).text;
         assert_eq!(bin.len(), 2);
 
         let prog = r#"
             . = 11
         "#;
-        let bin = assemble(prog).text;
+        let bin = assemble_raw(prog).text;
         assert_eq!(bin.len(), 9);
 
         let prog = r#"
             . = 11
             .even
         "#;
-        let bin = assemble(prog).text;
+        let bin = assemble_raw(prog).text;
         assert_eq!(bin.len(), 10);
     }
 
     #[test]
     fn eis() {
-        let bin = to_u16(&assemble(r#"mul r1, r0"#).text);
+        let bin = to_u16(&assemble_raw(r#"mul r1, r0"#).text);
         assert_eq!(bin, [0o070001]);
 
-        let bin = to_u16(&assemble(r#"div @(r2)+, r4"#).text);
+        let bin = to_u16(&assemble_raw(r#"div @(r2)+, r4"#).text);
         assert_eq!(bin, [0o071432]);
 
-        let bin = to_u16(&assemble(r#"ash #23, r5"#).text);
+        let bin = to_u16(&assemble_raw(r#"ash #23, r5"#).text);
         assert_eq!(bin, [0o072527, 0o23]);
 
-        let bin = to_u16(&assemble(r#"label: ashc label, r5"#).text);
+        let bin = to_u16(&assemble_raw(r#"label: ashc label, r5"#).text);
         assert_eq!(bin, [0o073567, 0o177776]);
 
-        let bin = to_u16(&assemble(r#"label: xor label, r5"#).text);
+        let bin = to_u16(&assemble_raw(r#"label: xor label, r5"#).text);
         assert_eq!(bin, [0o074567, 0o177776]);
     }
 
     #[test]
     #[should_panic]
     fn div_odd() {
-        assemble(r#"div @(r2).text+, r5"#);
+        assemble_raw(r#"div @(r2).text+, r5"#);
     }
 
     #[test]
     #[should_panic]
     fn label_redef_0() {
-        assemble(
+        assemble_raw(
             r#"
         label:
         label:
@@ -872,7 +884,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn label_redef_1() {
-        assemble(
+        assemble_raw(
             r#"
         label:
         label = 1
@@ -883,7 +895,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn label_redef_2() {
-        assemble(
+        assemble_raw(
             r#"
         label = 1
         label:
@@ -893,7 +905,7 @@ mod tests {
 
     #[test]
     fn label_redef_3() {
-        let prog = assemble(
+        let prog = assemble_raw(
             r#"
         label = 1
         label = 2

@@ -1,5 +1,5 @@
 use crate::flags::{check_flags, C, N, V, Z};
-use as_lib::assemble;
+use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
 use emu_lib::Emulator;
@@ -12,7 +12,7 @@ fn run(ins: &str, r0_init: u16, r0_exp: u16, flags_exp: u16) {
         halt
     "#
     );
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.reg_write_word(Reg::R0, r0_init);
@@ -195,7 +195,7 @@ fn run_mp(ins: &str, r0_init: u16, r0_exp: u16, flags_init: u16, flags_exp: u16)
         halt
     "#
     );
-    let prog = assemble(&asm);
+    let prog = assemble_raw(&asm);
     let mut emu = Emulator::new();
     emu.load_image(&prog.text, DATA_START);
     emu.reg_write_word(Reg::R0, r0_init);

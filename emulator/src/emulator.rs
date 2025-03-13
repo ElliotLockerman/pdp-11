@@ -5,6 +5,7 @@ use crate::MMIOHandler;
 use crate::Status;
 use common::asm::*;
 use common::constants::*;
+use aout::Aout;
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -184,6 +185,12 @@ impl Emulator {
     pub fn run_at(&mut self, pc: u16) {
         self.reg_write_word(Reg::PC, pc);
         self.run();
+    }
+
+    pub fn load_aout(&mut self, aout: &Aout) {
+        self.load_image(&aout.text, 0);
+        assert_eq!(aout.data.len(), 0);
+        assert_eq!(aout.bss.len(), 0);
     }
 
     pub fn load_image(&mut self, data: &[u8], start: u16) {
