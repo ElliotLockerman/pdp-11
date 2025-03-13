@@ -1188,7 +1188,7 @@ impl fmt::Display for Ins {
 // Just for formatting, like Path::Display()
 pub struct InsWithPc<'a>(&'a Ins, u16);
 
-impl<'a> fmt::Display for InsWithPc<'a> {
+impl fmt::Display for InsWithPc<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt_with_pc(f, self.1)
     }

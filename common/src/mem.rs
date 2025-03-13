@@ -42,7 +42,8 @@ impl<T: Write> WriteU16 for T {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait IsEven {
+pub trait IsEven : Copy {
+    #[allow(clippy::wrong_self_convention)]
     fn is_even(self) -> bool;
 }
 
