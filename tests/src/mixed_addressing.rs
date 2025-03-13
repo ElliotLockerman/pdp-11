@@ -1,7 +1,7 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
 use common::constants::DATA_START;
-use common::mem::ToU16P;
+use common::misc::ToU16P;
 use emu_lib::Emulator;
 
 #[test]

@@ -1,5 +1,5 @@
 use crate::constants::WORD_SIZE;
-use crate::mem::WriteU16;
+use crate::misc::WriteU16;
 
 use std::fmt;
 use std::io::Write;

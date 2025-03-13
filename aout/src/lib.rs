@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use common::mem::{IsEven, ReadU16, ToU16P, WriteU16};
+use common::misc::{IsEven, ReadU16, ToU16P, WriteU16};
 
 pub struct Symbol {}
 

@@ -1,6 +1,6 @@
 use as_lib::assemble_raw;
 use common::asm::Reg;
-use common::mem::ToU16P;
+use common::misc::ToU16P;
 use emu_lib::Emulator;
 
 // Assumes "proper" halt is last ins in binary

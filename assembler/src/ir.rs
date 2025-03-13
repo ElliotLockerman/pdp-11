@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use common::asm::*;
-use common::mem::WriteU16;
+use common::misc::WriteU16;
 
 // Args are src, dst
 #[derive(Debug)]
