@@ -1,6 +1,5 @@
 use std::io::{Read, Write};
 
-
 pub trait ReadU16 {
     fn read_u16(&mut self) -> u16;
 }
@@ -31,7 +30,7 @@ impl<T: Write> WriteU16 for T {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-pub trait IsEven : Copy {
+pub trait IsEven: Copy {
     #[allow(clippy::wrong_self_convention)]
     fn is_even(self) -> bool;
 }

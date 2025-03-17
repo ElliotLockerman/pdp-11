@@ -3,12 +3,13 @@ use std::convert::TryInto;
 
 use crate::grammar::StmtParser;
 use crate::ir::*;
+use crate::misc::{EvalError, Mode, Value};
+use crate::tmp_f_tracker::TmpFTracker;
 use aout::Aout;
 use common::asm::*;
 use common::constants::WORD_SIZE;
 
 use log::trace;
-use thiserror::Error;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -23,50 +24,6 @@ pub struct Program {
 pub enum SymbolType {
     Regular,
     Label,
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-// The Unix v6 manual calls this a "type".
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Mode {
-    Undef,
-    UndefExt,
-    Abs,  // Relocatable
-    Text, // Relocatable
-    Data, // Relocatable
-    Bss,  // Relocatable
-    Ext,  // External absolute, text, data or bss
-    Reg,
-}
-
-impl Mode {
-    // Returns None if illegal.
-    pub fn op_mode(lhs: Mode, op: Op, rhs: Mode) -> Option<Mode> {
-        use Mode::*;
-        Some(match (lhs, op, rhs) {
-            (Undef, _, _) => Undef,
-            (_, _, Undef) => Undef,
-            (Abs, _, Abs) => Abs,
-
-            (UndefExt, Op::Add, Abs) => UndefExt,
-            (Text, Op::Add, Abs) => Text,
-            (Data, Op::Add, Abs) => Data,
-            (Bss, Op::Add, Abs) => Bss,
-
-            (Text, Op::Sub, Abs) => Text,
-            (Data, Op::Sub, Abs) => Data,
-            (Bss, Op::Sub, Abs) => Bss,
-
-            (Text, Op::Sub, Text) => Abs,
-            (Data, Op::Sub, Data) => Abs,
-            (Bss, Op::Sub, Bss) => Abs,
-
-            _ => {
-                return None;
-            }
-        })
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,97 +47,11 @@ impl Sect {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug, Clone, Copy)]
-pub struct Value {
-    pub val: u16,
-    pub mode: Mode,
-}
-
-impl Value {
-    fn new(val: u16, mode: Mode) -> Self {
-        Value { val, mode }
-    }
-}
-
-impl std::ops::Add<Value> for Value {
-    type Output = Result<Value, EvalError>;
-    fn add(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Add, rhs.mode).ok_or(EvalError::IllegalExpr(
-            self,
-            Op::Add,
-            rhs,
-        ))?;
-        Ok(Value {
-            val: self.val.wrapping_add(rhs.val),
-            mode,
-        })
-    }
-}
-
-impl std::ops::Sub<Value> for Value {
-    type Output = Result<Value, EvalError>;
-    fn sub(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Sub, rhs.mode).ok_or(EvalError::IllegalExpr(
-            self,
-            Op::Sub,
-            rhs,
-        ))?;
-        Ok(Value {
-            val: self.val.wrapping_sub(rhs.val),
-            mode,
-        })
-    }
-}
-
-impl std::ops::BitAnd<Value> for Value {
-    type Output = Result<Value, EvalError>;
-    fn bitand(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::And, rhs.mode).ok_or(EvalError::IllegalExpr(
-            self,
-            Op::And,
-            rhs,
-        ))?;
-        Ok(Value {
-            val: self.val & rhs.val,
-            mode,
-        })
-    }
-}
-
-impl std::ops::BitOr<Value> for Value {
-    type Output = Result<Value, EvalError>;
-    fn bitor(self, rhs: Value) -> Self::Output {
-        let mode = Mode::op_mode(self.mode, Op::Or, rhs.mode).ok_or(EvalError::IllegalExpr(
-            self,
-            Op::Or,
-            rhs,
-        ))?;
-        Ok(Value {
-            val: self.val | rhs.val,
-            mode,
-        })
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Debug, Error)]
-pub enum EvalError {
-    #[error("Unable to resolve symbol")]
-    SymbolUnresolved,
-
-    #[error("Illegal Expr: {0:?} {} {2:?}", .1)]
-    IllegalExpr(Value, Op, Value),
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 #[derive(Debug, Clone)]
 pub struct SymbolValue {
     pub val: u16,
     pub mode: Mode,
     pub typ: SymbolType,
-    pub sect: Option<Sect>,
     pub line: usize,
 }
 
@@ -190,7 +61,6 @@ impl SymbolValue {
             typ,
             val: val.val,
             mode: val.mode,
-            sect: None,
             line,
         }
     }
@@ -201,7 +71,10 @@ impl SymbolValue {
 struct Assembler {
     buf: Vec<u8>,
     symbols: HashMap<String, SymbolValue>,
+    tmp_symbols: HashMap<u16, SymbolValue>,
     sect: Sect,
+    tmp_f_tracker: TmpFTracker,
+    line: usize, // Current line.
 }
 
 impl Assembler {
@@ -209,24 +82,39 @@ impl Assembler {
         Assembler {
             buf: Vec::new(),
             symbols: HashMap::new(),
+            tmp_symbols: HashMap::new(),
             sect: Sect::Text,
+            tmp_f_tracker: TmpFTracker::new(),
+            line: 0,
         }
     }
 
-    fn eval_atom(&self, atom: &Atom, loc: u16) -> Result<Value, EvalError> {
+    fn eval_atom(&mut self, atom: &Atom, loc: u16) -> Result<Value, EvalError> {
         match atom {
             Atom::Loc => Ok(Value::new(loc, self.sect.mode())),
             Atom::Val(val) => Ok(Value::new(*val, Mode::Abs)),
             Atom::SymbolRef(symbol) => self
                 .symbols
                 .get(symbol)
-                .cloned()
+                .map(|x| Value::new(x.val, x.mode))
+                .ok_or(EvalError::SymbolUnresolved),
+
+            Atom::TmpSymbolFRef(label) => match self.tmp_f_tracker.get(self.line, *label) {
+                Some((addr, mode)) => Ok(Value::new(addr, mode)),
+                None => {
+                    self.tmp_f_tracker.need(self.line, *label);
+                    Err(EvalError::SymbolUnresolved)
+                }
+            },
+            Atom::TmpSymbolBRef(label) => self
+                .tmp_symbols
+                .get(label)
                 .map(|x| Value::new(x.val, x.mode))
                 .ok_or(EvalError::SymbolUnresolved),
         }
     }
 
-    fn eval_expr(&self, expr: &Expr, loc: u16) -> Result<Value, EvalError> {
+    fn eval_expr(&mut self, expr: &Expr, loc: u16) -> Result<Value, EvalError> {
         match expr {
             Expr::Atom(atom) => self.eval_atom(atom, loc),
             Expr::Op(lhs, op, rhs) => {
@@ -244,9 +132,13 @@ impl Assembler {
         }
     }
 
-    fn eval_operand(&self, arg: &mut Operand, curr_addr: &mut u16, loc: u16) {
+    fn eval_operand(&mut self, arg: &mut Operand, curr_addr: &mut u16, loc: u16) {
+        if matches!(arg.extra, Extra::None) {
+            return;
+        }
+
         let val = match &arg.extra {
-            Extra::None => return,
+            Extra::None => unreachable!(),
             Extra::Imm(expr) => {
                 let val = self.eval_expr(expr, loc);
                 if let (Expr::Atom(Atom::SymbolRef(symbol)), Ok(val)) = (expr, &val) {
@@ -260,47 +152,61 @@ impl Assembler {
 
                     let off = (val.val as i32 - *curr_addr as i32 - 2) as u16;
 
+                    // TODO: doesn't cover temporary symbols.
                     if let Expr::Atom(Atom::SymbolRef(symbol)) = expr {
                         trace!("Resolving symbol \"{symbol}\" (rel) to offset 0o{off:o}, curr_addr: 0o{curr_addr:o}, final: 0o{:o}", val.val);
                     }
                     Value::new(off, self.sect.mode())
                 })
             }
+
         };
+
+        *curr_addr += WORD_SIZE;
 
         match val {
             Ok(val) => arg.extra = Extra::Imm(Expr::Atom(Atom::Val(val.val))),
             Err(EvalError::SymbolUnresolved) => (),
             Err(e) => panic!("{e}"),
         }
-        *curr_addr += WORD_SIZE;
     }
 
-    fn eval_target(&self, target: &mut Target, curr_addr: u16) {
-        let offset = match target {
-            Target::Offset(x) => *x,
-            &mut Target::Label(ref label) => {
-                if let Some(sym) = self.symbols.get(label) {
-                    let dst = sym.val;
-                    let addr = curr_addr as i32;
-                    TryInto::<i8>::try_into((dst as i32 - addr - 2) / 2).unwrap() as u8
-                } else {
+    // Todo: return result instead of panicking for temporary labels.
+    fn eval_target(&mut self, target: &mut Target, loc: u16) {
+        let target_addr = match target {
+            Target::Offset(x) => {
+                *target = Target::Offset(*x);
+                return;
+            }
+            &mut Target::Label(ref label) => match self.symbols.get(label) {
+                Some(sym) => sym.val,
+                None => return,
+            },
+            Target::TmpLabelF(label) => match self.tmp_f_tracker.get(self.line, *label) {
+                Some((addr, _)) => addr,
+                None => {
+                    self.tmp_f_tracker.need(self.line, *label);
                     return;
                 }
-            }
+            },
+            Target::TmpLabelB(label) => self.tmp_symbols[label].val,
         };
-        *target = Target::Offset(offset);
+
+        let addr = loc as i32;
+        *target = Target::Offset(
+            TryInto::<i8>::try_into((target_addr as i32 - addr - 2) / 2).unwrap() as u8,
+        );
     }
 
-    const MAX_ITER: i32 = 2;
+    fn eval_pass(&mut self, prog: &mut [Stmt]) {
+        self.tmp_symbols.clear();
+        let mut addr: u16 = 0;
+        for (l, stmt) in prog.iter_mut().enumerate() {
+            let line = l + 1;
+            self.line = line;
 
-    fn eval_prog(&mut self, prog: &mut [Stmt]) {
-        for _ in 1..=Self::MAX_ITER {
-            let mut addr: u16 = 0;
-            for (l, stmt) in prog.iter_mut().enumerate() {
-                let line = l + 1;
-
-                if let Some(label) = &stmt.label_def {
+            match &stmt.label_def {
+                Label::Regular(label) => {
                     let sym = SymbolValue::new(
                         SymbolType::Label,
                         Value::new(addr, self.sect.mode()),
@@ -313,81 +219,94 @@ impl Assembler {
                         }
                     }
                 }
-
-                if stmt.cmd.is_none() {
-                    continue;
+                Label::Tmp(val) => {
+                    let sym = SymbolValue::new(
+                        SymbolType::Label,
+                        Value::new(addr, self.sect.mode()),
+                        line,
+                    );
+                    self.tmp_symbols.insert(*val, sym);
+                    self.tmp_f_tracker.found(*val, addr, self.sect.mode());
                 }
+                Label::None => (),
+            }
 
-                let loc = addr;
-                match stmt.cmd.as_mut().unwrap() {
-                    Cmd::SymbolDef(symbol, expr) => {
-                        if let Ok(val) = self.eval_expr(expr, loc) {
-                            let sym = SymbolValue::new(SymbolType::Regular, val, line);
-                            let existing = self.symbols.insert(symbol.clone(), sym.clone());
-                            if let Some(existing) = existing {
-                                if existing.typ == SymbolType::Label {
-                                    panic!("Symbol '{symbol}' on line {line} conflicts with label on line {}", existing.line);
-                                }
-                                // Regular symbols are allowed to overwrite each other.
+            if stmt.cmd.is_none() {
+                continue;
+            }
+
+            let loc = addr;
+            match stmt.cmd.as_mut().unwrap() {
+                Cmd::SymbolDef(symbol, expr) => {
+                    if let Ok(val) = self.eval_expr(expr, loc) {
+                        let sym = SymbolValue::new(SymbolType::Regular, val, line);
+                        let existing = self.symbols.insert(symbol.clone(), sym.clone());
+                        if let Some(existing) = existing {
+                            if existing.typ == SymbolType::Label {
+                                panic!("Symbol '{symbol}' on line {line} conflicts with label on line {}", existing.line);
                             }
+                            // Regular symbols are allowed to overwrite each other.
                         }
                     }
-                    Cmd::Ins(ins) => {
-                        match ins {
-                            Ins::Branch(ins) => self.eval_target(&mut ins.target, addr),
-                            Ins::DoubleOperand(ins) => {
-                                self.eval_operand(&mut ins.src, &mut addr, loc);
-                                self.eval_operand(&mut ins.dst, &mut addr, loc);
+                }
+                Cmd::Ins(ins) => {
+                    addr += WORD_SIZE;
+                    match ins {
+                        Ins::Branch(ins) => self.eval_target(&mut ins.target, loc),
+                        Ins::DoubleOperand(ins) => {
+                            self.eval_operand(&mut ins.src, &mut addr, loc);
+                            self.eval_operand(&mut ins.dst, &mut addr, loc);
+                        }
+                        Ins::Jmp(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                        Ins::Jsr(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                        Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
+                        Ins::Eis(ins) => self.eval_operand(&mut ins.operand, &mut addr, loc),
+                        Ins::Trap(ins) => {
+                            if let Ok(val) = self.eval_expr(&ins.data, loc) {
+                                assert_eq!(val.val & !0xff, 0);
+                                ins.data = Expr::Atom(Atom::Val(val.val));
                             }
-                            Ins::Jmp(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
-                            Ins::Jsr(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
-                            Ins::SingleOperand(ins) => {
-                                self.eval_operand(&mut ins.dst, &mut addr, loc)
-                            }
-                            Ins::Eis(ins) => self.eval_operand(&mut ins.operand, &mut addr, loc),
-                            Ins::Trap(ins) => {
-                                if let Ok(val) = self.eval_expr(&ins.data, loc) {
-                                    assert_eq!(val.val & !0xff, 0);
-                                    ins.data = Expr::Atom(Atom::Val(val.val));
-                                }
-                            }
-                            _ => (),
+                        }
+                        _ => (),
+                    }
+                }
+                Cmd::Bytes(exprs) => {
+                    for e in exprs {
+                        if let Ok(val) = self.eval_expr(e, addr) {
+                            *e = Expr::Atom(Atom::Val(val.val));
+                        }
+                        addr += 1;
+                    }
+                }
+                Cmd::Words(exprs) => {
+                    for e in exprs {
+                        if let Ok(val) = self.eval_expr(e, addr) {
+                            *e = Expr::Atom(Atom::Val(val.val));
                         }
                         addr += WORD_SIZE;
                     }
-                    Cmd::Bytes(exprs) => {
-                        for e in exprs {
-                            if let Ok(val) = self.eval_expr(e, addr) {
-                                *e = Expr::Atom(Atom::Val(val.val));
-                            }
-                            addr += 1;
-                        }
-                    }
-                    Cmd::Words(exprs) => {
-                        for e in exprs {
-                            if let Ok(val) = self.eval_expr(e, addr) {
-                                *e = Expr::Atom(Atom::Val(val.val));
-                            }
-                            addr += WORD_SIZE;
-                        }
-                    }
-                    Cmd::LocDef(expr) => {
-                        if let Ok(val) = self.eval_expr(expr, addr) {
-                            assert!(val.val >= addr);
-                            addr = val.val;
-                            *expr = Expr::Atom(Atom::Val(addr))
-                        }
-                    }
-                    Cmd::Even => {
-                        if addr & 0x1 != 0 {
-                            addr += 1;
-                        }
-                    }
-                    _ => {
-                        addr += stmt.size().unwrap();
+                }
+                Cmd::LocDef(expr) => {
+                    if let Ok(val) = self.eval_expr(expr, addr) {
+                        assert!(val.val >= addr);
+                        addr = val.val;
+                        *expr = Expr::Atom(Atom::Val(addr))
                     }
                 }
+                Cmd::Even => {
+                    addr += addr & 0x1;
+                }
+                _ => {
+                    addr += stmt.size().unwrap();
+                }
             }
+        }
+    }
+
+    const MAX_ITER: i32 = 2;
+    fn eval_prog(&mut self, prog: &mut [Stmt]) {
+        for _ in 1..=Self::MAX_ITER {
+            self.eval_pass(prog);
         }
     }
 
@@ -484,13 +403,62 @@ mod tests {
     }
 
     #[test]
-    fn branch() {
+    fn branch_1() {
         let prog = r#"
             label:
                 br label"#;
         let bin = to_u16_vec(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 1);
         assert_eq!(bin[0], 0o000777);
+    }
+    #[test]
+    fn branch_2() {
+        let prog = r#"
+            label: br label"#;
+        let bin = to_u16_vec(&assemble_raw(prog).text);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o000777);
+    }
+
+    #[test]
+    fn branch_tmpb_1() {
+        let prog = r#"
+            1:
+                br 1b"#;
+        let bin = to_u16_vec(&assemble_raw(prog).text);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o000777);
+    }
+
+    #[test]
+    fn branch_tmpb_2() {
+        let prog = r#"
+            1: br 1b"#;
+        let bin = to_u16_vec(&assemble_raw(prog).text);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o000777);
+    }
+
+    #[test]
+    fn branch_tmpf() {
+        let prog = r#"
+                br 34f
+            34:"#;
+        let bin = to_u16_vec(&assemble_raw(prog).text);
+        assert_eq!(bin.len(), 1);
+        assert_eq!(bin[0], 0o400);
+    }
+
+    #[test]
+    fn branch_tmpb_val_1() {
+        let prog = r#"
+            1:
+                .word 0
+            mov     1b, r0"#;
+        let bin = to_u16_vec(&assemble_raw(prog).text);
+        assert_eq!(bin.len(), 3);
+        assert_eq!(bin[1], 0o016700);
+        assert_eq!(bin[2], -6i16 as u16);
     }
 
     #[test]
@@ -616,6 +584,18 @@ mod tests {
         let prog = r#"
             SYM = 37
             mov #SYM, r0
+        "#;
+        let bin = to_u16_vec(&assemble_raw(prog).text);
+        assert_eq!(bin.len(), 2);
+        assert_eq!(bin[1], 0o37);
+    }
+
+    #[test]
+    fn symbol_chain() {
+        let prog = r#"
+            a = 37
+            b = a
+            mov #b, r0
         "#;
         let bin = to_u16_vec(&assemble_raw(prog).text);
         assert_eq!(bin.len(), 2);
@@ -858,10 +838,10 @@ mod tests {
         assert_eq!(bin, [0o072527, 0o23]);
 
         let bin = to_u16_vec(&assemble_raw(r#"label: ashc label, r5"#).text);
-        assert_eq!(bin, [0o073567, 0o177776]);
+        assert_eq!(bin, [0o073567, 0o177774]);
 
         let bin = to_u16_vec(&assemble_raw(r#"label: xor label, r5"#).text);
-        assert_eq!(bin, [0o074567, 0o177776]);
+        assert_eq!(bin, [0o074567, 0o177774]);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 
 use common::asm::*;
-use crate::ir::{Cmd, Stmt};
+use crate::ir::{Cmd, Stmt, Label};
 use crate::helpers::parse_int;
 use common::{
     double_operand_ins,
@@ -54,10 +54,30 @@ Imm: u16 = {
 
 Symbol: String = r#"[a-zA-Z_][a-zA-Z0-9_]*"# => <>.to_string();
 
+TmpLabelF: u16 = r#"\d+[fF]"# => {
+    let mut s = <>.to_string();
+    s.pop();
+    parse_int(&s, 8)
+};
+
+TmpLabelB: u16 = r#"\d+[bB]"# => {
+    let mut s = <>.to_string();
+    s.pop();
+    parse_int(&s, 8)
+};
+
+Target: Target = {
+    Symbol => Target::Label(<>),
+    TmpLabelF => Target::TmpLabelF(<>),
+    TmpLabelB => Target::TmpLabelB(<>),
+}
+
 Atom: Atom = {
     "." => Atom::Loc,
     Imm => Atom::Val(<>),
     Symbol => Atom::SymbolRef(<>),
+    TmpLabelF => Atom::TmpSymbolFRef(<>),
+    TmpLabelB => Atom::TmpSymbolBRef(<>),
 }
 
 // Evaluated left-to-right, no precedence or parentheses
@@ -107,24 +127,24 @@ I: Ins = {
     "bisb" <Operand> "," <Operand> => double_operand_ins!(BisB, <>),
     "sub" <Operand> "," <Operand> => double_operand_ins!(Sub, <>),
 
-    "br" <Symbol> => branch_ins!(Br, <>),
-    "bne" <Symbol> => branch_ins!(Bne, <>),
-    "beq" <Symbol> => branch_ins!(Beq, <>),
-    "bge" <Symbol> => branch_ins!(Bge, <>),
-    "blt" <Symbol> => branch_ins!(Blt, <>),
-    "bgt" <Symbol> => branch_ins!(Bgt, <>),
-    "ble" <Symbol> => branch_ins!(Ble, <>),
+    "br" <Target> => branch_ins!(Br, <>),
+    "bne" <Target> => branch_ins!(Bne, <>),
+    "beq" <Target> => branch_ins!(Beq, <>),
+    "bge" <Target> => branch_ins!(Bge, <>),
+    "blt" <Target> => branch_ins!(Blt, <>),
+    "bgt" <Target> => branch_ins!(Bgt, <>),
+    "ble" <Target> => branch_ins!(Ble, <>),
 
-    "bpl" <Symbol> => branch_ins!(Bpl, <>),
-    "bmi" <Symbol> => branch_ins!(Bmi, <>),
-    "bhi" <Symbol> => branch_ins!(Bhi, <>),
-    "bhis" <Symbol> => branch_ins!(Bcc, <>),
-    "blo" <Symbol> => branch_ins!(Bcs, <>),
-    "blos" <Symbol> => branch_ins!(Blos, <>),
-    "bvc" <Symbol> => branch_ins!(Bvc, <>),
-    "bvs" <Symbol> => branch_ins!(Bvs, <>),
-    "bcc" <Symbol> => branch_ins!(Bcc, <>),
-    "bcs" <Symbol> => branch_ins!(Bcs, <>),
+    "bpl" <Target> => branch_ins!(Bpl, <>),
+    "bmi" <Target> => branch_ins!(Bmi, <>),
+    "bhi" <Target> => branch_ins!(Bhi, <>),
+    "bhis" <Target> => branch_ins!(Bcc, <>),
+    "blo" <Target> => branch_ins!(Bcs, <>),
+    "blos" <Target> => branch_ins!(Blos, <>),
+    "bvc" <Target> => branch_ins!(Bvc, <>),
+    "bvs" <Target> => branch_ins!(Bvs, <>),
+    "bcc" <Target> => branch_ins!(Bcc, <>),
+    "bcs" <Target> => branch_ins!(Bcs, <>),
 
     "jmp" <Operand> => jmp_ins!(<>),
 
@@ -219,10 +239,12 @@ pub Cmd: Cmd = {
 };
 
 pub Stmt: Stmt = {
-    <Symbol> ":" => Stmt::new(Some(<>), None),
-    Cmd => Stmt::new(None, Some(<>)),
-    <label_def: Symbol> ":" <cmd:Cmd> => Stmt::new(Some(label_def), Some(cmd)),
-    () => Stmt::new(None, None),
+    <Symbol> ":" => Stmt::new(Label::Regular(<>), None),
+    <Imm> ":" => Stmt::new(Label::Tmp(<>), None),
+    Cmd => Stmt::new(Label::None, Some(<>)),
+    <label: Symbol> ":" <cmd:Cmd> => Stmt::new(Label::Regular(label), Some(cmd)),
+    <label: Imm> ":" <cmd: Cmd> => Stmt::new(Label::Tmp(label), Some(cmd)),
+    () => Stmt::new(Label::None, None),
 }
 
 match {

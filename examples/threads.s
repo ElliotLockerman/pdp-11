@@ -72,13 +72,13 @@ run:
     clr r1
 
     ; loop forever, printing tid once every 2^8 iterations.
-run_loop:
+1:
     inc r1
     cmpb #0, r1
-    bne run_loop
+    bne 1b
 
     jsr pc, print
-    br  run_loop
+    br  1b
     
 
 
@@ -100,7 +100,7 @@ clock:
     ; Increment tick counter; if it hasn't rolled over, just return.
     incb ticks
     cmpb #SWAP_PERIOD, ticks
-    bne  clock_done
+    bne  1f
 
     ; Every time the tick counter rolls over, swap threads.
     mov #0, ticks
@@ -119,7 +119,7 @@ clock:
     asl r0 ; index *= sizeof(tcb)
     mov tcbs(r0), sp
 
-clock_done:
+1:
     mov (sp)+, r5
     mov (sp)+, r4
     mov (sp)+, r3
@@ -142,16 +142,16 @@ ticks:
 print:
     mov     @#STATUS, -(sp)
 
-print_loop:
+1:
     ; Loop until the teleprinter is ready to accept another character.
     bicb    #PRIO7, @#STATUS ; Enable interrupts
     bicb    #TPS_READY_MASK, @#TPS
-    beq     print_loop
+    beq     1b
 
     ; Mask interrupts and check one last time
     bis     #PRIO7, @#STATUS
     bicb    #TPS_READY_MASK, @#TPS
-    beq     print_loop
+    beq     1b
     
     ; Actually print the character
     movb    r0, @#TPB

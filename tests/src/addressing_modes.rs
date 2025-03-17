@@ -1207,6 +1207,120 @@ fn relative_def_label_write() {
 }
 
 #[test]
+fn relative_tmp_label_read() {
+    let prog = assemble_raw(
+        r#"
+    1:
+        .word 012
+        mov 1b, r0
+        halt
+    "#,
+    );
+    let mut emu = Emulator::new();
+    emu.load_image(&prog.text, 0);
+    emu.run_at(2);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        0 + prog.text.len().to_u16p()
+    );
+    /*
+    0: .word 012
+    2: mov
+    4: extra
+    6: halt
+    */
+    let prog = assemble_raw(
+        r#"
+    67:
+        .word 0533
+        movb 67b, r0
+        halt
+    "#,
+    );
+    let mut emu = Emulator::new();
+    emu.load_image(&prog.text, DATA_START);
+    emu.run_at(DATA_START + 2);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len().to_u16p()
+    );
+
+    let prog = assemble_raw(
+        r#"
+    324:
+        .word 012
+        mov 324b, r0
+        halt
+    "#,
+    );
+    let mut emu = Emulator::new();
+    let offset = 16;
+    emu.load_image(&prog.text, DATA_START + offset);
+    emu.run_at(DATA_START + offset + 2);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + offset + prog.text.len().to_u16p()
+    );
+
+
+
+    let prog = assemble_raw(
+        r#"
+        mov 1f, r0
+        halt
+    1:
+        .word 012
+    "#,
+    );
+    let mut emu = Emulator::new();
+    emu.load_image(&prog.text, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len().to_u16p() - 2
+    );
+
+    let prog = assemble_raw(
+        r#"
+        movb 67f, r0
+        halt
+    67:
+        .word 0533
+    "#,
+    );
+    let mut emu = Emulator::new();
+    emu.load_image(&prog.text, DATA_START);
+    emu.run_at(DATA_START);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o133);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + prog.text.len().to_u16p() - 2
+    );
+
+    let prog = assemble_raw(
+        r#"
+        mov 324f, r0
+        halt
+    324:
+        .word 012
+    "#,
+    );
+    let mut emu = Emulator::new();
+    let offset = 16;
+    emu.load_image(&prog.text, DATA_START + offset);
+    emu.run_at(DATA_START + offset);
+    assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
+    assert_eq!(
+        emu.reg_read_word(Reg::PC),
+        DATA_START + offset + prog.text.len().to_u16p() - 2
+    );
+}
+
+#[test]
 fn relative_read() {
     let prog = assemble_raw(
         r#"

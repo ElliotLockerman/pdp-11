@@ -134,7 +134,7 @@ impl Emulator {
 
         let ins = self.decode();
         debug!(
-            "PC: 0o{:o}: {}",
+            "PC: 0o{:#o}: {}",
             self.state.pc(),
             ins.display_with_pc(self.state.pc())
         );
@@ -428,16 +428,16 @@ impl Emulator {
                 self.mem_read_word(addr)
             }
             AddrMode::Index => {
-                let reg_val = self.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
+                let reg_val = self.reg_read_word(arg.reg);
                 Self::debug_check_extra_val(arg, imm);
                 reg_val.wrapping_add(imm)
             }
             AddrMode::IndexDef => {
-                let reg_val = self.reg_read_word(arg.reg);
                 let imm_addr = self.exec_auto(Reg::PC, true, Size::Word);
                 let imm = self.mem_read_word(imm_addr);
+                let reg_val = self.reg_read_word(arg.reg);
                 Self::debug_check_extra_val(arg, imm);
                 self.mem_read_word(reg_val.wrapping_add(imm))
             }
@@ -1078,7 +1078,6 @@ mod tests {
 
     use bytemuck::cast_slice;
 
-
     #[test]
     fn halt() {
         let bin: &[u16] = &[
@@ -1113,8 +1112,8 @@ mod tests {
     fn mov_imm_reg() {
         let val = 0xabcd;
         let bin = &[
-            0o12700, val,   // mov #0xabcd, r0
-            0,              // halt
+            0o12700, val, // mov #0xabcd, r0
+            0,   // halt
         ];
         let bin = cast_slice(bin);
 
@@ -1128,9 +1127,9 @@ mod tests {
     #[test]
     fn add() {
         let bin: &[u16] = &[
-            0o5000,     // mov #0, r0
-            0x65c0, 1,  // add #1, r0
-            0x0000,     // halt
+            0o5000, // mov #0, r0
+            0x65c0, 1,      // add #1, r0
+            0x0000, // halt
         ];
         let bin = cast_slice(bin);
 
@@ -1145,11 +1144,11 @@ mod tests {
     fn autoinc() {
         let arr = DATA_START + 18;
         let bin: &[u16] = &[
-            0o12700, arr,   // mov  #arr, r0
-            0o62720, 0o1,   // add  #1, (r0)+
-            0o62720, 0o1,   // add  #1, (r0)+
-            0o62720, 0o1,   // add  #1, (r0)+
-            0o0,            // halt
+            0o12700, arr, // mov  #arr, r0
+            0o62720, 0o1, // add  #1, (r0)+
+            0o62720, 0o1, // add  #1, (r0)+
+            0o62720, 0o1, // add  #1, (r0)+
+            0o0, // halt
             // arr:
             0o1, 0o2, 0o3, // .word 1 2 3
         ];
@@ -1169,12 +1168,12 @@ mod tests {
     #[test]
     fn looop() {
         let bin: &[u16] = &[
-            0o12700, 0,     // mov #0, r0
-            0o12701, 10,    // mov #10, r1
-            0o62700, 1,     // add #1, r0
-            0o162701, 1,    // sub #1, r1
-            0o1373,         // bne -10
-            0,              // halt
+            0o12700, 0, // mov #0, r0
+            0o12701, 10, // mov #10, r1
+            0o62700, 1, // add #1, r0
+            0o162701, 1,      // sub #1, r1
+            0o1373, // bne -10
+            0,      // halt
         ];
         let bin = cast_slice(bin);
 
@@ -1189,18 +1188,18 @@ mod tests {
     fn call() {
         let bin: &[u16] = &[
             0o12701,
-            0o0,        // mov #0, r1
+            0o0, // mov #0, r1
             0o12702,
-            0o0,        // mov #0, r2
-            0o407,      // br start
+            0o0,   // mov #0, r2
+            0o407, // br start
             0o12702,
-            0o2,        // mov #2, r2 ; shouldn't be executed
+            0o2, // mov #2, r2 ; shouldn't be executed
             // fun:
             0o12701,
-            0o1,        // mov #1, r1
-            0o207,      // rts pc
+            0o1,   // mov #1, r1
+            0o207, // rts pc
             0o12702,
-            0o2,        // mov #2, r2 ; shouldn't be executed
+            0o2, // mov #2, r2 ; shouldn't be executed
             // start:
             0o4737,
             DATA_START + 0o16, // jsr pc, fun

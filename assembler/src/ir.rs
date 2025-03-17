@@ -17,12 +17,28 @@ pub enum Cmd {
 }
 
 #[derive(Debug)]
+pub enum Label {
+    Regular(String),
+    Tmp(u16),
+    None,
+}
+
+impl Label {
+    fn is_none(&self) -> bool {
+        match self {
+            Label::None => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Stmt {
-    pub label_def: Option<String>,
+    pub label_def: Label,
     pub cmd: Option<Cmd>,
 }
 impl Stmt {
-    pub fn new(label_def: Option<String>, cmd: Option<Cmd>) -> Stmt {
+    pub fn new(label_def: Label, cmd: Option<Cmd>) -> Stmt {
         Stmt { label_def, cmd }
     }
 

@@ -84,14 +84,18 @@ pub enum Atom {
     Loc,
     Val(u16),
     SymbolRef(String),
+    TmpSymbolFRef(u16),
+    TmpSymbolBRef(u16),
 }
 
 impl Atom {
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
-        if let Atom::SymbolRef(sym) = self {
-            Err(ResolvedError(sym.clone()))
-        } else {
-            Ok(())
+        use Atom::*;
+        match self {
+            Loc | Val(_) => Ok(()),
+            SymbolRef(sym) => Err(ResolvedError(sym.clone())),
+            TmpSymbolFRef(n) => Err(ResolvedError(n.to_string())),
+            TmpSymbolBRef(n) => Err(ResolvedError(n.to_string())),
         }
     }
 }
@@ -281,15 +285,17 @@ impl fmt::Display for Operand {
 
 #[derive(Debug, Clone)]
 pub enum Target {
-    Label(String), // Only used by assembler
+    Label(String),  // Only used by assembler
+    TmpLabelF(u16), // Only used by assembler
+    TmpLabelB(u16), // Only used by assembler
     Offset(u8),
 }
 
 impl Target {
     pub fn unwrap_offset(&self) -> u8 {
         match self {
-            Target::Label(_) => panic!("Target::unwrap_reolved() no resolved"),
             Target::Offset(val) => *val,
+            _ => panic!("Target::unwrap_offset() not offset"),
         }
     }
 
@@ -297,6 +303,8 @@ impl Target {
         pc = pc.wrapping_add(2);
         match self {
             Target::Label(lbl) => write!(f, "{}", lbl),
+            Target::TmpLabelF(lbl) => write!(f, "{}f", lbl),
+            Target::TmpLabelB(lbl) => write!(f, "{}b", lbl),
             Target::Offset(off) => write!(
                 f,
                 "{:#o}",
@@ -306,10 +314,11 @@ impl Target {
     }
 
     pub fn check_resolved(&self) -> Result<(), ResolvedError> {
-        if let Target::Label(label) = self {
-            Err(ResolvedError(label.clone()))
-        } else {
-            Ok(())
+        match self {
+            Target::Label(label) => Err(ResolvedError(label.clone())),
+            Target::TmpLabelF(label) => Err(ResolvedError(label.to_string() + "f")),
+            Target::TmpLabelB(label) => Err(ResolvedError(label.to_string() + "b")),
+            Target::Offset(_) => Ok(()),
         }
     }
 }
@@ -319,6 +328,8 @@ impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Target::Label(lbl) => write!(f, "{}", lbl),
+            Target::TmpLabelF(lbl) => write!(f, "{}f", lbl),
+            Target::TmpLabelB(lbl) => write!(f, "{}b", lbl),
             Target::Offset(off) => write!(
                 f,
                 ". + {:#o}",
@@ -428,10 +439,10 @@ impl fmt::Display for DoubleOperandIns {
 
 #[macro_export]
 macro_rules! branch_ins {
-    ($op:ident, $offset:expr_2021) => {
+    ($op:ident, $tgt:expr) => {
         Ins::Branch(BranchIns {
             op: BranchOpcode::$op,
-            target: Target::Label($offset),
+            target: $tgt,
         })
     };
 }

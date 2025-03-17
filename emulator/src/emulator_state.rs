@@ -1,8 +1,8 @@
 use common::asm::{NUM_REGS, Reg};
 
+use bytemuck::cast_slice;
 use log::trace;
 use num_traits::ToPrimitive;
-use bytemuck::cast_slice;
 
 #[derive(Default, Debug)]
 pub struct Status(u16);
