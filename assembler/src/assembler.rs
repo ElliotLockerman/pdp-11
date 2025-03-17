@@ -145,7 +145,7 @@ impl Assembler {
                     trace!("Resolving symbol \"{symbol}\" (imm) to val 0o{:o}, curr_addr: 0o{curr_addr:o}", val.val);
                 }
                 val
-            },
+            }
             Extra::Rel(expr) => {
                 self.eval_expr(expr, loc).map(|val| {
                     assert!(val.mode == Mode::Abs || val.mode == self.sect.mode());
@@ -159,7 +159,6 @@ impl Assembler {
                     Value::new(off, self.sect.mode())
                 })
             }
-
         };
 
         *curr_addr += WORD_SIZE;
@@ -459,6 +458,38 @@ mod tests {
         assert_eq!(bin.len(), 3);
         assert_eq!(bin[1], 0o016700);
         assert_eq!(bin[2], -6i16 as u16);
+    }
+
+    #[should_panic]
+    #[test]
+    fn branch_tmpb_never_defined_a() {
+        let prog = r#"
+                br 1b"#;
+        assemble_raw(prog);
+    }
+
+    #[should_panic]
+    #[test]
+    fn branch_tmpb_never_defined_b() {
+        let prog = r#"
+                mov 23b, r0"#;
+        assemble_raw(prog);
+    }
+
+    #[should_panic]
+    #[test]
+    fn branch_tmpf_never_defined_a() {
+        let prog = r#"
+                br 1f"#;
+        assemble_raw(prog);
+    }
+
+    #[should_panic]
+    #[test]
+    fn branch_tmpf_never_defined_b() {
+        let prog = r#"
+                mov 534f, r0"#;
+        assemble_raw(prog);
     }
 
     #[test]
