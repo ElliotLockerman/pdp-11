@@ -8,6 +8,7 @@ use crate::tmp_f_tracker::TmpFTracker;
 use aout::Aout;
 use common::asm::*;
 use common::constants::WORD_SIZE;
+use common::misc::ToU16P;
 
 use log::trace;
 
@@ -210,6 +211,78 @@ impl Assembler {
         );
     }
 
+    fn eval_cmd(&mut self, cmd: &mut Cmd) {
+        match cmd {
+            Cmd::SymbolDef(symbol, expr) => {
+                if let Ok(val) = self.eval_expr(expr) {
+                    let sym = SymbolValue::new(SymbolType::Regular, val, self.line);
+                    let existing = self.symbols.insert(symbol.clone(), sym.clone());
+                    if let Some(existing) = existing {
+                        if existing.typ == SymbolType::Label {
+                            panic!(
+                                "Symbol '{symbol}' on line {} conflicts with label on line {}",
+                                self.line, existing.line
+                            );
+                        }
+                        // Regular symbols are allowed to overwrite each other.
+                    }
+                }
+            }
+            Cmd::Ins(ins) => {
+                self.addr += WORD_SIZE;
+                match ins {
+                    Ins::Branch(ins) => self.eval_target(&mut ins.target),
+                    Ins::DoubleOperand(ins) => {
+                        self.eval_operand(&mut ins.src);
+                        self.eval_operand(&mut ins.dst);
+                    }
+                    Ins::Jmp(ins) => self.eval_operand(&mut ins.dst),
+                    Ins::Jsr(ins) => self.eval_operand(&mut ins.dst),
+                    Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst),
+                    Ins::Eis(ins) => self.eval_operand(&mut ins.operand),
+                    Ins::Trap(ins) => {
+                        if let Ok(val) = self.eval_expr(&ins.data) {
+                            assert_eq!(val.val & !0xff, 0);
+                            ins.data = Expr::Atom(Atom::Val(val.val));
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            Cmd::Bytes(exprs) => {
+                for e in exprs {
+                    if let Ok(val) = self.eval_expr(e) {
+                        *e = Expr::Atom(Atom::Val(val.val));
+                    }
+                    self.addr += 1;
+                    self.loc += 1;
+                }
+            }
+            Cmd::Words(exprs) => {
+                for e in exprs {
+                    if let Ok(val) = self.eval_expr(e) {
+                        *e = Expr::Atom(Atom::Val(val.val));
+                    }
+                    self.addr += WORD_SIZE;
+                    self.loc += WORD_SIZE;
+                }
+            }
+            Cmd::LocDef(expr) => {
+                if let Ok(val) = self.eval_expr(expr) {
+                    assert!(val.val >= self.addr);
+                    self.addr = val.val;
+                    *expr = Expr::Atom(Atom::Val(self.addr))
+                }
+            }
+            Cmd::Even => {
+                self.addr += self.addr & 0x1;
+            }
+            Cmd::Ascii(v) => {
+                self.addr += v.len().to_u16p();
+            }
+        }
+    }
+
     fn eval_pass(&mut self, prog: &mut [Stmt]) {
         self.tmp_symbols.clear();
         self.addr = 0;
@@ -242,79 +315,9 @@ impl Assembler {
                 Label::None => (),
             }
 
-            if stmt.cmd.is_none() {
-                continue;
-            }
-
             self.loc = self.addr;
-            match stmt.cmd.as_mut().unwrap() {
-                Cmd::SymbolDef(symbol, expr) => {
-                    if let Ok(val) = self.eval_expr(expr) {
-                        let sym = SymbolValue::new(SymbolType::Regular, val, self.line);
-                        let existing = self.symbols.insert(symbol.clone(), sym.clone());
-                        if let Some(existing) = existing {
-                            if existing.typ == SymbolType::Label {
-                                panic!(
-                                    "Symbol '{symbol}' on line {} conflicts with label on line {}",
-                                    self.line, existing.line
-                                );
-                            }
-                            // Regular symbols are allowed to overwrite each other.
-                        }
-                    }
-                }
-                Cmd::Ins(ins) => {
-                    self.addr += WORD_SIZE;
-                    match ins {
-                        Ins::Branch(ins) => self.eval_target(&mut ins.target),
-                        Ins::DoubleOperand(ins) => {
-                            self.eval_operand(&mut ins.src);
-                            self.eval_operand(&mut ins.dst);
-                        }
-                        Ins::Jmp(ins) => self.eval_operand(&mut ins.dst),
-                        Ins::Jsr(ins) => self.eval_operand(&mut ins.dst),
-                        Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst),
-                        Ins::Eis(ins) => self.eval_operand(&mut ins.operand),
-                        Ins::Trap(ins) => {
-                            if let Ok(val) = self.eval_expr(&ins.data) {
-                                assert_eq!(val.val & !0xff, 0);
-                                ins.data = Expr::Atom(Atom::Val(val.val));
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                Cmd::Bytes(exprs) => {
-                    for e in exprs {
-                        if let Ok(val) = self.eval_expr(e) {
-                            *e = Expr::Atom(Atom::Val(val.val));
-                        }
-                        self.addr += 1;
-                        self.loc += 1;
-                    }
-                }
-                Cmd::Words(exprs) => {
-                    for e in exprs {
-                        if let Ok(val) = self.eval_expr(e) {
-                            *e = Expr::Atom(Atom::Val(val.val));
-                        }
-                        self.addr += WORD_SIZE;
-                        self.loc += WORD_SIZE;
-                    }
-                }
-                Cmd::LocDef(expr) => {
-                    if let Ok(val) = self.eval_expr(expr) {
-                        assert!(val.val >= self.addr);
-                        self.addr = val.val;
-                        *expr = Expr::Atom(Atom::Val(self.addr))
-                    }
-                }
-                Cmd::Even => {
-                    self.addr += self.addr & 0x1;
-                }
-                _ => {
-                    self.addr += stmt.size().unwrap();
-                }
+            if let Some(cmd) = stmt.cmd.as_mut() {
+                self.eval_cmd(cmd);
             }
         }
     }
