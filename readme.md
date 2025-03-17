@@ -1,7 +1,7 @@
 
 # PDP-11 Emulator and Toolchain.
 
-Its still early in development, but it can run some bare-metal program. Try `./interp examples/echo_int.s` for an interrupt-based echo console or `./interp examples/threads.s` for a demonstration of preemptive multitasking (the 0s and 1s are printed by different threads).
+Its still early in development, but it can run some bare-metal program. Try `./interp examples/echo_interrupt.s` for an interrupt-based echo console or `./interp examples/threads.s` for a demonstration of preemptive multitasking (the 0s and 1s are printed by different threads).
 
 
 ## Repo Structure
