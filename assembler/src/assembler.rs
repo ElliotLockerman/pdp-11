@@ -75,6 +75,13 @@ struct Assembler {
     sect: Sect,
     tmp_f_tracker: TmpFTracker,
     line: usize, // Current line.
+
+    // Location counter, the period operator. Address of begining of current
+    // instruction or when used in of current word.
+    loc: u16,
+
+    // Current address.
+    addr: u16,
 }
 
 impl Assembler {
@@ -86,12 +93,14 @@ impl Assembler {
             sect: Sect::Text,
             tmp_f_tracker: TmpFTracker::new(),
             line: 0,
+            loc: 0,
+            addr: 0,
         }
     }
 
-    fn eval_atom(&mut self, atom: &Atom, loc: u16) -> Result<Value, EvalError> {
+    fn eval_atom(&mut self, atom: &Atom) -> Result<Value, EvalError> {
         match atom {
-            Atom::Loc => Ok(Value::new(loc, self.sect.mode())),
+            Atom::Loc => Ok(Value::new(self.loc, self.sect.mode())),
             Atom::Val(val) => Ok(Value::new(*val, Mode::Abs)),
             Atom::SymbolRef(symbol) => self
                 .symbols
@@ -114,12 +123,12 @@ impl Assembler {
         }
     }
 
-    fn eval_expr(&mut self, expr: &Expr, loc: u16) -> Result<Value, EvalError> {
+    fn eval_expr(&mut self, expr: &Expr) -> Result<Value, EvalError> {
         match expr {
-            Expr::Atom(atom) => self.eval_atom(atom, loc),
+            Expr::Atom(atom) => self.eval_atom(atom),
             Expr::Op(lhs, op, rhs) => {
-                let lhs = self.eval_expr(lhs, loc)?;
-                let rhs = self.eval_atom(rhs, loc)?;
+                let lhs = self.eval_expr(lhs)?;
+                let rhs = self.eval_atom(rhs)?;
 
                 match op {
                     Op::Add => lhs + rhs,
@@ -132,7 +141,7 @@ impl Assembler {
         }
     }
 
-    fn eval_operand(&mut self, arg: &mut Operand, curr_addr: &mut u16, loc: u16) {
+    fn eval_operand(&mut self, arg: &mut Operand) {
         if matches!(arg.extra, Extra::None) {
             return;
         }
@@ -140,28 +149,32 @@ impl Assembler {
         let val = match &arg.extra {
             Extra::None => unreachable!(),
             Extra::Imm(expr) => {
-                let val = self.eval_expr(expr, loc);
+                let val = self.eval_expr(expr);
                 if let (Expr::Atom(Atom::SymbolRef(symbol)), Ok(val)) = (expr, &val) {
-                    trace!("Resolving symbol \"{symbol}\" (imm) to val 0o{:o}, curr_addr: 0o{curr_addr:o}", val.val);
+                    trace!(
+                        "Resolving symbol \"{symbol}\" (imm) to val 0o{:o}, addr: 0o{:o}",
+                        val.val,
+                        self.addr
+                    );
                 }
                 val
             }
             Extra::Rel(expr) => {
-                self.eval_expr(expr, loc).map(|val| {
+                self.eval_expr(expr).map(|val| {
                     assert!(val.mode == Mode::Abs || val.mode == self.sect.mode());
 
-                    let off = (val.val as i32 - *curr_addr as i32 - 2) as u16;
+                    let off = (val.val as i32 - self.addr as i32 - 2) as u16;
 
                     // TODO: doesn't cover temporary symbols.
                     if let Expr::Atom(Atom::SymbolRef(symbol)) = expr {
-                        trace!("Resolving symbol \"{symbol}\" (rel) to offset 0o{off:o}, curr_addr: 0o{curr_addr:o}, final: 0o{:o}", val.val);
+                        trace!("Resolving symbol \"{symbol}\" (rel) to offset 0o{off:o}, curr_addr: 0o{:o}, final: 0o{:o}", self.addr, val.val);
                     }
                     Value::new(off, self.sect.mode())
                 })
             }
         };
 
-        *curr_addr += WORD_SIZE;
+        self.addr += WORD_SIZE;
 
         match val {
             Ok(val) => arg.extra = Extra::Imm(Expr::Atom(Atom::Val(val.val))),
@@ -171,7 +184,7 @@ impl Assembler {
     }
 
     // Todo: return result instead of panicking for temporary labels.
-    fn eval_target(&mut self, target: &mut Target, loc: u16) {
+    fn eval_target(&mut self, target: &mut Target) {
         let target_addr = match target {
             Target::Offset(x) => {
                 *target = Target::Offset(*x);
@@ -191,7 +204,7 @@ impl Assembler {
             Target::TmpLabelB(label) => self.tmp_symbols[label].val,
         };
 
-        let addr = loc as i32;
+        let addr = self.loc as i32;
         *target = Target::Offset(
             TryInto::<i8>::try_into((target_addr as i32 - addr - 2) / 2).unwrap() as u8,
         );
@@ -199,33 +212,32 @@ impl Assembler {
 
     fn eval_pass(&mut self, prog: &mut [Stmt]) {
         self.tmp_symbols.clear();
-        let mut addr: u16 = 0;
+        self.addr = 0;
         for (l, stmt) in prog.iter_mut().enumerate() {
-            let line = l + 1;
-            self.line = line;
+            self.line = l + 1;
 
             match &stmt.label_def {
                 Label::Regular(label) => {
                     let sym = SymbolValue::new(
                         SymbolType::Label,
-                        Value::new(addr, self.sect.mode()),
-                        line,
+                        Value::new(self.addr, self.sect.mode()),
+                        self.line,
                     );
                     let existing = self.symbols.insert(label.clone(), sym);
                     if let Some(existing) = existing {
-                        if existing.line != line {
-                            panic!("Label '{label}' on line {line} conflicts with previous definition on line {}", existing.line);
+                        if existing.line != self.line {
+                            panic!("Label '{label}' on line {} conflicts with previous definition on line {}", self.line, existing.line);
                         }
                     }
                 }
                 Label::Tmp(val) => {
                     let sym = SymbolValue::new(
                         SymbolType::Label,
-                        Value::new(addr, self.sect.mode()),
-                        line,
+                        Value::new(self.addr, self.sect.mode()),
+                        self.line,
                     );
                     self.tmp_symbols.insert(*val, sym);
-                    self.tmp_f_tracker.found(*val, addr, self.sect.mode());
+                    self.tmp_f_tracker.found(*val, self.addr, self.sect.mode());
                 }
                 Label::None => (),
             }
@@ -234,34 +246,37 @@ impl Assembler {
                 continue;
             }
 
-            let loc = addr;
+            self.loc = self.addr;
             match stmt.cmd.as_mut().unwrap() {
                 Cmd::SymbolDef(symbol, expr) => {
-                    if let Ok(val) = self.eval_expr(expr, loc) {
-                        let sym = SymbolValue::new(SymbolType::Regular, val, line);
+                    if let Ok(val) = self.eval_expr(expr) {
+                        let sym = SymbolValue::new(SymbolType::Regular, val, self.line);
                         let existing = self.symbols.insert(symbol.clone(), sym.clone());
                         if let Some(existing) = existing {
                             if existing.typ == SymbolType::Label {
-                                panic!("Symbol '{symbol}' on line {line} conflicts with label on line {}", existing.line);
+                                panic!(
+                                    "Symbol '{symbol}' on line {} conflicts with label on line {}",
+                                    self.line, existing.line
+                                );
                             }
                             // Regular symbols are allowed to overwrite each other.
                         }
                     }
                 }
                 Cmd::Ins(ins) => {
-                    addr += WORD_SIZE;
+                    self.addr += WORD_SIZE;
                     match ins {
-                        Ins::Branch(ins) => self.eval_target(&mut ins.target, loc),
+                        Ins::Branch(ins) => self.eval_target(&mut ins.target),
                         Ins::DoubleOperand(ins) => {
-                            self.eval_operand(&mut ins.src, &mut addr, loc);
-                            self.eval_operand(&mut ins.dst, &mut addr, loc);
+                            self.eval_operand(&mut ins.src);
+                            self.eval_operand(&mut ins.dst);
                         }
-                        Ins::Jmp(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
-                        Ins::Jsr(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
-                        Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst, &mut addr, loc),
-                        Ins::Eis(ins) => self.eval_operand(&mut ins.operand, &mut addr, loc),
+                        Ins::Jmp(ins) => self.eval_operand(&mut ins.dst),
+                        Ins::Jsr(ins) => self.eval_operand(&mut ins.dst),
+                        Ins::SingleOperand(ins) => self.eval_operand(&mut ins.dst),
+                        Ins::Eis(ins) => self.eval_operand(&mut ins.operand),
                         Ins::Trap(ins) => {
-                            if let Ok(val) = self.eval_expr(&ins.data, loc) {
+                            if let Ok(val) = self.eval_expr(&ins.data) {
                                 assert_eq!(val.val & !0xff, 0);
                                 ins.data = Expr::Atom(Atom::Val(val.val));
                             }
@@ -271,32 +286,34 @@ impl Assembler {
                 }
                 Cmd::Bytes(exprs) => {
                     for e in exprs {
-                        if let Ok(val) = self.eval_expr(e, addr) {
+                        if let Ok(val) = self.eval_expr(e) {
                             *e = Expr::Atom(Atom::Val(val.val));
                         }
-                        addr += 1;
+                        self.addr += 1;
+                        self.loc += 1;
                     }
                 }
                 Cmd::Words(exprs) => {
                     for e in exprs {
-                        if let Ok(val) = self.eval_expr(e, addr) {
+                        if let Ok(val) = self.eval_expr(e) {
                             *e = Expr::Atom(Atom::Val(val.val));
                         }
-                        addr += WORD_SIZE;
+                        self.addr += WORD_SIZE;
+                        self.loc += WORD_SIZE;
                     }
                 }
                 Cmd::LocDef(expr) => {
-                    if let Ok(val) = self.eval_expr(expr, addr) {
-                        assert!(val.val >= addr);
-                        addr = val.val;
-                        *expr = Expr::Atom(Atom::Val(addr))
+                    if let Ok(val) = self.eval_expr(expr) {
+                        assert!(val.val >= self.addr);
+                        self.addr = val.val;
+                        *expr = Expr::Atom(Atom::Val(self.addr))
                     }
                 }
                 Cmd::Even => {
-                    addr += addr & 0x1;
+                    self.addr += self.addr & 0x1;
                 }
                 _ => {
-                    addr += stmt.size().unwrap();
+                    self.addr += stmt.size().unwrap();
                 }
             }
         }
