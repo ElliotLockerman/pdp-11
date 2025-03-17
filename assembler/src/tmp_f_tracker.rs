@@ -17,17 +17,11 @@ impl TmpFTracker {
     }
 
     pub fn get(&mut self, line: usize, label: u16) -> Option<(u16, Mode)> {
-        self.found
-            .get(&line)
-            .and_then(|hm| hm.get(&label))
-            .copied()
+        self.found.get(&line).and_then(|hm| hm.get(&label)).copied()
     }
 
     pub fn need(&mut self, line: usize, label: u16) {
-        self.need
-            .entry(label)
-            .or_default()
-            .insert(line);
+        self.need.entry(label).or_default().insert(line);
     }
 
     pub fn found(&mut self, label: u16, loc: u16, mode: Mode) {

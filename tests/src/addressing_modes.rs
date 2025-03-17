@@ -1220,10 +1220,7 @@ fn relative_tmp_label_read() {
     emu.load_image(&prog.text, 0);
     emu.run_at(2);
     assert_eq!(emu.reg_read_word(Reg::R0), 0o012);
-    assert_eq!(
-        emu.reg_read_word(Reg::PC),
-        0 + prog.text.len().to_u16p()
-    );
+    assert_eq!(emu.reg_read_word(Reg::PC), 0 + prog.text.len().to_u16p());
     /*
     0: .word 012
     2: mov
@@ -1264,8 +1261,6 @@ fn relative_tmp_label_read() {
         emu.reg_read_word(Reg::PC),
         DATA_START + offset + prog.text.len().to_u16p()
     );
-
-
 
     let prog = assemble_raw(
         r#"
