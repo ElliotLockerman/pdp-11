@@ -581,3 +581,101 @@ fn pipe_keyboard_interrupt() {
         assert_eq!(emu.mem_read_byte(buf + i.to_u16p()), *ch);
     }
 }
+
+
+
+#[test]
+fn printu() {
+    let prog = assemble_raw(r#"
+            . = 400
+
+            STACK_TOP = 150000 
+
+            TPS = 177564
+            TPB = TPS + 2
+            TPS_READY_CMASK = 177
+
+        _start:
+            mov #STACK_TOP, sp
+
+            mov     #423., r0
+            jsr     pc, printu
+            mov     #'\n, r0
+            jsr     pc, print
+
+            mov     #0, r0
+            jsr     pc, printu
+            mov     #'\n, r0
+            jsr     pc, print
+
+            mov     #32014., r0
+            jsr     pc, printu
+            mov     #'\n, r0
+            jsr     pc, print
+
+            mov     #0001., r0
+            jsr     pc, printu
+            mov     #'\n, r0
+            jsr     pc, print
+
+            halt
+
+        printu:
+            mov     r1, -(sp)
+            mov     r2, -(sp)
+
+                            ; Lower half of 32-bit dividend in r0, the argument.
+            clr     r1      ; Upper half of 32-bit dividend, which we're not using.
+            mov     sp, r2  ; Save top of stack (one past last digit).
+
+        1:
+            clr     r1          ; Upper half of 32-bit dividend, which we're not using.
+            div     #10., r0    ; Quotient in r0, remainder in r1
+            mov     r1, -(sp)   ; Save remainder.
+            cmp     #0, r0      ; If quotient isn't 0, loop.
+            bne     1b
+
+            ; Now we have all the decimal digits on the stack in the range [sp, r2), and there must be at
+            ; least one digit.
+        2:
+            mov     (sp)+, r0   ; Pop a char.
+            add     #48., r0    ; Convert to ascii.
+            jsr     pc, print   ; Print it.
+
+            cmp     sp, r2      ; Not at the end?
+            bne     2b          ; continue
+
+            mov     (sp)+, r2
+            mov     (sp)+, r1
+            rts     pc
+
+        print:
+            ; Loop until the teletype is ready to accept another character.
+            bicb    #TPS_READY_CMASK, @#TPS
+            beq     print
+
+            movb    r0, @#TPB
+            rts     pc  
+    "#);
+
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
+    let mut emu = Emulator::new();
+    emu.set_mmio_handler_for(teletype, [Teletype::TPS, Teletype::TPB]);
+
+    emu.load_image(&prog.text, 0);
+    emu.run_at(prog.symbols.get("_start").unwrap().val);
+
+    let mut buf = tty.take_output();
+    buf.make_contiguous();
+    let out = String::from_utf8_lossy(buf.as_slices().0);
+    let expected = r#"423
+0
+32014
+1
+"#;
+    assert_eq!(out, expected);
+}
+
+
+
