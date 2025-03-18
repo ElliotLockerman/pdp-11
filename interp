@@ -13,7 +13,11 @@ os.chdir(prev_cwd)
 
 bin_path = script_dir / "target/debug/interpreter"
 try:
-    sp.check_call([bin_path, *sys.argv[1:]])
+    sp.check_call([bin_path, *sys.argv[1:]], text=True)
 except KeyboardInterrupt:
     pass
+except sp.CalledProcessError as e:
+    print(f"Exited with status {e.returncode}")
+    exit(e.returncode)
+
 

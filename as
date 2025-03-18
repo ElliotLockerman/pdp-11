@@ -12,5 +12,9 @@ sp.check_call(["cargo", "build", "--bin", "as_cli"])
 os.chdir(prev_cwd)
 
 bin_path = script_dir / "target/debug/as_cli"
-sp.check_call([bin_path, *sys.argv[1:]])
+try:
+    sp.check_call([bin_path, *sys.argv[1:]])
+except sp.CalledProcessError as e:
+    print(f"Exited with status {e.returncode}")
+    exit(e.returncode)
 
