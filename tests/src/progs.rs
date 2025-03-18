@@ -3,8 +3,10 @@ use common::asm::Reg;
 use common::constants::DATA_START;
 use common::misc::ToU16P;
 use emu_lib::Emulator;
+use emu_lib::io::teletype::*;
 
 use std::assert_matches::assert_matches;
+use std::sync::Arc;
 
 #[test]
 fn looop() {
@@ -67,80 +69,19 @@ fn strcpy() {
 
 #[test]
 fn fib() {
-    let aout = assemble(
-        r#"
-    out:
-    .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-    out_end = .
+    let aout = assemble(include_str!("../../examples/fib.s"));
 
-        .even
-
-    ; Arg and return in r0, rest callee save
-    fib:
-        cmp #0, r0
-        beq done
-
-        cmp #1, r0
-        beq done
-
-        mov r1, -(sp)
-        mov r2, -(sp)
-        mov r3, -(sp)
-
-        dec r0
-        mov r0, r1
-        jsr pc, fib
-
-        mov r0, r2
-        mov r1, r0
-        dec r0
-        jsr pc, fib
-
-        add r2, r0
-
-        mov (sp)+, r3
-        mov (sp)+, r2
-        mov (sp)+, r1
-
-    done:
-        rts pc
-
-
-    _start:
-        mov #150000, sp
-        mov #0, r1
-        mov #out, r3
-
-    loop:
-        cmp #out_end, r3
-        beq done2
-
-        mov r1, r0
-        inc r1
-        jsr pc, fib
-        mov r0, (r3)+
-        br loop
-
-    done2:
-        halt
-    "#,
-    );
-
+    let tty = Arc::new(PipeTty::default());
+    let teletype = Teletype::new(tty.clone());
     let mut emu = Emulator::new();
+    emu.set_mmio_handler_for(teletype, [Teletype::TPS, Teletype::TPB]);
+
     emu.load_aout(&aout);
     emu.run_at(aout.entry_point);
-
-    fn fib(i: u16) -> u16 {
-        match i {
-            0 => 0,
-            1 => 1,
-            j => fib(j - 1) + fib(j - 2),
-        }
-    }
-
-    for i in 0..10 {
-        assert_eq!(emu.mem_read_word(i * 2), fib(i));
-    }
+    let mut buf = tty.take_output();
+    buf.make_contiguous();
+    let out = String::from_utf8_lossy(buf.as_slices().0);
+    assert_eq!(out, "0\n1\n1\n2\n3\n5\n8\n13\n21\n34\n");
 }
 
 #[test]
@@ -495,3 +436,4 @@ fn byte_queue() {
         assert_eq!(empty(&mut emu), (i == count + 1) as u16);
     }
 }
+
