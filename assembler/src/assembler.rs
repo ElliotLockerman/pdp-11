@@ -944,4 +944,58 @@ mod tests {
         );
         assert_eq!(prog.symbols.get("label").unwrap().val, 2);
     }
+
+    #[test]
+    fn chars() {
+        let asm = r#"
+            mov #'!, r0
+            mov #'J, r0
+        "#;
+        let bin = to_u16_vec(&assemble_raw(asm).text);
+        assert_eq!(bin[0], 0o012700);
+        assert_eq!(bin[1], b'!' as u16);
+        assert_eq!(bin[2], 0o012700);
+        assert_eq!(bin[3], b'J' as u16);
+
+        let asm = r#".word '!, '~, '+, '*, '^, '}, 'g"#;
+        let expected = [
+            b'!' as u16,
+            b'~' as u16,
+            b'+' as u16,
+            b'*' as u16,
+            b'^' as u16,
+            b'}' as u16,
+            b'g' as u16,
+        ];
+
+        let bin = to_u16_vec(&assemble_raw(asm).text);
+        assert_eq!(bin, expected);
+    }
+
+    #[test]
+    fn special_chars() {
+        let asm = r#"
+            mov #'\n, r0
+            mov #'\0, r0
+        "#;
+        let bin = to_u16_vec(&assemble_raw(asm).text);
+        assert_eq!(bin[0], 0o012700);
+        assert_eq!(bin[1], b'\n' as u16);
+        assert_eq!(bin[2], 0o012700);
+        assert_eq!(bin[3], b'\0' as u16);
+
+        let asm = r#".word '\n, '\r, '\0, '\t, '\", '\', '\\"#;
+        let expected = [
+            b'\n' as u16,
+            b'\r' as u16,
+            b'\0' as u16,
+            b'\t' as u16,
+            b'\"' as u16,
+            b'\'' as u16,
+            b'\\' as u16,
+        ];
+
+        let bin = to_u16_vec(&assemble_raw(asm).text);
+        assert_eq!(bin, expected);
+    }
 }
