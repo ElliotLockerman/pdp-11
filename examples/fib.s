@@ -11,15 +11,19 @@ _start:
     mov     #0, r1
 
 1:
+    ; Call fib.
     mov     r1, r0
-    inc     r1
     jsr     pc, fib
 
+    ; Print the result.
     jsr     pc, printu
 
+    ; Print a newline.
     mov     #'\n, r0
     jsr     pc, print
 
+    ; Increment the induction variable and loop until it hits 10.
+    inc     r1
     cmp     #10., r1
     bne     1b
 
@@ -29,28 +33,32 @@ _start:
 ; fib(r0 num: u16) -> u16
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 fib:
+    ; Base case 1: fib(0) = 0.
     cmp     #0, r0
     beq     1f
 
+    ; Base case 2: fib(1) = 1.
     cmp     #1, r0
     beq     1f
 
+    ; Recursive case.
+    ; Save variables we're using.
     mov     r1, -(sp)
     mov     r2, -(sp)
-    mov     r3, -(sp)
 
+    ; fib(num - 1).
     dec     r0
     mov     r0, r1
     jsr     pc, fib
 
-    mov     r0, r2
+    ; fib(num - 2).
+    mov     r0, r2  ; Save fib(num - 1) in r2.
     mov     r1, r0
     dec     r0
     jsr     pc, fib
 
     add     r2, r0
 
-    mov     (sp)+, r3
     mov     (sp)+, r2
     mov     (sp)+, r1
 
