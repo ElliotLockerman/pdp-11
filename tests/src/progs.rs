@@ -436,4 +436,3 @@ fn byte_queue() {
         assert_eq!(empty(&mut emu), (i == count + 1) as u16);
     }
 }
-

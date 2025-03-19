@@ -582,11 +582,10 @@ fn pipe_keyboard_interrupt() {
     }
 }
 
-
-
 #[test]
 fn printu() {
-    let prog = assemble_raw(r#"
+    let prog = assemble_raw(
+        r#"
             . = 400
 
             STACK_TOP = 150000 
@@ -656,7 +655,8 @@ fn printu() {
 
             movb    r0, @#TPB
             rts     pc  
-    "#);
+    "#,
+    );
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -676,6 +676,3 @@ fn printu() {
 "#;
     assert_eq!(out, expected);
 }
-
-
-
