@@ -226,12 +226,13 @@ impl Operand {
         self.reg.to_u16().unwrap() | (self.mode.to_u16().unwrap() << Reg::NUM_BITS)
     }
 
-    pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, mut pc: u16) -> fmt::Result {
-        pc = pc.wrapping_add(2);
+    // addr is address of extra (should it exist).
+    pub fn fmt_with_addr(&self, f: &mut fmt::Formatter, addr: u16) -> fmt::Result {
+        let base = addr.wrapping_add(2); // Index/Index def are relative to the word _after_.
         use AddrMode::*;
         match (self.mode, self.reg) {
-            (Index, Reg::PC) => write!(f, "{:#o}", pc.wrapping_add(self.extra.unwrap_val())),
-            (IndexDef, Reg::PC) => write!(f, "@ {:#o}", pc.wrapping_add(self.extra.unwrap_val())),
+            (Index, Reg::PC) => write!(f, "{:#o}", base.wrapping_add(self.extra.unwrap_val())),
+            (IndexDef, Reg::PC) => write!(f, "@{:#o}", base.wrapping_add(self.extra.unwrap_val())),
             (_, _) => fmt::Display::fmt(self, f),
         }
     }
@@ -394,9 +395,9 @@ impl DoubleOperandIns {
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
         write!(f, "{}\t", self.op)?;
-        self.src.fmt_with_pc(f, pc)?;
+        self.src.fmt_with_addr(f, pc + 2)?;
         write!(f, ", ")?;
-        self.dst.fmt_with_pc(f, pc)
+        self.dst.fmt_with_addr(f, pc + 2 + 2 * self.src.num_extra())
     }
 
     pub fn emit(&self, out: &mut impl Write) {
@@ -554,7 +555,7 @@ impl JmpIns {
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
         write!(f, "{}\t", self.op)?;
-        self.dst.fmt_with_pc(f, pc)
+        self.dst.fmt_with_addr(f, pc + 2)
     }
 
     pub fn emit(&self, out: &mut impl Write) {
@@ -623,7 +624,7 @@ impl JsrIns {
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
         write!(f, "{}\t{},", self.op, self.reg)?;
-        self.dst.fmt_with_pc(f, pc)
+        self.dst.fmt_with_addr(f, pc + 2)
     }
 
     pub fn emit(&self, out: &mut impl Write) {
@@ -788,7 +789,7 @@ impl SingleOperandIns {
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
         write!(f, "{}\t", self.op)?;
-        self.dst.fmt_with_pc(f, pc)
+        self.dst.fmt_with_addr(f, pc + 2)
     }
 
     pub fn emit(&self, out: &mut impl Write) {
@@ -864,7 +865,7 @@ impl EisIns {
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
         write!(f, "{}\t{},", self.op, self.reg)?;
-        self.operand.fmt_with_pc(f, pc)
+        self.operand.fmt_with_addr(f, pc + 2)
     }
 
     pub fn emit(&self, out: &mut impl Write) {
