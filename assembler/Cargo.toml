@@ -24,3 +24,4 @@ num-traits = "0.2.14"
 clap = { version = "4.5.8", features = ["derive"] }
 env_logger = "0.11.5"
 thiserror = "1.0.63"
+clap-stdin = "0.6.0"

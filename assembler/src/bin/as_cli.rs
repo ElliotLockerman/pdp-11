@@ -3,13 +3,14 @@ use std::fs::File;
 use as_lib::assemble;
 
 use clap::Parser;
+use clap_stdin::FileOrStdin;
 
 /// PDP-11 Assembler
 #[derive(Parser)]
 #[command(about)]
 struct Args {
     /// Input assembly file
-    input: String,
+    input: FileOrStdin,
 
     /// File name to output to
     #[arg(long, short)]
@@ -19,11 +20,11 @@ struct Args {
 fn main() {
     env_logger::init();
 
-    let opt = Args::parse();
-    let input = std::fs::read_to_string(opt.input).unwrap();
+    let args = Args::parse();
+    let input = args.input.contents().unwrap();
     let prog = assemble(input.as_str());
 
-    let outname = opt.output.as_deref().unwrap_or("a.out");
+    let outname = args.output.as_deref().unwrap_or("a.out");
     let mut out = File::create(outname).unwrap();
     prog.write_to(&mut out);
 }

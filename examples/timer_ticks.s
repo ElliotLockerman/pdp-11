@@ -48,7 +48,7 @@ clock:
     inc count
     mov count, r0
     add #'0, r0
-    jsr pc, print
+    jsr pc, putc
 
     ; If we haven't reached 9 yet, just return.
     cmp #9., count
@@ -56,7 +56,7 @@ clock:
 
     ; If we have just printed 9, print \n and halt.
     mov #12, r0 ; '\n'
-    jsr pc, print
+    jsr pc, putc
     halt
 
 done:
@@ -72,19 +72,4 @@ done:
     ; Counter to print.
 count:
     .word 0
-
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; print(char: r0)
-; char is the ascii char to print.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-print:
-    ; Loop until the teleprinter is ready to accept another character.
-    bicb #TPS_READY_MASK, @#TPS
-    beq print
-
-    movb r0, @#TPB
-    rts pc  
 

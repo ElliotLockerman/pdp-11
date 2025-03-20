@@ -1,10 +1,5 @@
 
-    TPS = 177564
-    TPB = TPS + 2
-    TPS_READY_CMASK = 177
-
     .even
-
 
 _start:
     mov     #150000, sp
@@ -20,7 +15,7 @@ _start:
 
     ; Print a newline.
     mov     #'\n, r0
-    jsr     pc, print
+    jsr     pc, putc
 
     ; Increment the induction variable and loop until it hits 10.
     inc     r1
@@ -89,7 +84,7 @@ printu:
 2:
     mov     (sp)+, r0   ; Pop a char.
     add     #48., r0    ; Convert to ascii.
-    jsr     pc, print   ; Print it.
+    jsr     pc, putc   ; Print it.
 
     cmp     sp, r2      ; Not at the end?
     bne     2b          ; continue
@@ -106,14 +101,3 @@ printu:
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; fn print(r0 char: u8)
-; Blocks until ready to print, then prints r0.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-print:
-    ; Loop until the teletype is ready to accept another character.
-    bicb    #TPS_READY_CMASK, @#TPS
-    beq     print
-
-    movb    r0, @#TPB
-    rts     pc  

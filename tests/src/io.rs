@@ -89,7 +89,9 @@ fn hello_spin() {
 
 #[test]
 fn clock() {
-    let prog = assemble_raw(include_str!("../../examples/timer_ticks.s"));
+    let mut asm = include_str!("../../examples/timer_ticks.s").to_string();
+    asm += include_str!("../../examples/teletype_spin.s");
+    let prog = assemble_raw(&asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());
@@ -469,9 +471,9 @@ fn pipe_echo_spin() {
 
 #[test]
 fn pipe_echo_spin_line() {
-    let asm = include_str!("../../examples/echo_spin.s");
-
-    let prog = assemble_raw(asm);
+    let mut asm = include_str!("../../examples/echo_spin.s").to_string();
+    asm += include_str!("../../examples/teletype_spin.s");
+    let prog = assemble_raw(&asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());

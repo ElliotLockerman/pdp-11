@@ -69,7 +69,9 @@ fn strcpy() {
 
 #[test]
 fn fib() {
-    let aout = assemble(include_str!("../../examples/fib.s"));
+    let mut asm = include_str!("../../examples/fib.s").to_string();
+    asm += include_str!("../../examples/teletype_spin.s");
+    let aout = assemble(&asm);
 
     let tty = Arc::new(PipeTty::default());
     let teletype = Teletype::new(tty.clone());

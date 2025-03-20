@@ -129,7 +129,7 @@ impl EmulatorState {
     }
 
     pub fn mem_write_byte(&mut self, addr: u16, val: u8) {
-        trace!("Mem: writing {val} to 0o{addr:o} (byte)");
+        trace!("Mem: writing {val:#o} to 0o{addr:o} (byte)");
         self.mem[addr as usize] = val;
     }
 
@@ -139,14 +139,14 @@ impl EmulatorState {
     }
 
     pub fn mem_write_word(&mut self, addr: u16, val: u16) {
-        trace!("Mem: writing {val} to 0o{addr:o} (word)");
+        trace!("Mem: writing {val:#o} to 0o{addr:o} (word)");
         assert!(addr & 1 == 0);
         self.mem[addr as usize] = val as u8;
         self.mem[(addr + 1) as usize] = (val >> 8) as u8;
     }
 
     pub fn reg_write_word(&mut self, reg: Reg, val: u16) {
-        trace!("Reg: writing {val} to {reg:?} (word)");
+        trace!("Reg: writing {val:#o} to {reg:?} (word)");
         if reg == Reg::SP && val < 0o400 {
             // Should really trap.
             panic!("Stack overflow");
@@ -163,7 +163,7 @@ impl EmulatorState {
     }
 
     pub fn reg_write_byte(&mut self, reg: Reg, val: u8) {
-        trace!("Reg: writing {val} to {reg:?} (byte)");
+        trace!("Reg: writing {val:#o} to {reg:?} (byte)");
         let mut old = self.reg_read_word(reg);
         old &= !0xff;
         old |= val as u16;

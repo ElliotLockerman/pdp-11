@@ -394,7 +394,7 @@ impl DoubleOperandIns {
     }
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        write!(f, "{}\t", self.op)?;
+        write!(f, "{}\t\t", self.op)?;
         self.src.fmt_with_addr(f, pc + 2)?;
         write!(f, ", ")?;
         self.dst.fmt_with_addr(f, pc + 2 + 2 * self.src.num_extra())
@@ -432,7 +432,7 @@ impl DoubleOperandIns {
 
 impl fmt::Display for DoubleOperandIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}, {}", self.op, self.src, self.dst)
+        write!(f, "{}\t\t{}, {}", self.op, self.src, self.dst)
     }
 }
 
@@ -489,7 +489,7 @@ impl BranchIns {
     }
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        write!(f, "{}\t", self.op)?;
+        write!(f, "{}\t\t", self.op)?;
         self.target.fmt_with_pc(f, pc)
     }
 
@@ -516,7 +516,7 @@ impl InstrVariant<BranchOpcode> for BranchIns {
 
 impl fmt::Display for BranchIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}", self.op, self.target)
+        write!(f, "{}\t\t{}", self.op, self.target)
     }
 }
 
@@ -554,7 +554,7 @@ impl JmpIns {
     }
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        write!(f, "{}\t", self.op)?;
+        write!(f, "{}\t\t", self.op)?;
         self.dst.fmt_with_addr(f, pc + 2)
     }
 
@@ -583,7 +583,7 @@ impl InstrVariant<JmpOpcode> for JmpIns {
 
 impl fmt::Display for JmpIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}", self.op, self.dst)
+        write!(f, "{}\t\t{}", self.op, self.dst)
     }
 }
 
@@ -623,7 +623,7 @@ impl JsrIns {
     }
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        write!(f, "{}\t{},", self.op, self.reg)?;
+        write!(f, "{}\t\t{},", self.op, self.reg)?;
         self.dst.fmt_with_addr(f, pc + 2)
     }
 
@@ -654,7 +654,7 @@ impl InstrVariant<JsrOpcode> for JsrIns {
 
 impl fmt::Display for JsrIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}, {}", self.op, self.reg, self.dst)
+        write!(f, "{}\t\t{}, {}", self.op, self.reg, self.dst)
     }
 }
 
@@ -718,7 +718,7 @@ impl InstrVariant<RtsOpcode> for RtsIns {
 
 impl fmt::Display for RtsIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}", self.op, self.reg)
+        write!(f, "{}\t\t{}", self.op, self.reg)
     }
 }
 
@@ -788,7 +788,7 @@ impl SingleOperandIns {
     }
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        write!(f, "{}\t", self.op)?;
+        write!(f, "{}\t\t", self.op)?;
         self.dst.fmt_with_addr(f, pc + 2)
     }
 
@@ -817,7 +817,7 @@ impl InstrVariant<SingleOperandOpcode> for SingleOperandIns {
 
 impl fmt::Display for SingleOperandIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}", self.op, self.dst)
+        write!(f, "{}\t\t{}", self.op, self.dst)
     }
 }
 
@@ -864,7 +864,7 @@ impl EisIns {
     }
 
     pub fn fmt_with_pc(&self, f: &mut fmt::Formatter, pc: u16) -> fmt::Result {
-        write!(f, "{}\t{},", self.op, self.reg)?;
+        write!(f, "{}\t\t{},", self.op, self.reg)?;
         self.operand.fmt_with_addr(f, pc + 2)
     }
 
@@ -900,7 +900,7 @@ impl InstrVariant<EisOpcode> for EisIns {
 
 impl fmt::Display for EisIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{}, {}", self.op, self.reg, self.operand)
+        write!(f, "{}\t\t{}, {}", self.op, self.reg, self.operand)
     }
 }
 
@@ -1106,7 +1106,7 @@ impl InstrVariant<TrapOpcode> for TrapIns {
 
 impl fmt::Display for TrapIns {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{:#o}", self.op, self.data.unwrap_val())
+        write!(f, "{}\t\t{:#o}", self.op, self.data.unwrap_val())
     }
 }
 
